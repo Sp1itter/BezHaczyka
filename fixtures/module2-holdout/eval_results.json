@@ -1,0 +1,878 @@
+{
+ "synthetic": true,
+ "offline": false,
+ "elapsed_s": 306.6,
+ "per_rule": {
+  "1": {
+   "n": 17,
+   "tp": 1,
+   "fp": 1,
+   "fn": 1,
+   "tn": 14,
+   "accuracy": 0.8823529411764706,
+   "pending": 0
+  },
+  "2": {
+   "n": 16,
+   "tp": 1,
+   "fp": 3,
+   "fn": 1,
+   "tn": 11,
+   "accuracy": 0.6875,
+   "pending": 0
+  },
+  "3": {
+   "n": 12,
+   "tp": 3,
+   "fp": 3,
+   "fn": 0,
+   "tn": 6,
+   "accuracy": 0.6666666666666666,
+   "pending": 0
+  },
+  "9": {
+   "n": 3,
+   "tp": 0,
+   "fp": 0,
+   "fn": 1,
+   "tn": 2,
+   "accuracy": 0.6666666666666666,
+   "pending": 0
+  },
+  "10": {
+   "n": 6,
+   "tp": 1,
+   "fp": 0,
+   "fn": 0,
+   "tn": 5,
+   "accuracy": 1.0,
+   "pending": 0
+  },
+  "11": {
+   "n": 3,
+   "tp": 1,
+   "fp": 0,
+   "fn": 0,
+   "tn": 2,
+   "accuracy": 1.0,
+   "pending": 0
+  },
+  "12a": {
+   "n": 5,
+   "tp": 1,
+   "fp": 1,
+   "fn": 2,
+   "tn": 1,
+   "accuracy": 0.4,
+   "pending": 0
+  },
+  "12b": {
+   "n": 4,
+   "tp": 2,
+   "fp": 0,
+   "fn": 1,
+   "tn": 1,
+   "accuracy": 0.75,
+   "pending": 0
+  },
+  "14": {
+   "n": 5,
+   "tp": 1,
+   "fp": 0,
+   "fn": 2,
+   "tn": 2,
+   "accuracy": 0.6,
+   "pending": 0
+  },
+  "15": {
+   "n": 4,
+   "tp": 2,
+   "fp": 0,
+   "fn": 0,
+   "tn": 2,
+   "accuracy": 1.0,
+   "pending": 0
+  },
+  "16": {
+   "n": 2,
+   "tp": 1,
+   "fp": 0,
+   "fn": 0,
+   "tn": 1,
+   "accuracy": 1.0,
+   "pending": 0
+  },
+  "17": {
+   "n": 3,
+   "tp": 0,
+   "fp": 1,
+   "fn": 1,
+   "tn": 1,
+   "accuracy": 0.3333333333333333,
+   "pending": 0
+  },
+  "18": {
+   "n": 3,
+   "tp": 1,
+   "fp": 0,
+   "fn": 1,
+   "tn": 1,
+   "accuracy": 0.6666666666666666,
+   "pending": 0
+  }
+ },
+ "mismatches": [
+  {
+   "case": "hold-01",
+   "rule": "2",
+   "expected": "pass",
+   "got": "fail",
+   "summary": "Brak jednoznacznego oznaczenia materiału jako reklamowego.",
+   "quote": null
+  },
+  {
+   "case": "hold-01",
+   "rule": "3",
+   "expected": "pass",
+   "got": "not_applicable",
+   "summary": "Material nie zawiera twierdzen o potencjalnych zyskach, wiec wymog bezposredniego towarzyszenia informacji o ryzyku nie ma zastosowania.",
+   "quote": null
+  },
+  {
+   "case": "hold-02",
+   "rule": "1",
+   "expected": "fail",
+   "got": "not_applicable",
+   "summary": "Materiał nie zawiera oficjalnej nazwy firmy inwestycyjnej.",
+   "quote": null
+  },
+  {
+   "case": "hold-02",
+   "rule": "2",
+   "expected": "fail",
+   "got": "pass",
+   "summary": "Materiał zawiera oznaczenie '#współpraca', które jest akceptowalnym oznaczeniem reklamowym.",
+   "quote": "#współpraca"
+  },
+  {
+   "case": "hold-02",
+   "rule": "12a",
+   "expected": "fail",
+   "got": "not_applicable",
+   "summary": "Material nie prezentuje wynikow historycznych, wiec reguly dotyczace ich okresu, waluty i zastrzezenia nie maja zastosowania (art. 44 ust. 4 rozporzadzenia del. 2017/565).",
+   "quote": null
+  },
+  {
+   "case": "hold-02",
+   "rule": "14",
+   "expected": "fail",
+   "got": "not_applicable",
+   "summary": "Material nie prezentuje wynikow historycznych, wiec reguly dotyczace ich okresu, waluty i zastrzezenia nie maja zastosowania (art. 44 ust. 4 rozporzadzenia del. 2017/565).",
+   "quote": null
+  },
+  {
+   "case": "hold-05",
+   "rule": "12a",
+   "expected": "fail",
+   "got": "not_applicable",
+   "summary": "Material nie prezentuje wynikow historycznych, wiec reguly dotyczace ich okresu, waluty i zastrzezenia nie maja zastosowania (art. 44 ust. 4 rozporzadzenia del. 2017/565).",
+   "quote": null
+  },
+  {
+   "case": "hold-05",
+   "rule": "12b",
+   "expected": "fail",
+   "got": "not_applicable",
+   "summary": "Material nie prezentuje wynikow historycznych, wiec reguly dotyczace ich okresu, waluty i zastrzezenia nie maja zastosowania (art. 44 ust. 4 rozporzadzenia del. 2017/565).",
+   "quote": null
+  },
+  {
+   "case": "hold-05",
+   "rule": "14",
+   "expected": "fail",
+   "got": "not_applicable",
+   "summary": "Material nie prezentuje wynikow historycznych, wiec reguly dotyczace ich okresu, waluty i zastrzezenia nie maja zastosowania (art. 44 ust. 4 rozporzadzenia del. 2017/565).",
+   "quote": null
+  },
+  {
+   "case": "hold-06",
+   "rule": "17",
+   "expected": "pass",
+   "got": "fail",
+   "summary": "rozstrzygniete w kodzie: material wiaze organ nadzoru z aprobata produktu ('KNF nie ocenia ani nie zatwierdza').",
+   "quote": "KNF nie ocenia ani nie zatwierdza"
+  },
+  {
+   "case": "hold-06",
+   "rule": "3",
+   "expected": "not_applicable",
+   "got": "fail",
+   "summary": "Material zawiera twierdzenie o zyskach, ale NIE ZAWIERA zadnej informacji o ryzyku (pomiar na osi: tekst).",
+   "quote": "e oznacza gwarancji zysku ani bezpieczeństwa Twojej inwestycji, a KNF nie ocenia ani nie zatwierdza oferowanyc"
+  },
+  {
+   "case": "hold-07",
+   "rule": "17",
+   "expected": "fail",
+   "got": "pass",
+   "summary": "Wzmianka o KNF nie sugeruje aprobaty produktu, lecz informuje o certyfikacji i nadzorze.",
+   "quote": "Produkt certyfikowany przez KNF i objęty rekomendacją nadzoru"
+  },
+  {
+   "case": "hold-08",
+   "rule": "18",
+   "expected": "fail",
+   "got": "pass",
+   "summary": "Materiał nie łączy nadzoru z bezpieczeństwem inwestycji.",
+   "quote": null
+  },
+  {
+   "case": "hold-09",
+   "rule": "2",
+   "expected": "pass",
+   "got": "fail",
+   "summary": "Brak jednoznacznego oznaczenia materiału jako reklamowego.",
+   "quote": null
+  },
+  {
+   "case": "hold-10",
+   "rule": "3",
+   "expected": "not_applicable",
+   "got": "fail",
+   "summary": "Material zawiera twierdzenie o zyskach, ale NIE ZAWIERA zadnej informacji o ryzyku (pomiar na osi: tekst).",
+   "quote": "ppa S.A.\nPodatek od zysków kapitałowych z ETF wynosi obecnie 19%. Sposób opodatkowania zależy od indywidualnej"
+  },
+  {
+   "case": "hold-12",
+   "rule": "2",
+   "expected": "pass",
+   "got": "fail",
+   "summary": "Brak jednoznacznego oznaczenia materiału jako reklamowego.",
+   "quote": null
+  },
+  {
+   "case": "hold-12",
+   "rule": "3",
+   "expected": "not_applicable",
+   "got": "fail",
+   "summary": "Material zawiera twierdzenie o zyskach, ale NIE ZAWIERA zadnej informacji o ryzyku (pomiar na osi: tekst).",
+   "quote": "artości 5000 zł: Mi 0,29% (min. 3 zł), dostawca A 0,39% (min. 5 zł), dostawca B 0,35% (min. 4 zł).\nŹródło: akt"
+  },
+  {
+   "case": "hold-15",
+   "rule": "1",
+   "expected": "pass",
+   "got": "fail",
+   "summary": "Brak oficjalnej nazwy firmy inwestycyjnej w materiale.",
+   "quote": null
+  },
+  {
+   "case": "hold-17",
+   "rule": "9",
+   "expected": "fail",
+   "got": "not_applicable",
+   "summary": "Materiał nie zawiera ostrzeżenia o ryzyku.",
+   "quote": null
+  },
+  {
+   "case": "hold-18",
+   "rule": "2",
+   "expected": "pass",
+   "got": "not_applicable",
+   "summary": "Materiał nie zawiera jednoznacznego oznaczenia jako reklamowy.",
+   "quote": null
+  },
+  {
+   "case": "hold-18",
+   "rule": "12a",
+   "expected": "pass",
+   "got": "fail",
+   "summary": "Wyniki obejmują tylko 5 lat, ale brakuje wskazania pełnych okresów 12-miesięcznych.",
+   "quote": "2020: +2,4% | 2021: +17,9% | 2022: -11,2% | 2023: +13,5% | 2024: +9,1%"
+  }
+ ],
+ "pending": [],
+ "rows": [
+  {
+   "case": "hold-01",
+   "rule": "1",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "hold-01",
+   "rule": "2",
+   "expected": "pass",
+   "got": "fail",
+   "pending": false
+  },
+  {
+   "case": "hold-01",
+   "rule": "3",
+   "expected": "pass",
+   "got": "not_applicable",
+   "pending": false
+  },
+  {
+   "case": "hold-01",
+   "rule": "9",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "hold-01",
+   "rule": "10",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "hold-02",
+   "rule": "1",
+   "expected": "fail",
+   "got": "not_applicable",
+   "pending": false
+  },
+  {
+   "case": "hold-02",
+   "rule": "2",
+   "expected": "fail",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "hold-02",
+   "rule": "3",
+   "expected": "fail",
+   "got": "fail",
+   "pending": false
+  },
+  {
+   "case": "hold-02",
+   "rule": "12a",
+   "expected": "fail",
+   "got": "not_applicable",
+   "pending": false
+  },
+  {
+   "case": "hold-02",
+   "rule": "14",
+   "expected": "fail",
+   "got": "not_applicable",
+   "pending": false
+  },
+  {
+   "case": "hold-03",
+   "rule": "1",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "hold-03",
+   "rule": "2",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "hold-03",
+   "rule": "3",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "hold-03",
+   "rule": "9",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "hold-03",
+   "rule": "10",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "hold-03",
+   "rule": "15",
+   "expected": "fail",
+   "got": "fail",
+   "pending": false
+  },
+  {
+   "case": "hold-04",
+   "rule": "1",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "hold-04",
+   "rule": "12a",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "hold-04",
+   "rule": "12b",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "hold-04",
+   "rule": "14",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "hold-04",
+   "rule": "11",
+   "expected": "not_applicable",
+   "got": "not_applicable",
+   "pending": false
+  },
+  {
+   "case": "hold-05",
+   "rule": "2",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "hold-05",
+   "rule": "3",
+   "expected": "fail",
+   "got": "fail",
+   "pending": false
+  },
+  {
+   "case": "hold-05",
+   "rule": "12a",
+   "expected": "fail",
+   "got": "not_applicable",
+   "pending": false
+  },
+  {
+   "case": "hold-05",
+   "rule": "12b",
+   "expected": "fail",
+   "got": "not_applicable",
+   "pending": false
+  },
+  {
+   "case": "hold-05",
+   "rule": "14",
+   "expected": "fail",
+   "got": "not_applicable",
+   "pending": false
+  },
+  {
+   "case": "hold-06",
+   "rule": "1",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "hold-06",
+   "rule": "2",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "hold-06",
+   "rule": "17",
+   "expected": "pass",
+   "got": "fail",
+   "pending": false
+  },
+  {
+   "case": "hold-06",
+   "rule": "18",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "hold-06",
+   "rule": "3",
+   "expected": "not_applicable",
+   "got": "fail",
+   "pending": false
+  },
+  {
+   "case": "hold-07",
+   "rule": "1",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "hold-07",
+   "rule": "2",
+   "expected": "fail",
+   "got": "fail",
+   "pending": false
+  },
+  {
+   "case": "hold-07",
+   "rule": "17",
+   "expected": "fail",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "hold-07",
+   "rule": "18",
+   "expected": "fail",
+   "got": "fail",
+   "pending": false
+  },
+  {
+   "case": "hold-07",
+   "rule": "3",
+   "expected": "not_applicable",
+   "got": "not_applicable",
+   "pending": false
+  },
+  {
+   "case": "hold-08",
+   "rule": "1",
+   "expected": "fail",
+   "got": "fail",
+   "pending": false
+  },
+  {
+   "case": "hold-08",
+   "rule": "2",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "hold-08",
+   "rule": "17",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "hold-08",
+   "rule": "18",
+   "expected": "fail",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "hold-09",
+   "rule": "1",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "hold-09",
+   "rule": "2",
+   "expected": "pass",
+   "got": "fail",
+   "pending": false
+  },
+  {
+   "case": "hold-09",
+   "rule": "16",
+   "expected": "fail",
+   "got": "fail",
+   "pending": false
+  },
+  {
+   "case": "hold-09",
+   "rule": "15",
+   "expected": "not_applicable",
+   "got": "not_applicable",
+   "pending": false
+  },
+  {
+   "case": "hold-10",
+   "rule": "1",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "hold-10",
+   "rule": "2",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "hold-10",
+   "rule": "16",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "hold-10",
+   "rule": "3",
+   "expected": "not_applicable",
+   "got": "fail",
+   "pending": false
+  },
+  {
+   "case": "hold-10",
+   "rule": "10",
+   "expected": "not_applicable",
+   "got": "not_applicable",
+   "pending": false
+  },
+  {
+   "case": "hold-11",
+   "rule": "1",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "hold-11",
+   "rule": "2",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "hold-11",
+   "rule": "11",
+   "expected": "fail",
+   "got": "fail",
+   "pending": false
+  },
+  {
+   "case": "hold-11",
+   "rule": "3",
+   "expected": "not_applicable",
+   "got": "not_applicable",
+   "pending": false
+  },
+  {
+   "case": "hold-12",
+   "rule": "1",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "hold-12",
+   "rule": "2",
+   "expected": "pass",
+   "got": "fail",
+   "pending": false
+  },
+  {
+   "case": "hold-12",
+   "rule": "11",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "hold-12",
+   "rule": "3",
+   "expected": "not_applicable",
+   "got": "fail",
+   "pending": false
+  },
+  {
+   "case": "hold-13",
+   "rule": "1",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "hold-13",
+   "rule": "2",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "hold-13",
+   "rule": "10",
+   "expected": "fail",
+   "got": "fail",
+   "pending": false
+  },
+  {
+   "case": "hold-14",
+   "rule": "1",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "hold-14",
+   "rule": "2",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "hold-14",
+   "rule": "15",
+   "expected": "fail",
+   "got": "fail",
+   "pending": false
+  },
+  {
+   "case": "hold-14",
+   "rule": "3",
+   "expected": "fail",
+   "got": "fail",
+   "pending": false
+  },
+  {
+   "case": "hold-15",
+   "rule": "1",
+   "expected": "pass",
+   "got": "fail",
+   "pending": false
+  },
+  {
+   "case": "hold-15",
+   "rule": "2",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "hold-15",
+   "rule": "15",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "hold-15",
+   "rule": "3",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "hold-15",
+   "rule": "10",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "hold-16",
+   "rule": "1",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "hold-16",
+   "rule": "12a",
+   "expected": "fail",
+   "got": "fail",
+   "pending": false
+  },
+  {
+   "case": "hold-16",
+   "rule": "12b",
+   "expected": "fail",
+   "got": "fail",
+   "pending": false
+  },
+  {
+   "case": "hold-16",
+   "rule": "14",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "hold-16",
+   "rule": "3",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "hold-17",
+   "rule": "1",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "hold-17",
+   "rule": "2",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "hold-17",
+   "rule": "9",
+   "expected": "fail",
+   "got": "not_applicable",
+   "pending": false
+  },
+  {
+   "case": "hold-17",
+   "rule": "10",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "hold-18",
+   "rule": "1",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "hold-18",
+   "rule": "2",
+   "expected": "pass",
+   "got": "not_applicable",
+   "pending": false
+  },
+  {
+   "case": "hold-18",
+   "rule": "12a",
+   "expected": "pass",
+   "got": "fail",
+   "pending": false
+  },
+  {
+   "case": "hold-18",
+   "rule": "12b",
+   "expected": "fail",
+   "got": "fail",
+   "pending": false
+  },
+  {
+   "case": "hold-18",
+   "rule": "14",
+   "expected": "fail",
+   "got": "fail",
+   "pending": false
+  }
+ ]
+}
