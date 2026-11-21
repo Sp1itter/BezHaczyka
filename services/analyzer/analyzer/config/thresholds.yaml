@@ -15,6 +15,19 @@
 # -----------------------------------------------------------------------------
 rules:
 
+  # Regula 3 (HYBRYDOWA) - czy ostrzezenie o ryzyku TOWARZYSZY BEZPOSREDNIO
+  # twierdzeniu o potencjalnych zyskach. Trzy osie pomiaru, zaleznie od danych:
+  #   max_distance_px   - odleglosc pionowa bboxow w RenderProbe (najmocniejszy dowod)
+  #   max_offset_chars  - odleglosc w znakach, gdy brak RenderProbe
+  #   max_gap_seconds   - odstep w transkrypcji, dla reklam wideo
+  # Powyzej progu -> fail. Brak ostrzezenia przy obietnicy zysku -> fail.
+  # Brak obietnicy zysku -> not_applicable (regula jest warunkowa).
+  rule_3:
+    max_distance_px: 600      # mniej wiecej jeden ekran telefonu
+    max_offset_chars: 300
+    max_gap_seconds: 5.0
+    legal_basis: "art. 44 ust. 2 lit. b rozporzadzenia delegowanego 2017/565"
+
   # Regula 4 - rozmiar czcionki ryzyka.
   # Stosunek czcionki ostrzezenia o ryzyku do dominujacej czcionki w materiale.
   # Ponizej progu -> fail.
