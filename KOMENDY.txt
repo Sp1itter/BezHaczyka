@@ -1,0 +1,229 @@
+===========================================================
+ INVESTWATCH — KOMENDY DLA OSOBY B (analyzer)
+ Kopiuj-wklej, po kolei. Sciezki sa dokladne.
+===========================================================
+
+Katalog glowny repo:
+  C:\Users\pawel\Desktop\HackNation2026\INWESTWATCH
+
+UWAGA: praca jest na galezi worktree-investwatch-plan, w katalogu
+  C:\Users\pawel\Desktop\HackNation2026\INWESTWATCH\.claude\worktrees\investwatch-plan
+Po zmergowaniu PR #1 i `git pull` w katalogu glownym bedzie takze tam.
+
+
+-----------------------------------------------------------
+ KROK 1 — po zainstalowaniu Ollamy
+-----------------------------------------------------------
+
+Instalator dodaje ollama do PATH, ale DOPIERO dla NOWYCH terminali.
+Otworz NOWE okno PowerShell i sprawdz:
+
+  ollama --version
+
+Jesli "nie rozpoznano polecenia" — zamknij i otworz terminal jeszcze raz,
+albo uzyj pelnej sciezki:
+
+  & "$env:LOCALAPPDATA\Programs\Ollama\ollama.exe" --version
+
+Sprawdz, czy serwer dziala (instalator uruchamia go jako usluge w tle):
+
+  curl http://127.0.0.1:11434/api/tags
+
+Powinno zwrocic JSON z lista modeli (na razie pusta).
+Jesli nie odpowiada, uruchom serwer recznie w osobnym oknie:
+
+  ollama serve
+
+
+-----------------------------------------------------------
+ KROK 2 — pobranie modeli (to jest na sciezce krytycznej)
+-----------------------------------------------------------
+
+Dwa obowiazkowe, razem ~6,3 GB. Puszczaj w tle i nie czekaj bezczynnie:
+
+  ollama pull SpeakLeash/bielik-4.5b-v3.0-instruct:Q8_0
+  ollama pull bge-m3
+
+Opcjonalnie, jesli chcecie przetestowac wiekszy model (NIE na raz z powyzszym,
+bo mamy 8 GB VRAM):
+
+  ollama pull SpeakLeash/bielik-minitron-7B-v3.0-instruct:Q4_K_M
+
+Weryfikacja po pobraniu:
+
+  ollama list
+
+Szybki test, czy model w ogole odpowiada po polsku:
+
+  ollama run SpeakLeash/bielik-4.5b-v3.0-instruct:Q8_0 "Odpowiedz jednym zdaniem: czym jest kontrakt CFD?"
+
+Wyjscie z interaktywnego trybu: /bye
+
+
+-----------------------------------------------------------
+ KROK 3 — ffmpeg (potrzebny do speech-to-text)
+-----------------------------------------------------------
+
+  winget install Gyan.FFmpeg
+
+Nowe okno terminala, potem:
+
+  ffmpeg -version
+
+
+-----------------------------------------------------------
+ KROK 4 — srodowisko Pythona dla analyzera
+-----------------------------------------------------------
+
+venv jest juz utworzony i ma pydantic, pytest, httpx.
+Dokladamy reszte zaleznosci:
+
+  cd C:\Users\pawel\Desktop\HackNation2026\INWESTWATCH\.claude\worktrees\investwatch-plan\services\analyzer
+  .\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
+
+UWAGA: faster-whisper ciagnie ctranslate2 i av, to kilkaset MB. Puszczaj
+rownolegle z pobieraniem modeli Ollamy.
+
+Jesli venv nie istnieje (np. po swiezym klonie u kogos innego):
+
+  python -m venv .venv
+  .\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
+
+
+-----------------------------------------------------------
+ KROK 5 — testy (uruchamiaj po KAZDEJ zmianie)
+-----------------------------------------------------------
+
+Z katalogu services\analyzer:
+
+  .\.venv\Scripts\python.exe -m pytest tests\ -q
+
+Wszystko musi byc zielone. Jeden czerwony test = nie commituj.
+
+Pojedynczy plik:
+  .\.venv\Scripts\python.exe -m pytest tests\test_scope_gate.py -v
+
+Pojedynczy test:
+  .\.venv\Scripts\python.exe -m pytest tests\test_scope_gate.py -k cfd -v
+
+
+-----------------------------------------------------------
+ KROK 6 — SMOKE TEST na zywym modelu (to jest ten wazny)
+-----------------------------------------------------------
+
+Dopiero gdy Ollama dziala i Bielik jest pobrany. Z katalogu services\analyzer:
+
+  .\.venv\Scripts\python.exe tools\smoke_llm.py
+
+Material testowy LAMIE reguly 2 i 18, wiec skrypt sprawdza, czy model to wylapal.
+
+CO ZOBACZYSZ i co z tym zrobic:
+
+  "OK: model poprawnie wykryl naruszenia regul ['2', '18']"
+      -> dziala, idz dalej.
+
+  "Czas jednego wywolania wsadowego: X s"
+      -> X ponizej 15 s: super, jest zapas na wiekszy model.
+      -> X 15-30 s: zostajemy na 4.5B.
+      -> X powyzej 30 s: przy 4 wsadach na dokument to za wolno.
+         Skroc prompt albo zejdz na mniejszy quant.
+      TO JEEST LICZBA, KTORA CHCE ZNAC — podaj mi ja.
+
+  "UWAGA: reguly [...] wyszly not_applicable"
+      -> model nie trzyma sie schematu. Iteruj PROMPT
+         (analyzer\prompts\batch_1.txt), nie kod.
+
+  "UWAGA: oczekiwalismy fail dla regul [...]"
+      -> model nie wylapal naruszenia. Doprecyzuj opis reguly w promptcie.
+
+  "BLAD: Ollama nie odpowiada"
+      -> wroc do kroku 1.
+
+
+-----------------------------------------------------------
+ KROK 7 — kontrola zgodnosci ze specyfikacja (przed commitem)
+-----------------------------------------------------------
+
+Z katalogu GLOWNEGO repo (nie z services\analyzer):
+
+  cd C:\Users\pawel\Desktop\HackNation2026\INWESTWATCH\.claude\worktrees\investwatch-plan
+  .\services\analyzer\.venv\Scripts\python.exe tools\check_compliance.py
+
+Sprawdza: on-premise, brak zewnetrznych API modeli, licencje zaleznosci,
+sekrety, przypiete wersje. Musi byc 5x [OK].
+URUCHOM TO OBOWIAZKOWO PRZED ODDANIEM PROJEKTU.
+
+
+-----------------------------------------------------------
+ KROK 8 — zmienne srodowiskowe (gdy chcesz zmienic model)
+-----------------------------------------------------------
+
+Nie edytuj kodu. Wszystko idzie przez env:
+
+  $env:OLLAMA_MODEL = "SpeakLeash/bielik-minitron-7B-v3.0-instruct:Q4_K_M"
+  $env:OLLAMA_TEMPERATURE = "0.1"
+  $env:OLLAMA_TIMEOUT_S = "180"
+  $env:WHISPER_MODEL = "small"
+  $env:PROFILE = "gpu8"
+
+Potem ponownie smoke test. Docelowo te wartosci trafiaja do pliku .env
+(wzor w services\analyzer\.env.example). .env NIGDY nie idzie do gita.
+
+
+-----------------------------------------------------------
+ CO GDZIE BEDZIE — mapa serwisu analyzer
+-----------------------------------------------------------
+
+services\analyzer\
+  analyzer\
+    contracts.py        ZAMROZONE kontrakty danych. Nie zmieniaj bez
+                        ogloszenia calemu zespolowi.
+    llm.py              klient Ollamy: Bielik + bge-m3, po REST
+    scope_gate.py       brama zakresu (kryterium instrumentowe, CFD na
+                        krypto ZOSTAJE w zakresie)
+    router.py           tablica decyzyjna R1-R4 -> ktore moduly
+    pipeline.py         analyze(doc) -> Finding, serce serwisu
+    scoring.py          risk_score, risk_level, is_flagged, coverage
+    embeddings.py       bge-m3, simhash, dedup kampanii, kNN
+    stt.py              speech-to-text (Whisper na CPU int8)
+    worker.py           worker kolejki q:gpu — JEDEN, ochrona VRAM
+    api_client.py       GET /documents/{id}, POST /findings
+    health.py           /health dla compose i panelu kalibracji
+    config_loader.py    progi z thresholds.yaml
+    rules_llm\
+      base.py           interfejs Rule (ZDUPLIKOWANY u osoby A, nie
+                        przenoś do services/common!)
+      batching.py       wspolna logika wsadow
+      batch_1.py        reguly 1, 2, 17, 18
+      batch_2.py        reguly 9, 10, 11
+      batch_3.py        reguly 12a, 12b, 14
+      batch_4.py        reguly 15, 16
+    prompts\
+      batch_1..4.txt    prompty — ITERUJ TUTAJ, nie w kodzie
+    config\
+      thresholds.yaml   progi liczbowe regul i scoringu
+  tools\
+    smoke_llm.py           test na zywym modelu
+    gen_contract_examples.py  regeneracja fixtures/contract-examples
+  tests\                   wszystko testowalne BEZ Ollamy
+
+Czego u nas NIE MA i nie bedzie:
+  - regul DET 4,5,6,7,8  -> to osoba A, licza sie z RenderProbe
+  - schematu bazy, API, WebSocketa -> to osoba C
+  - frontendu, panelu kalibracji -> to osoba C
+
+
+-----------------------------------------------------------
+ CZEGO NIGDY NIE ROBIMY
+-----------------------------------------------------------
+
+- Zadnych zewnetrznych API modeli ani hostowanej inferencji.  # compliance:allow
+  Specyfikacja par. 5 wymaga on-premise, a jury ocenia to wprost.
+  check_compliance.py wylapie i nazwy dostawcow, i tunele do internetu.
+- Zadnego `pip install` bez przypietej wersji i bez sprawdzenia licencji.
+  Zakazane: AGPL, SSPL, gemma.
+- Zadnego `fail` przy braku danych. Zawsze `not_applicable` z powodem.
+  Narzedzie nadzorcze zglaszajace falszywe naruszenia jest gorsze niz
+  narzedzie przyznajace sie do niewiedzy.
+- Zadnej parafrazy w evidence regul LLM. Tylko doslowny cytat.
+- Nie dotykamy plikow osoby A (services\scraper) ani C (services\api, services\web).

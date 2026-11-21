@@ -16,3 +16,8 @@ faster-whisper==1.0.3      # MIT (CTranslate2 pod spodem, tez MIT)
 
 # --- wykrywanie jezyka dla reguly 10 (spojnosc jezykowa) ---
 langdetect==1.0.9          # Apache-2.0
+
+# --- kolejka zadan q:gpu (jeden worker = ochrona VRAM) ---
+rq==1.16.2                 # BSD-3-Clause
+redis==5.0.8               # MIT — klient Valkey; rq ciagnie go tranzytywnie,
+                           # ale przypinamy jawnie (weryfikowalny lancuch dostaw)
