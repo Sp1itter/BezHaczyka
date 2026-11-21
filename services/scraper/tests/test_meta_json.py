@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 
 import pytest
-
 from sources.meta_json import (
     AD_LIBRARY_URL,
     ad_id_from_url,
@@ -21,6 +20,7 @@ from sources.meta_json import (
     unwrap_meta_redirect,
     video_urls,
 )
+
 from tests.conftest import FIXTURES
 
 FB = "https://www.facebook.com"  # compliance:allow — dane testowe adaptera Meta

@@ -10,7 +10,6 @@ from __future__ import annotations
 import json
 
 import pytest
-
 from contracts import AdDocument
 from sources import Source, SourceError
 from sources.facebook import (
@@ -21,6 +20,7 @@ from sources.facebook import (
 from sources.meta_json import canonical_ad_url
 from state import CircuitBreaker
 from storage import LocalBlobStore
+
 from tests.conftest import FIXTURES, REPO_ROOT
 
 AD_ID = "1234567890123456"

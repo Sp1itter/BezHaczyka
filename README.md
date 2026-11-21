@@ -1,20 +1,81 @@
 # InvestWatch
 
-Monitoring reklam inwestycyjnych pod kątem wymogów nadzorczych (zadanie UKNF, HackNation 2026).
-Scraper zbiera materiały, analyzer (Bielik przez Ollamę) ocenia je regułami, API zapisuje
-wyniki w Postgresie, a dashboard pokazuje je nadzorcy.
+Monitoring reklam usług inwestycyjnych w sieci dla UKNF. Scrapery (Facebook Ad Library,
+YouTube, WWW) zbierają materiały, resolver dopasowuje je do rejestru firm inwestycyjnych KNF,
+a analyzer (Bielik przez Ollamę) ocenia informację o ryzyku. Wyniki pokazuje nadzorcy
+dashboard (`services/web`) przez API (`services/api`). Wszystko działa on-premise
+i na otwartym oprogramowaniu.
 
-## Wymagania sprzętowe
+## Quick Start
+
+```
+cd infra
+cp .env.example .env
+docker compose up -d --build
+```
+
+Po ok. 3–5 min findingi pojawiają się na dashboardzie. Domyślnie `FB_MODE=auto`: Facebook na żywo,
+a bez sieci korpus offline `fixtures/demo-ads/facebook` (`FB_MODE=replay` = tylko korpus).
+
+| Usługa | Adres |
+|---|---|
+| Dashboard | http://localhost:8090 |
+| API (FastAPI, `/docs`) | http://localhost:8000/docs |
+| Korpus demo | http://localhost:8080 |
+| Postgres | `localhost:5432` (dane logowania w `infra/.env`) |
+| S3 (SeaweedFS) | http://localhost:8333 |
+
+Status i logi: `docker compose ps`, `docker compose logs -f analyzer`.
+Schemat bazy tworzą migracje `casedb` (kontener `casedb` przy każdym starcie stosu, przyrostowo).
+`infra/init.sql` włącza tylko rozszerzenie `vector`. Same bazy, bez budowania serwisów:
+`docker compose up -d postgres valkey seaweedfs nginx`.
+
+Demo Modułu 1 bez czekania na harmonogram (z katalogu `infra/`):
+
+```
+docker compose exec scheduler python -m scheduler --once
+docker compose run --rm casedb report module1 --format csv -o /data/modul1.csv   # -> data/casedb/modul1.csv
+```
+
+Przykładowe dane dla dashboardu (z `fixtures/contract-examples`):
+`docker compose exec api python -m api.seed --dir /data/contract-examples`.
+
+Reguły LLM wymagają Ollamy z modelami `SpeakLeash/bielik-4.5b-v3.0-instruct:Q8_0` i `bge-m3`
+(bez niej analyzer działa dalej, a reguły LLM dostają `not_applicable`). Bez Ollamy na hoście:
+1. w `infra/.env` ustaw `OLLAMA_BASE_URL=http://ollama:11434`,
+2. `docker compose --profile ollama up -d --build`,
+3. `docker compose exec ollama ollama pull SpeakLeash/bielik-4.5b-v3.0-instruct:Q8_0` oraz `docker compose exec ollama ollama pull bge-m3`.
+
+## Po `git pull`
+
+Komendy z katalogu `infra/`.
+
+| Zmieniło się | Komenda |
+|---|---|
+| `services/<x>/**` | `docker compose up -d --build <x>` (scraper = `scraper-worker scheduler`) |
+| `infra/docker-compose.yml` | `docker compose up -d --build --remove-orphans` |
+| `infra/.env.example` | porównaj ze swoim `.env`, dopisz nowe zmienne, potem `docker compose up -d` |
+| `services/casedb/casedb/migrations/**` | `docker compose up -d --build casedb` (migracje przyrostowe, dane zostają) |
+| `infra/init.sql` | dotyczy tylko pustego wolumenu; schemat zmieniają migracje casedb, `down -v` niepotrzebne |
+| nie wiesz | `docker compose up -d --build --remove-orphans` (przebuduje tylko zmienione) |
+
+Praca nad UI z hot reload: `cd services/web && npm ci && npm run dev` (Vite :5173, API z Dockera :8000, CORS ustawiony).
+
+## Wymagania
 
 | Zasób | Minimum |
 |---|---|
-| GPU | min. 8 GB VRAM (zalecane); bez GPU działa na CPU, wolno |
-| RAM | 16 GB |
-| Dysk | ok. 15 GB (modele Ollamy ~6,3 GB + obrazy Dockera ~3 GB) |
-| Oprogramowanie | Docker Desktop z WSL2; Ollama natywnie na hoście (analiza) |
+| GPU | min. 8 GB VRAM (zalecane, profil `gpu8`); bez GPU działa na CPU, wolno |
+| RAM | 8 GB bez Ollamy, 16 GB z Ollamą |
+| Dysk | ok. 17 GB (modele Ollamy ~6,3 GB + obrazy Dockera, w tym Chromium) |
+| Oprogramowanie | Docker Desktop z WSL2 (Compose v2); Ollama natywnie na hoście (analiza) |
 
-Postgres + pgvector działa w Dockerze (`pgvector/pgvector:pg16`), nie instaluj go osobno.
-Python 3.12 i Node.js 20 potrzebne tylko do pracy nad kodem poza kontenerami.
+| Narzędzie | Po co | Obowiązkowe |
+|---|---|---|
+| **Docker Desktop** (z WSL2 na Windows) | cały stos: Postgres, Valkey, SeaweedFS, casedb, scraper, scheduler, analyzer, api, web | **tak** |
+| **PostgreSQL 16 + pgvector** | baza przypadków, dokumentów i ustaleń (schemat: migracje `services/casedb`) — działa **w Dockerze**, obraz `pgvector/pgvector:pg16`, nie instaluj go osobno | **tak** (przez Docker) |
+| Ollama | modele dla analyzera (Bielik, bge-m3); natywnie na hoście albo profil `ollama` | tylko do analizy |
+| Python 3.12, Node.js 20 | praca nad kodem serwisów poza kontenerami | tylko dla deweloperów |
 
 Modele (na hoście, raz):
 
@@ -58,63 +119,46 @@ Znane problemy:
   i zmień port w `infra/.env` na spoza zakresów. Dlatego dashboard jest na 8090, nie na 3000.
 - Wirtualizacja musi być włączona w BIOS/UEFI (Menedżer zadań → Wydajność → CPU → „Wirtualizacja: Włączone”).
 
-## Uruchomienie
+## Serwisy
 
-```
-cd infra
-cp .env.example .env
-docker compose up -d --build
-```
+| serwis | rola | konfiguracja |
+|---|---|---|
+| `postgres` | Postgres 16 + pgvector | `POSTGRES_*` |
+| `valkey` | kolejki RQ (`q:ingest`, `q:render`, `q:gpu`) | – |
+| `seaweedfs` | magazyn obiektów S3 (HTML, zrzuty, wideo) | `S3_*` |
+| `casedb` | migracje i rejestr KNF, start jednorazowy; CLI raportów | [services/casedb](services/casedb/README.md) |
+| `scheduler` | harmonogram źródeł i ponownych sprawdzeń | [schedule.yaml](services/scraper/schedule.yaml), `SCHEDULE_*` |
+| `scraper-worker` | pobieranie, resolver KNF, zapis, zlecenie analizy | [services/scraper](services/scraper/README.md), `FB_*`, `SCRAPER_*` |
+| `analyzer` | zakres, routing modułów, reguły, scoring, detekcja zmian | [services/analyzer](services/analyzer/README.md), `OLLAMA_*` |
+| `api` | FastAPI: dokumenty, ustalenia, alerty WebSocket | [services/api](services/api/README.md), `API_PORT` |
+| `web` | dashboard: ustalenia, przegląd, panel kalibracji | [services/web](services/web/README.md), `WEB_PORT` |
+| `nginx` | korpus demo offline | `DEMO_CORPUS_PORT` |
+| `ollama` | opcjonalnie, Ollama w kontenerze (CPU) | profil `ollama` |
 
-Po ok. 3–5 min findingi pojawiają się na http://localhost:8090. Domyślnie `FB_MODE=replay`:
-scheduler odtwarza offline korpus FB (bez internetu). `FB_MODE=auto` włącza żywe Ad Library.
-
-| Usługa | Adres |
-|---|---|
-| Dashboard | http://localhost:8090 |
-| API (FastAPI, `/docs`) | http://localhost:8000/docs |
-| Korpus demo | http://localhost:8080 |
-| Postgres | `localhost:5432` (dane w `infra/.env`) |
-| S3 (SeaweedFS) | http://localhost:8333 |
-
-Status i logi: `docker compose ps`, `docker compose logs -f analyzer`.
-Schemat bazy tworzy `infra/init.sql` tylko na pustym wolumenie. Opcjonalnie dane przykładowe:
-`docker compose exec api python -m api.seed --dir /data/contract-examples`.
-Bez Ollamy na hoście:
-1. w `infra/.env` ustaw `OLLAMA_BASE_URL=http://ollama:11434`,
-2. `docker compose --profile ollama up -d --build`,
-3. `docker compose exec ollama ollama pull SpeakLeash/bielik-4.5b-v3.0-instruct:Q8_0` oraz `docker compose exec ollama ollama pull bge-m3`.
-Opis serwisów: `infra/README.md`.
-
-## Po `git pull`
-
-Komendy z katalogu `infra/`.
-
-| Zmieniło się | Komenda |
-|---|---|
-| `services/<x>/**` | `docker compose up -d --build <x>` (scraper = `scraper-ingest scraper-render scheduler`) |
-| `infra/docker-compose.yml` | `docker compose up -d --build --remove-orphans` |
-| `infra/.env.example` | porównaj ze swoim `.env`, dopisz nowe zmienne, potem `docker compose up -d` |
-| `infra/init.sql` | `docker compose down -v`, potem `docker compose up -d --build` (**UWAGA: kasuje dane**) |
-| `services/casedb/casedb/migrations/**` | `docker compose up -d --build casedb` (migracje przyrostowe, dane zostają) |
-| nie wiesz | `docker compose up -d --build` (przebuduje tylko zmienione) |
-
-Praca nad UI z hot reload: `cd services/web && npm ci && npm run dev` (Vite :5173, API z Dockera :8000, CORS ustawiony).
+Wszystkie zmienne z opisami są w [infra/.env.example](infra/.env.example), a przepływ danych
+w [docs/MODUL1-ARCHITEKTURA.md](docs/MODUL1-ARCHITEKTURA.md). Szczegóły stosu: [infra/README.md](infra/README.md).
 
 ## Struktura
 
 | Katalog | Co | Dokumentacja |
 |---|---|---|
-| `services/scraper` | zbieranie reklam (Facebook, YouTube), RenderProbe, reguły DET | `services/scraper/README.md` |
+| `services/scraper` | Moduł 1: źródła Facebook/YouTube/WWW, resolver KNF, harmonogram, RenderProbe, reguły DET | `services/scraper/README.md` |
 | `services/analyzer` | brama zakresu, router modułów, reguły LLM i hybrydowe, scoring | `services/analyzer/README.md` |
-| `services/casedb` | wspólna baza przypadków YT/FB/WWW | `services/casedb/README.md` |
+| `services/casedb` | wspólna baza przypadków YT/FB/WWW, migracje schematu, rejestr KNF | `services/casedb/README.md` |
 | `services/api` | FastAPI: dokumenty, ustalenia, alerty WebSocket | `services/api/README.md` |
 | `services/web` | dashboard: ustalenia, przegląd, panel kalibracji | `services/web/README.md` |
-| `infra` | docker-compose, schemat bazy | `infra/README.md` |
-| `docs` | integracja serwisów, stan projektu, design | `docs/INTEGRACJA.md`, `docs/STAN-PROJEKTU.md` |
+| `infra` | docker-compose | `infra/README.md` |
+| `docs` | integracja serwisów, stan projektu, design | `docs/INTEGRACJA.md`, `docs/MODUL1-ARCHITEKTURA.md`, `docs/STAN-PROJEKTU.md` |
 
 Zgodność z wymogami technicznymi konkursu (on-premise, licencje, sekrety, wersje):
 
 ```
 python tools/check_compliance.py
 ```
+
+## Bezpieczeństwo łańcucha dostaw
+
+Zależności są przypięte, a skan robi `sh tools/audit.sh` (pip-audit; wyniki w
+[docs/SECURITY-AUDIT.md](docs/SECURITY-AUDIT.md)). Zgodność z wymogami (brak sekretów,
+płatnych API i licencji AGPL/SSPL) sprawdza `python tools/check_compliance.py`.
+Sekrety trzymamy wyłącznie w `infra/.env`.
