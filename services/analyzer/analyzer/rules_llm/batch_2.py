@@ -9,6 +9,7 @@ from __future__ import annotations
 from analyzer.contracts import AdDocument, RuleResult
 from analyzer.llm import OllamaClient
 from analyzer.rules_llm.batching import evaluate_batch
+from analyzer.rules_llm.lang_consistency import apply_rule_10_override
 
 PROMPT_FILE = "batch_2.txt"
 
@@ -41,10 +42,15 @@ def evaluate_batch_2(
     client: OllamaClient | None = None,
 ) -> list[RuleResult]:
     """Ocen reguly 9, 10, 11 jednym wywolaniem modelu."""
-    return evaluate_batch(
+    results = evaluate_batch(
         doc,
         client,
         prompt_file=PROMPT_FILE,
         rule_meta=RULE_META,
         fail_means_absence=FAIL_MEANS_ABSENCE,
     )
+    # Regula 10 jest HYBRYDOWA: spojnosc jezykowa da sie zmierzyc, a Bielik 4.5B
+    # konsekwentnie uznawal angielskie ostrzezenie w polskiej reklamie za zgodne.
+    # Deterministyczny pomiar ma pierwszenstwo; przy niepewnym pomiarze
+    # (np. material za krotki) zostaje werdykt modelu.
+    return apply_rule_10_override(results, doc.analyzable_text, RULE_META)

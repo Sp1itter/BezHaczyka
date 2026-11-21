@@ -13,16 +13,35 @@ ZASADY BEZWZGLĘDNE:
 REGUŁY DO OCENY:
 
 Reguła 1 — Identyfikacja firmy inwestycyjnej
-Czy materiał zawiera oficjalną nazwę firmy inwestycyjnej, która oferuje
-instrument lub usługę? Nazwa handlowa, marka produktu czy sam adres strony
-to NIE to samo co oficjalna nazwa firmy.
-verdict "fail", gdy nazwy firmy nie ma albo jest tylko marka produktu.
+Pytanie: czy materiał zawiera oficjalną nazwę firmy inwestycyjnej, która
+oferuje instrument lub usługę?
+KIERUNEK WERDYKTU (nie pomyl):
+- verdict "pass" = oficjalna nazwa firmy JEST w materiale.
+- verdict "fail" = oficjalnej nazwy firmy w materiale NIE MA.
+Za oficjalną nazwę firmy inwestycyjnej uznaj nazwę z formą prawną lub rodzajem
+podmiotu, np. "XYZ Dom Maklerski S.A.", "Alfa sp. z o.o.", "Beta Bank S.A.",
+"Gamma Towarzystwo Funduszy Inwestycyjnych S.A.", albo nazwę podmiotu
+z rejestru KNF. Jeśli w tekście występuje taka nazwa, werdykt to "pass".
+NIE jest oficjalną nazwą firmy: sama marka produktu (np. "SuperZysk Plus"),
+sama domena strony (np. "super-zysk.pl"), sam nick lub konto w mediach
+społecznościowych (np. "@superzysk"). Jeśli w materiale jest tylko coś takiego,
+werdykt to "fail".
+Dla werdyktu "fail" pole "quote" MUSI być null — nie ma czego cytować, bo
+nazwy brakuje. Dla werdyktu "pass" w "quote" podaj nazwę firmy.
 
 Reguła 2 — Oznaczenie materiału jako reklamy
-Czy materiał jest jednoznacznie oznaczony jako reklamowy lub promocyjny?
-Akceptowalne: "reklama", "materiał promocyjny", "materiał reklamowy",
-"#reklama", "#ad", "współpraca płatna", "partner materiału".
-verdict "fail", gdy brak takiego oznaczenia.
+Pytanie: czy materiał jest jednoznacznie oznaczony jako reklamowy lub
+promocyjny? Akceptowalne oznaczenia: "reklama", "materiał promocyjny",
+"materiał reklamowy", "#reklama", "#ad", "współpraca płatna",
+"partner materiału".
+KIERUNEK WERDYKTU: "pass" = takie oznaczenie JEST w materiale; "fail" = takiego
+oznaczenia NIE MA (samo zachęcanie do inwestowania nie jest oznaczeniem).
+Wystarczy, że słowo "REKLAMA" (także wielkimi literami, np. "REKLAMA." na
+początku tekstu) albo inne akceptowalne oznaczenie występuje GDZIEKOLWIEK
+w materiale — wtedy werdykt to "pass". Najpierw sprawdź, czy takie słowo
+w tekście jest; dopiero gdy go nie ma, daj "fail".
+Dla werdyktu "fail" pole "quote" MUSI być null — nie ma czego cytować, bo
+oznaczenia brakuje. Dla "pass" w "quote" podaj to oznaczenie.
 
 Reguła 17 — Zakaz sugerowania aprobaty organu nadzoru
 Czy materiał odwołuje się do KNF, Komisji Nadzoru Finansowego lub innego organu
@@ -36,7 +55,13 @@ Szczególny przypadek reguły 17. Czy materiał powołuje się na nadzór, licen
 lub wymogi regulacyjne, aby przekonać odbiorcę, że inwestycja jest BEZPIECZNA
 lub pozbawiona ryzyka? Przykład naruszenia: "Nasza inwestycja jest w pełni
 bezpieczna — spełniamy rygorystyczne wymogi nadzorcze KNF".
-verdict "fail", gdy nadzór jest używany jako gwarancja bezpieczeństwa.
+KIERUNEK WERDYKTU: "fail" = materiał POWOŁUJE SIĘ na nadzór/KNF/wymogi
+nadzorcze/licencję i w tym samym przekazie nazywa inwestycję bezpieczną,
+pewną lub wolną od ryzyka (nawet jeśli nie robi tego w jednym zdaniu).
+"pass" = takiego powiązania nie ma. Jeśli w tekście są jednocześnie słowa
+o nadzorze (np. "KNF", "nadzorcze") ORAZ słowa o bezpieczeństwie (np.
+"bezpieczna", "pewna", "bez ryzyka"), werdykt to "fail", a w "quote" podaj
+to zdanie.
 
 FORMAT ODPOWIEDZI (dokładnie ta struktura, cztery obiekty):
 {

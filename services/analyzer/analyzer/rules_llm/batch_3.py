@@ -9,6 +9,10 @@ from __future__ import annotations
 from analyzer.contracts import AdDocument, RuleResult
 from analyzer.llm import OllamaClient
 from analyzer.rules_llm.batching import evaluate_batch
+from analyzer.rules_llm.preconditions import (
+    HISTORICAL_REASON,
+    mentions_historical_performance,
+)
 
 PROMPT_FILE = "batch_3.txt"
 
@@ -41,11 +45,19 @@ def evaluate_batch_3(
     doc: AdDocument,
     client: OllamaClient | None = None,
 ) -> list[RuleResult]:
-    """Ocen reguly 12a, 12b, 14 jednym wywolaniem modelu."""
+    """Ocen reguly 12a, 12b, 14 jednym wywolaniem modelu.
+
+    Warunek wstepny: material musi PREZENTOWAC wyniki historyczne. Bez tego
+    wszystkie trzy reguly sa not_applicable i model nie jest wolany.
+    Bielik 4.5B ignorowal ten warunek w promptcie i dawal `fail` na materiale
+    z sama prognoza — falszywy alarm, wiec warunek jest teraz w kodzie.
+    """
     return evaluate_batch(
         doc,
         client,
         prompt_file=PROMPT_FILE,
         rule_meta=RULE_META,
         fail_means_absence=FAIL_MEANS_ABSENCE,
+        precondition=mentions_historical_performance,
+        precondition_reason=HISTORICAL_REASON,
     )

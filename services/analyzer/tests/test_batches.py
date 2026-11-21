@@ -131,8 +131,14 @@ class TestKazdyWsad:
 
 # Reguly, dla ktorych brak cytatu ma obnizac confidence (fail = cos JEST).
 CITED = [
+    # Regula 10 celowo POMINIETA: jest teraz hybrydowa i rozstrzygana
+    # deterministycznie w lang_consistency.py, bo Bielik 4.5B konsekwentnie
+    # uznawal angielskie ostrzezenie w polskiej reklamie za zgodne z przekazem.
+    # Deterministyczny pomiar nie halucynuje cytatow, wiec zabezpieczenie
+    # przed zmyslonym cytatem jej nie dotyczy. Pokrycie reguly 10 jest
+    # w tests/test_lang_consistency.py.
     (batch_2.evaluate_batch_2, batch_2, r)
-    for r in ("9", "10", "11")
+    for r in ("9", "11")
 ] + [
     (batch_3.evaluate_batch_3, batch_3, "12a"),
 ] + [(batch_4.evaluate_batch_4, batch_4, r) for r in ("15", "16")]

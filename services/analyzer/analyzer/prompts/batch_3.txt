@@ -15,6 +15,19 @@ ZASADY BEZWZGLĘDNE:
 4. "confidence" to Twoja pewność w skali 0.0-1.0. Przy ocenie opartej na
    interpretacji, a nie na wprost zapisanym zdaniu, obniż ją.
 
+WARUNEK WSTĘPNY — sprawdź go NAJPIERW: wyniki historyczne to zysk lub stopa
+zwrotu, które JUŻ zostały osiągnięte w przeszłości (np. "w zeszłym roku
+fundusz zarobił 32%", "w latach 2019-2023 średnio 8% rocznie"). Prognoza,
+obietnica lub plan na przyszłość (np. "za rok zarobisz 20%", "do 18%
+rocznie") NIE jest wynikiem historycznym. Jeśli w materiale nie ma żadnego
+osiągniętego już wyniku, wszystkie trzy reguły (12a, 12b i 14) dostają
+"not_applicable", z "quote" równym null. Szukaj słów wskazujących przeszłość:
+"w zeszłym/ubiegłym roku", "w latach", "dotychczas", "osiągnął", "przyniósł",
+"historycznie". Jeśli ich nie ma, a tekst mówi tylko o przyszłości
+("zarobisz", "za rok", "do X% rocznie") — to NIE są wyniki historyczne
+i werdykt dla każdej z trzech reguł to "not_applicable". Brak zastrzeżenia
+przy prognozie ocenia inna reguła, nie ta.
+
 REGUŁY DO OCENY (dotyczą wyłącznie materiałów prezentujących wyniki historyczne):
 
 Reguła 12a — Wyniki historyczne: okres i zakres
