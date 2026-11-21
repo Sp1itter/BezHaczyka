@@ -5,8 +5,7 @@ FROM node:20.18.1-bookworm-slim AS build
 WORKDIR /src
 COPY package.json package-lock.json ./
 RUN npm ci --no-audit --no-fund
-COPY index.html vite.config.js ./
-COPY src/ ./src/
+COPY . .
 RUN npm run build
 
 # nginx-unprivileged: dziala jako nie-root (wymog bezpieczenstwa), slucha na 8080.

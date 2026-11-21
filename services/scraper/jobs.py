@@ -11,12 +11,15 @@ dziela jeden budzet zapytan do Meta.
 Przekazanie do analyzera: przez NAZWE funkcji (string), bez importu z innego
 serwisu (par. 5 — zero importow miedzy serwisami):
     SCRAPER_OUTPUT_QUEUE=q:gpu
-    SCRAPER_OUTPUT_FUNC=analyzer.jobs.analyze_document
+    SCRAPER_OUTPUT_FUNC=analyzer.worker.analyze_document
 """
 
 from __future__ import annotations
 
+import hashlib
 import os
+import re
+import unicodedata
 from datetime import UTC, datetime
 from typing import Any
 
@@ -78,6 +81,14 @@ def fetch_job(url: str) -> dict:
     return payload
 
 
+def _job_slug(query: str) -> str:
+    """Slug frazy do ID zadania rq (dozwolone tylko a-z0-9, _ i -)."""
+    text = unicodedata.normalize("NFKD", query.lower().replace("ł", "l"))
+    text = "".join(c for c in text if not unicodedata.combining(c))
+    slug = re.sub(r"[^a-z0-9]+", "-", text).strip("-")
+    return slug or hashlib.sha1(query.encode("utf-8")).hexdigest()[:12]
+
+
 def schedule_facebook(scheduler: Any, queries: list[str] | None = None, interval_min: int | None = None) -> int:
     """CronJob Modulu 1: cykliczne discover dla fraz z `.env` (FB_QUERIES, FB_REFRESH_MIN).
 
@@ -95,6 +106,6 @@ def schedule_facebook(scheduler: Any, queries: list[str] | None = None, interval
             interval=interval,
             repeat=None,
             queue_name=INGEST_QUEUE,
-            id=f"fb-discover-{query}",
+            id=f"fb-discover-{_job_slug(query)}",
         )
     return len(queries)

@@ -14,3 +14,21 @@ Rules:
 Znacznik: `casedb-handoff v1`. Przed praca nad modulem jobow, orkiestracja albo baza
 przypadkow przeczytaj `services/casedb/AGENTS.md` (kontrakt, API dla jobow, stan testow).
 Instrukcja dla czlowieka: `services/casedb/README.md`.
+
+## Docker (instrukcja dla czatów)
+
+Po `git pull` albo własnej zmianie w `services/<x>` uruchom komendę z tabeli (z katalogu `infra/`):
+
+| Zmieniło się | Komenda |
+|---|---|
+| `services/<x>/**` | `docker compose up -d --build <x>` (scraper = `scraper-ingest scraper-render scheduler`) |
+| `infra/docker-compose.yml` | `docker compose up -d --build --remove-orphans` |
+| `infra/.env.example` | dopisz nowe zmienne do `.env`, potem `docker compose up -d` |
+| `infra/init.sql` | `docker compose down -v`, potem `docker compose up -d --build` (**UWAGA: kasuje dane**, NIGDY bez zgody człowieka) |
+| `services/casedb/casedb/migrations/**` | `docker compose up -d --build casedb` (migracje przyrostowe, dane zostają) |
+| nie wiesz | `docker compose up -d --build` |
+
+- Potem `docker compose ps`: wszystkie długotrwałe serwisy `running`/`healthy`.
+- Błąd: `docker compose logs --tail 100 <serwis>`.
+- NIGDY `down -v` bez zgody człowieka (kasuje bazę).
+- W Git Bash przed komendami ze ścieżkami `/data/...` ustaw `MSYS_NO_PATHCONV=1`.

@@ -4,17 +4,24 @@ Monitoring reklam inwestycyjnych pod kątem wymogów nadzorczych (zadanie UKNF, 
 Scraper zbiera materiały, analyzer (Bielik przez Ollamę) ocenia je regułami, API zapisuje
 wyniki w Postgresie, a dashboard pokazuje je nadzorcy.
 
-## Wymagania — bez tego projekt nie wystartuje
+## Wymagania sprzętowe
 
-| Narzędzie | Po co | Obowiązkowe |
-|---|---|---|
-| **Docker Desktop** (z WSL2 na Windows) | cały stos: Postgres, Valkey, SeaweedFS, api, web, analyzer | **tak** |
-| **PostgreSQL 16 + pgvector** | baza dokumentów i ustaleń (`infra/init.sql`) — działa **w Dockerze**, obraz `pgvector/pgvector:pg16`, nie instaluj go osobno | **tak** (przez Docker) |
-| Ollama | modele dla analyzera (Bielik, bge-m3); działa natywnie na hoście, nie w Dockerze | tylko do analizy |
-| Python 3.12, Node.js 20 | praca nad kodem serwisów poza kontenerami | tylko dla deweloperów |
+| Zasób | Minimum |
+|---|---|
+| GPU | min. 8 GB VRAM (zalecane); bez GPU działa na CPU, wolno |
+| RAM | 16 GB |
+| Dysk | ok. 15 GB (modele Ollamy ~6,3 GB + obrazy Dockera ~3 GB) |
+| Oprogramowanie | Docker Desktop z WSL2; Ollama natywnie na hoście (analiza) |
 
-Postgres jest wymagany: API zapisuje w nim dokumenty i ustalenia, a analyzer i casedb na nim
-pracują. SQLite w `services/api` służy wyłącznie do testów i szybkiej pracy nad frontem.
+Postgres + pgvector działa w Dockerze (`pgvector/pgvector:pg16`), nie instaluj go osobno.
+Python 3.12 i Node.js 20 potrzebne tylko do pracy nad kodem poza kontenerami.
+
+Modele (na hoście, raz):
+
+```
+ollama pull SpeakLeash/bielik-4.5b-v3.0-instruct:Q8_0
+ollama pull bge-m3
+```
 
 ### Instalacja Dockera na Windows
 
@@ -56,28 +63,43 @@ Znane problemy:
 ```
 cd infra
 cp .env.example .env
-docker compose up --build
+docker compose up -d --build
 ```
+
+Po ok. 3–5 min findingi pojawiają się na http://localhost:8090. Domyślnie `FB_MODE=replay`:
+scheduler odtwarza offline korpus FB (bez internetu). `FB_MODE=auto` włącza żywe Ad Library.
 
 | Usługa | Adres |
 |---|---|
 | Dashboard | http://localhost:8090 |
-| API (FastAPI, `/docs`) | http://localhost:8000 |
-| Postgres | `localhost:5432` (dane logowania w `infra/.env`) |
+| API (FastAPI, `/docs`) | http://localhost:8000/docs |
 | Korpus demo | http://localhost:8080 |
+| Postgres | `localhost:5432` (dane w `infra/.env`) |
+| S3 (SeaweedFS) | http://localhost:8333 |
 
-Schemat bazy tworzy `infra/init.sql` przy **pierwszym** starcie na pustym wolumenie.
-Po zmianie schematu: `docker compose down -v` i ponowne `up`.
+Status i logi: `docker compose ps`, `docker compose logs -f analyzer`.
+Schemat bazy tworzy `infra/init.sql` tylko na pustym wolumenie. Opcjonalnie dane przykładowe:
+`docker compose exec api python -m api.seed --dir /data/contract-examples`.
+Bez Ollamy na hoście:
+1. w `infra/.env` ustaw `OLLAMA_BASE_URL=http://ollama:11434`,
+2. `docker compose --profile ollama up -d --build`,
+3. `docker compose exec ollama ollama pull SpeakLeash/bielik-4.5b-v3.0-instruct:Q8_0` oraz `docker compose exec ollama ollama pull bge-m3`.
+Opis serwisów: `infra/README.md`.
 
-Same bazy, bez budowania serwisów: `docker compose up postgres valkey seaweedfs nginx`.
+## Po `git pull`
 
-Przykładowe dane w bazie (z `fixtures/contract-examples`):
+Komendy z katalogu `infra/`.
 
-```
-docker compose exec api python -m api.seed --dir /data/contract-examples
-```
+| Zmieniło się | Komenda |
+|---|---|
+| `services/<x>/**` | `docker compose up -d --build <x>` (scraper = `scraper-ingest scraper-render scheduler`) |
+| `infra/docker-compose.yml` | `docker compose up -d --build --remove-orphans` |
+| `infra/.env.example` | porównaj ze swoim `.env`, dopisz nowe zmienne, potem `docker compose up -d` |
+| `infra/init.sql` | `docker compose down -v`, potem `docker compose up -d --build` (**UWAGA: kasuje dane**) |
+| `services/casedb/casedb/migrations/**` | `docker compose up -d --build casedb` (migracje przyrostowe, dane zostają) |
+| nie wiesz | `docker compose up -d --build` (przebuduje tylko zmienione) |
 
-Analyzer potrzebuje Ollamy na hoście z pobranymi modelami — patrz `KOMENDY.txt`.
+Praca nad UI z hot reload: `cd services/web && npm ci && npm run dev` (Vite :5173, API z Dockera :8000, CORS ustawiony).
 
 ## Struktura
 

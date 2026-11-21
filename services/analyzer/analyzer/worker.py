@@ -124,6 +124,14 @@ def handle_job(
         return None
     log.info("Payload rozpoznany jako %r (dokument %s)", shape, doc.id)
 
+    # Dokument z payloadu trzeba zapisac w API, inaczej finding dostanie 409.
+    if shape in ("flat", "document"):
+        try:
+            api.post_document(doc)
+        except ApiError as exc:
+            log.error("Zapis dokumentu %s w API nieudany: %s", doc.id, exc)
+            return None
+
     entities = _build_resolution(payload.get("entity_resolution"))
     det_results = _build_det_results(payload.get("det_results"))
     if config is None:
