@@ -36,12 +36,19 @@ from analyzer.contracts import (
     ViewportProbe,
 )
 from analyzer.router import PROFIT_CLAIM_PATTERNS, normalize
+from analyzer.rules_llm import preconditions
 from analyzer.rules_llm.lang_consistency import EN_RISK_PATTERNS, PL_RISK_PATTERNS
 
 RULE_3_META = (
     "Informacja o ryzyku",
     5,
     "art. 44 ust. 2 lit. b rozporządzenia del. 2017/565",
+)
+
+RULE_13_META = (
+    "Dominacja wyników historycznych",
+    3,
+    "art. 44 ust. 4 lit. a rozporządzenia del. 2017/565",
 )
 
 RISK_PATTERNS = PL_RISK_PATTERNS + EN_RISK_PATTERNS
@@ -67,6 +74,9 @@ class Proximity:
     profit_quote: str
     risk_quote: str | None
     viewport: str | None = None
+    # Dowod proporcjonalnosci (tylko os geometrii): rozmiary czcionek pary.
+    profit_font_px: float | None = None
+    risk_font_px: float | None = None
 
     @property
     def within(self) -> bool:
@@ -130,6 +140,7 @@ def measure_geometry(doc: AdDocument) -> Proximity | None:
             profit_quote=profit_nodes[0].text,
             risk_quote=None,
             viewport=viewport,
+            profit_font_px=profit_nodes[0].font_px,
         )
 
     best: tuple[float, TextNode, TextNode] | None = None
@@ -149,6 +160,8 @@ def measure_geometry(doc: AdDocument) -> Proximity | None:
         profit_quote=profit.text,
         risk_quote=risk.text,
         viewport=viewport,
+        profit_font_px=profit.font_px,
+        risk_font_px=risk.font_px,
     )
 
 
@@ -286,6 +299,17 @@ def assess_rule_3(doc: AdDocument) -> RuleResult:
         "odleglosc": round(prox.distance, 1),
         "prog": prox.threshold,
     }
+    font_note = ""
+    if prox.profit_font_px and prox.risk_font_px is not None:
+        ratio = prox.risk_font_px / prox.profit_font_px
+        measured["font_zysku_px"] = prox.profit_font_px
+        measured["font_ryzyka_px"] = prox.risk_font_px
+        measured["proporcja_font_ryzyko_do_zysku"] = round(ratio, 2)
+        ratio_pl = f"{ratio:.2f}".replace(".", ",")
+        font_note = (
+            f" Czcionka ostrzezenia: {prox.risk_font_px:g} px wobec "
+            f"{prox.profit_font_px:g} px obietnicy zysku ({ratio_pl})."
+        )
 
     if prox.within:
         return _result(
@@ -295,7 +319,7 @@ def assess_rule_3(doc: AdDocument) -> RuleResult:
                 summary=(
                     f"Ostrzezenie o ryzyku towarzyszy twierdzeniu o zyskach: "
                     f"{prox.distance:.0f} {prox.unit} odstepu przy progu "
-                    f"{prox.threshold:.0f} (os: {prox.axis})."
+                    f"{prox.threshold:.0f} (os: {prox.axis})." + font_note
                 ),
                 measured=measured,
                 quote=prox.risk_quote[:300],
@@ -311,7 +335,7 @@ def assess_rule_3(doc: AdDocument) -> RuleResult:
                 f"Ostrzezenie o ryzyku NIE towarzyszy bezposrednio twierdzeniu "
                 f"o zyskach: {prox.distance:.0f} {prox.unit} odstepu przy progu "
                 f"{prox.threshold:.0f} (os: {prox.axis}). Twierdzenie o zysku: "
-                f"\"{prox.profit_quote[:80]}\"."
+                f"\"{prox.profit_quote[:80]}\"." + font_note
             ),
             measured=measured,
             quote=prox.risk_quote[:300],
@@ -323,3 +347,110 @@ def assess_rule_3(doc: AdDocument) -> RuleResult:
 def rule_3_runner(doc: AdDocument) -> list[RuleResult]:
     """Runner zgodny z AnalyzerConfig.module2_runners."""
     return [assess_rule_3(doc)]
+
+
+DEFAULT_DOMINANCE_RATIO = 1.0
+
+
+def assess_rule_13(doc: AdDocument) -> RuleResult:
+    """Oceń regule 13: czy wyniki historyczne sa najbardziej wyeksponowanym elementem.
+
+    Miara ekspozycji to rozmiar czcionki wezla (przy remisie liczy sie
+    wyzsze polozenie). Brak pomiaru renderu to NOT_APPLICABLE, nigdy fail.
+    """
+    name, severity, basis = RULE_13_META
+
+    def _result(verdict: Verdict, evidence: Evidence, confidence: float) -> RuleResult:
+        return RuleResult(
+            rule_id="13",
+            rule_name=name,
+            engine=Engine.HYBRID,
+            verdict=verdict,
+            confidence=confidence,
+            severity=severity,
+            legal_basis=basis,
+            evidence=evidence,
+        )
+
+    def _na(reason: str) -> RuleResult:
+        return _result(
+            Verdict.NOT_APPLICABLE,
+            Evidence(kind=EvidenceKind.ABSENCE, summary=reason),
+            1.0,
+        )
+
+    if not preconditions.mentions_historical_performance(doc.analyzable_text):
+        return _na(preconditions.HISTORICAL_REASON)
+
+    picked = _pick_viewport(doc)
+    if picked is None:
+        return _na(
+            "brak pomiaru renderu (RenderProbe) — dominacji wizualnej nie da sie "
+            "ocenic bez geometrii"
+        )
+    viewport, vp = picked
+
+    visible = [n for n in vp.nodes if n.visible]
+    hist_nodes = [n for n in visible if _matches(n.text, preconditions.HISTORICAL_PATTERNS)]
+    if not hist_nodes:
+        return _na(
+            "Wyniki historyczne wystepuja w tekscie, ale zaden widoczny element "
+            "strony ich nie zawiera — dominacji wizualnej nie da sie ocenic."
+        )
+
+    # Najwieksza czcionka; remis rozstrzyga wyzsze polozenie (mniejsze y).
+    hist = min(hist_nodes, key=lambda n: (-n.font_px, n.bbox.y))
+    others = [n for n in visible if not any(n is h for h in hist_nodes)]
+    ratio_threshold = float(
+        get_threshold("rules.rule_13.dominance_ratio", DEFAULT_DOMINANCE_RATIO)
+    )
+
+    if not others:
+        # Jeden widoczny wezel to niepelny pomiar, nie dowod dominacji.
+        return _na(
+            "Brak innych widocznych elementow do porownania — dominacji "
+            "wizualnej nie da sie ocenic."
+        )
+
+    max_other = max(n.font_px for n in others)
+    top_ties = [n for n in others if n.font_px == max_other]
+    ratio = hist.font_px / max_other if max_other else float("inf")
+    higher_than_ties = hist.bbox.y <= min(n.bbox.y for n in top_ties)
+    dominates = hist.font_px >= max_other * ratio_threshold and (
+        hist.font_px > max_other or higher_than_ties
+    )
+
+    measured = {
+        "font_wyniku_hist_px": hist.font_px,
+        "max_font_innych_px": max_other,
+        "dominant_font_px": vp.dominant_font_px,
+        "prog": ratio_threshold,
+        "stosunek": round(ratio, 2),
+    }
+    if dominates:
+        summary = (
+            f"Wyniki historyczne sa najbardziej wyeksponowanym elementem: "
+            f"{hist.font_px:g} px przy {max_other:g} px najwiekszej innej czcionki "
+            f"(viewport {viewport})."
+        )
+    else:
+        summary = (
+            f"Wyniki historyczne nie dominuja: {hist.font_px:g} px wobec "
+            f"{max_other:g} px najwiekszej innej czcionki (viewport {viewport})."
+        )
+    return _result(
+        Verdict.FAIL if dominates else Verdict.PASS,
+        Evidence(
+            kind=EvidenceKind.MEASUREMENT,
+            summary=summary,
+            measured=measured,
+            quote=hist.text[:300],
+            viewport=viewport,  # type: ignore[arg-type]
+        ),
+        0.9,
+    )
+
+
+def rule_13_runner(doc: AdDocument) -> list[RuleResult]:
+    """Runner zgodny z AnalyzerConfig.module2_runners."""
+    return [assess_rule_13(doc)]

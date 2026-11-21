@@ -44,6 +44,9 @@ HISTORICAL_PATTERNS: tuple[str, ...] = (
     r"\bosiagn\w*\s+\d+[.,]?\d*\s*%",
     r"\bstop\w*\s+zwrotu\s+za\b",
     r"\bzysk\w*\s+za\s+(19|20)\d{2}",
+    # "zysk 34% w 2023 roku" — rok miniony (do 2025); "w 2030 roku zarobisz"
+    # to prognoza i nie moze tu wpadac.
+    r"\bw\s+(19\d{2}|20[01]\d|202[0-5])\s+roku",
     # "wyniosl 12%", "wzrosl o 8%", "spadl o 3%" — zdania o tym, co SIE STALO
     r"\b(wynios|wzros|spad)\w*\s+o?\s*\d+[.,]?\d*\s*%",
 )
