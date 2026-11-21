@@ -126,6 +126,11 @@ def handle_job(
 
     entities = _build_resolution(payload.get("entity_resolution"))
     det_results = _build_det_results(payload.get("det_results"))
+    if config is None:
+        # Leniwie: registry ciagnie klienta Ollamy; test i import go nie potrzebuja.
+        from analyzer.rules_llm.registry import default_config
+
+        config = default_config()
     finding = analyze(doc, entities, config, det_results=det_results)
 
     _save_finding(finding)

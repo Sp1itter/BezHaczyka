@@ -16,7 +16,8 @@ from __future__ import annotations
 
 import re
 from collections.abc import Iterable
-from functools import partial
+from functools import lru_cache, partial
+import os
 
 from analyzer.contracts import RuleResult
 from analyzer.llm import OllamaClient
@@ -101,6 +102,29 @@ def build_config(client: OllamaClient | None = None, **kwargs) -> AnalyzerConfig
     Dodatkowe kwargs trafiaja do AnalyzerConfig (np. scope_override).
     """
     return AnalyzerConfig(module2_runners=module2_runners(client), **kwargs)
+
+
+@lru_cache(maxsize=1)
+def default_config() -> AnalyzerConfig:
+    """Pelny potok produkcyjny: wsady LLM, reguly hybrydowe, embeddingi, Whisper.
+
+    Jedno zrodlo prawdy dla workera RQ i mostu casedb. Wczesniej worker wolal
+    analyze(..., config=None), a pipeline podstawial pusty AnalyzerConfig -
+    zadanie ze scrapera dostawalo same placeholdery, bez zadnej reguly LLM.
+
+    STT_ENABLED=0 wylacza transkrypcje (np. maszyna bez faster-whisper).
+    STT_MEDIA_ROOT - katalog z plikami wideo korpusu (sciezka po ad_archive_id).
+    """
+    client = OllamaClient()
+    transcriber = None
+    if os.getenv("STT_ENABLED", "1") != "0":
+        from analyzer.stt import make_local_transcriber
+
+        transcriber = make_local_transcriber(
+            os.getenv("STT_MEDIA_ROOT", "fixtures/demo-ads/facebook"),
+            model_size=os.getenv("WHISPER_MODEL") or None,
+        )
+    return build_config(client, embed_client=client, transcriber=transcriber)
 
 
 def expected_rule_ids() -> tuple[str, ...]:
