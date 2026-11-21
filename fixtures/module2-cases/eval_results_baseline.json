@@ -1,0 +1,814 @@
+{
+ "synthetic": true,
+ "offline": false,
+ "elapsed_s": 544.2,
+ "per_rule": {
+  "1": {
+   "n": 4,
+   "tp": 1,
+   "fp": 0,
+   "fn": 0,
+   "tn": 3,
+   "accuracy": 1.0,
+   "pending": 0
+  },
+  "2": {
+   "n": 4,
+   "tp": 1,
+   "fp": 1,
+   "fn": 0,
+   "tn": 2,
+   "accuracy": 0.75,
+   "pending": 0
+  },
+  "3": {
+   "n": 7,
+   "tp": 3,
+   "fp": 0,
+   "fn": 0,
+   "tn": 4,
+   "accuracy": 1.0,
+   "pending": 0
+  },
+  "4": {
+   "n": 3,
+   "tp": 1,
+   "fp": 2,
+   "fn": 0,
+   "tn": 0,
+   "accuracy": 0.3333333333333333,
+   "pending": 0
+  },
+  "5": {
+   "n": 3,
+   "tp": 1,
+   "fp": 0,
+   "fn": 0,
+   "tn": 2,
+   "accuracy": 1.0,
+   "pending": 0
+  },
+  "6": {
+   "n": 2,
+   "tp": 0,
+   "fp": 0,
+   "fn": 1,
+   "tn": 1,
+   "accuracy": 0.5,
+   "pending": 0
+  },
+  "7": {
+   "n": 1,
+   "tp": 0,
+   "fp": 0,
+   "fn": 0,
+   "tn": 1,
+   "accuracy": 1.0,
+   "pending": 0
+  },
+  "8": {
+   "n": 2,
+   "tp": 0,
+   "fp": 0,
+   "fn": 1,
+   "tn": 1,
+   "accuracy": 0.5,
+   "pending": 0
+  },
+  "9": {
+   "n": 4,
+   "tp": 0,
+   "fp": 0,
+   "fn": 1,
+   "tn": 3,
+   "accuracy": 0.75,
+   "pending": 0
+  },
+  "10": {
+   "n": 5,
+   "tp": 1,
+   "fp": 0,
+   "fn": 0,
+   "tn": 4,
+   "accuracy": 0.8,
+   "pending": 0
+  },
+  "11": {
+   "n": 3,
+   "tp": 1,
+   "fp": 0,
+   "fn": 0,
+   "tn": 2,
+   "accuracy": 0.6666666666666666,
+   "pending": 0
+  },
+  "12a": {
+   "n": 5,
+   "tp": 0,
+   "fp": 0,
+   "fn": 1,
+   "tn": 4,
+   "accuracy": 0.6,
+   "pending": 0
+  },
+  "12b": {
+   "n": 5,
+   "tp": 0,
+   "fp": 0,
+   "fn": 1,
+   "tn": 4,
+   "accuracy": 0.6,
+   "pending": 0
+  },
+  "13": {
+   "n": 4,
+   "tp": 1,
+   "fp": 0,
+   "fn": 0,
+   "tn": 3,
+   "accuracy": 1.0,
+   "pending": 0
+  },
+  "14": {
+   "n": 7,
+   "tp": 1,
+   "fp": 0,
+   "fn": 1,
+   "tn": 5,
+   "accuracy": 0.8571428571428571,
+   "pending": 0
+  },
+  "15": {
+   "n": 5,
+   "tp": 2,
+   "fp": 0,
+   "fn": 0,
+   "tn": 3,
+   "accuracy": 1.0,
+   "pending": 0
+  },
+  "16": {
+   "n": 5,
+   "tp": 1,
+   "fp": 0,
+   "fn": 1,
+   "tn": 3,
+   "accuracy": 0.8,
+   "pending": 0
+  },
+  "17": {
+   "n": 2,
+   "tp": 0,
+   "fp": 0,
+   "fn": 1,
+   "tn": 1,
+   "accuracy": 0.5,
+   "pending": 0
+  },
+  "18": {
+   "n": 2,
+   "tp": 1,
+   "fp": 0,
+   "fn": 0,
+   "tn": 1,
+   "accuracy": 1.0,
+   "pending": 0
+  }
+ },
+ "mismatches": [
+  {
+   "case": "m2-02-brak-nazwy-firmy",
+   "rule": "2",
+   "expected": "pass",
+   "got": "fail",
+   "summary": "Brak jednoznacznego oznaczenia materiału jako reklamowego.",
+   "quote": "REKLAMA."
+  },
+  {
+   "case": "m2-05-zysk-bez-ostrzezenia",
+   "rule": "10",
+   "expected": "not_applicable",
+   "got": "pass",
+   "summary": "Informacje o ryzyku (jeśli by były) byłyby w języku polskim.",
+   "quote": null
+  },
+  {
+   "case": "m2-12-wynik-hist-wyrywkowy",
+   "rule": "12a",
+   "expected": "fail",
+   "got": "pass",
+   "summary": "Wyniki obejmują okres ostatnich 5 lat (2021) i pełne okresy 12-miesięczne.",
+   "quote": "Fikcyjny Fundusz Akcji Epsilon zyskał w 2021 roku aż 41%!"
+  },
+  {
+   "case": "m2-13-wyniki-hist-bez-walut-i-oplat",
+   "rule": "12b",
+   "expected": "fail",
+   "got": "pass",
+   "summary": "Materiał zawiera ostrzeżenie o wpływie zmian kursów walutowych oraz wskazuje na prowizje i opłaty (choć nie wprost, ale w kontekście inwestowania).",
+   "quote": null
+  },
+  {
+   "case": "m2-14-wyniki-hist-bez-zastrzezenia",
+   "rule": "12a",
+   "expected": "pass",
+   "got": "not_applicable",
+   "summary": "Material nie prezentuje wynikow historycznych, wiec reguly dotyczace ich okresu, waluty i zastrzezenia nie maja zastosowania (art. 44 ust. 4 rozporzadzenia del. 2017/565).",
+   "quote": null
+  },
+  {
+   "case": "m2-14-wyniki-hist-bez-zastrzezenia",
+   "rule": "12b",
+   "expected": "pass",
+   "got": "not_applicable",
+   "summary": "Material nie prezentuje wynikow historycznych, wiec reguly dotyczace ich okresu, waluty i zastrzezenia nie maja zastosowania (art. 44 ust. 4 rozporzadzenia del. 2017/565).",
+   "quote": null
+  },
+  {
+   "case": "m2-14-wyniki-hist-bez-zastrzezenia",
+   "rule": "14",
+   "expected": "fail",
+   "got": "not_applicable",
+   "summary": "Material nie prezentuje wynikow historycznych, wiec reguly dotyczace ich okresu, waluty i zastrzezenia nie maja zastosowania (art. 44 ust. 4 rozporzadzenia del. 2017/565).",
+   "quote": null
+  },
+  {
+   "case": "m2-17-podatek-bez-zastrzezenia",
+   "rule": "16",
+   "expected": "fail",
+   "got": "pass",
+   "summary": "Wskazano, że traktowanie podatkowe zależy od indywidualnej sytuacji klienta, ale nie ma bezpośredniej wzmianki o podatku Belki.",
+   "quote": "inwestuj w Fikcyjny Fundusz Obligacji Kappa na rachunku IKE i skorzystaj z braku podatku Belki."
+  },
+  {
+   "case": "m2-20-ostrzezenie-zargonowe",
+   "rule": "9",
+   "expected": "fail",
+   "got": "pass",
+   "summary": "Ostrzeżenie o ryzyku jest przedstawione w języku polskim i odnosi się do utraty środków.",
+   "quote": "Ekspozycja na ryzyko rynkowe skorelowane ze zmiennością instrumentu bazowego, przy dźwigni finansowej generującej asymetryczny profil wypłaty i podwyższone ryzyko kontrahenta, wymaga uprzedniej oceny adekwatności."
+  },
+  {
+   "case": "m2-24-porownanie-ze-zrodlem",
+   "rule": "11",
+   "expected": "pass",
+   "got": "not_applicable",
+   "summary": "Materiał nie zawiera porównań produktów lub usług.",
+   "quote": null
+  },
+  {
+   "case": "m2-25-aprobata-knf",
+   "rule": "17",
+   "expected": "fail",
+   "got": "pass",
+   "summary": "Wzmianka o KNF nie sugeruje aprobaty produktu, lecz informuje o sprawdzeniu funduszu przez nadzór.",
+   "quote": "Komisja Nadzoru Finansowego sprawdziła i pozytywnie oceniła nasz fundusz."
+  },
+  {
+   "case": "m2-29-ostrzezenie-niski-kontrast",
+   "rule": "4",
+   "expected": "pass",
+   "got": "fail",
+   "summary": "Czcionka ostrzezenia 14 px to 0.50 czcionki dominujacej (28 px); prog 0.9.",
+   "quote": "Inwestowanie wiąże się z ryzykiem utraty kapitału."
+  },
+  {
+   "case": "m2-30-ostrzezenie-w-stopce-przyciete-na-mobile",
+   "rule": "6",
+   "expected": "fail",
+   "got": "pass",
+   "summary": "Ostrzezenie zaczyna sie na 14% wysokosci strony; prog 85%.",
+   "quote": "Inwestowanie wiąże się z ryzykiem utraty kapitału."
+  },
+  {
+   "case": "m2-30-ostrzezenie-w-stopce-przyciete-na-mobile",
+   "rule": "8",
+   "expected": "fail",
+   "got": "not_applicable",
+   "summary": "Brak pomiaru viewportu mobile — responsywnosci nie da sie ocenic",
+   "quote": null
+  },
+  {
+   "case": "m2-31-wizualnie-poprawna",
+   "rule": "4",
+   "expected": "pass",
+   "got": "fail",
+   "summary": "Czcionka ostrzezenia 14 px to 0.50 czcionki dominujacej (28 px); prog 0.9.",
+   "quote": "Inwestowanie wiąże się z ryzykiem utraty kapitału."
+  }
+ ],
+ "pending": [],
+ "rows": [
+  {
+   "case": "m2-01-wzorcowa-obligacje",
+   "rule": "1",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "m2-01-wzorcowa-obligacje",
+   "rule": "2",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "m2-01-wzorcowa-obligacje",
+   "rule": "3",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "m2-01-wzorcowa-obligacje",
+   "rule": "9",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "m2-01-wzorcowa-obligacje",
+   "rule": "10",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "m2-02-brak-nazwy-firmy",
+   "rule": "1",
+   "expected": "fail",
+   "got": "fail",
+   "pending": false
+  },
+  {
+   "case": "m2-02-brak-nazwy-firmy",
+   "rule": "2",
+   "expected": "pass",
+   "got": "fail",
+   "pending": false
+  },
+  {
+   "case": "m2-02-brak-nazwy-firmy",
+   "rule": "11",
+   "expected": "not_applicable",
+   "got": "not_applicable",
+   "pending": false
+  },
+  {
+   "case": "m2-03-brak-oznaczenia-reklamy",
+   "rule": "1",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "m2-03-brak-oznaczenia-reklamy",
+   "rule": "2",
+   "expected": "fail",
+   "got": "fail",
+   "pending": false
+  },
+  {
+   "case": "m2-04-zysk-ostrzezenie-daleko-tekst",
+   "rule": "3",
+   "expected": "fail",
+   "got": "fail",
+   "pending": false
+  },
+  {
+   "case": "m2-05-zysk-bez-ostrzezenia",
+   "rule": "1",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "m2-05-zysk-bez-ostrzezenia",
+   "rule": "2",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "m2-05-zysk-bez-ostrzezenia",
+   "rule": "3",
+   "expected": "fail",
+   "got": "fail",
+   "pending": false
+  },
+  {
+   "case": "m2-05-zysk-bez-ostrzezenia",
+   "rule": "9",
+   "expected": "not_applicable",
+   "got": "not_applicable",
+   "pending": false
+  },
+  {
+   "case": "m2-05-zysk-bez-ostrzezenia",
+   "rule": "10",
+   "expected": "not_applicable",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "m2-06-geometria-ostrzezenie-daleko",
+   "rule": "3",
+   "expected": "fail",
+   "got": "fail",
+   "pending": false
+  },
+  {
+   "case": "m2-07-geometria-ostrzezenie-obok",
+   "rule": "3",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "m2-07-geometria-ostrzezenie-obok",
+   "rule": "13",
+   "expected": "not_applicable",
+   "got": "not_applicable",
+   "pending": false
+  },
+  {
+   "case": "m2-08-dominacja-wyniku-hist",
+   "rule": "13",
+   "expected": "fail",
+   "got": "fail",
+   "pending": false
+  },
+  {
+   "case": "m2-08-dominacja-wyniku-hist",
+   "rule": "14",
+   "expected": "fail",
+   "got": "fail",
+   "pending": false
+  },
+  {
+   "case": "m2-09-wynik-hist-skromny",
+   "rule": "13",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "m2-09-wynik-hist-skromny",
+   "rule": "14",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "m2-10-wynik-hist-bez-geometrii",
+   "rule": "13",
+   "expected": "not_applicable",
+   "got": "not_applicable",
+   "pending": false
+  },
+  {
+   "case": "m2-11-wyniki-hist-kompletne",
+   "rule": "12a",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "m2-11-wyniki-hist-kompletne",
+   "rule": "12b",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "m2-11-wyniki-hist-kompletne",
+   "rule": "14",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "m2-12-wynik-hist-wyrywkowy",
+   "rule": "12a",
+   "expected": "fail",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "m2-12-wynik-hist-wyrywkowy",
+   "rule": "12b",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "m2-12-wynik-hist-wyrywkowy",
+   "rule": "14",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "m2-13-wyniki-hist-bez-walut-i-oplat",
+   "rule": "12a",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "m2-13-wyniki-hist-bez-walut-i-oplat",
+   "rule": "12b",
+   "expected": "fail",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "m2-13-wyniki-hist-bez-walut-i-oplat",
+   "rule": "14",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "m2-14-wyniki-hist-bez-zastrzezenia",
+   "rule": "12a",
+   "expected": "pass",
+   "got": "not_applicable",
+   "pending": false
+  },
+  {
+   "case": "m2-14-wyniki-hist-bez-zastrzezenia",
+   "rule": "12b",
+   "expected": "pass",
+   "got": "not_applicable",
+   "pending": false
+  },
+  {
+   "case": "m2-14-wyniki-hist-bez-zastrzezenia",
+   "rule": "14",
+   "expected": "fail",
+   "got": "not_applicable",
+   "pending": false
+  },
+  {
+   "case": "m2-15-tylko-prognoza",
+   "rule": "12a",
+   "expected": "not_applicable",
+   "got": "not_applicable",
+   "pending": false
+  },
+  {
+   "case": "m2-15-tylko-prognoza",
+   "rule": "12b",
+   "expected": "not_applicable",
+   "got": "not_applicable",
+   "pending": false
+  },
+  {
+   "case": "m2-15-tylko-prognoza",
+   "rule": "14",
+   "expected": "not_applicable",
+   "got": "not_applicable",
+   "pending": false
+  },
+  {
+   "case": "m2-15-tylko-prognoza",
+   "rule": "15",
+   "expected": "fail",
+   "got": "fail",
+   "pending": false
+  },
+  {
+   "case": "m2-15-tylko-prognoza",
+   "rule": "16",
+   "expected": "not_applicable",
+   "got": "not_applicable",
+   "pending": false
+  },
+  {
+   "case": "m2-16-prognoza-z-ostrzezeniem",
+   "rule": "15",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "m2-16-prognoza-z-ostrzezeniem",
+   "rule": "16",
+   "expected": "not_applicable",
+   "got": "not_applicable",
+   "pending": false
+  },
+  {
+   "case": "m2-17-podatek-bez-zastrzezenia",
+   "rule": "16",
+   "expected": "fail",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "m2-17-podatek-bez-zastrzezenia",
+   "rule": "15",
+   "expected": "not_applicable",
+   "got": "not_applicable",
+   "pending": false
+  },
+  {
+   "case": "m2-18-podatek-z-zastrzezeniem",
+   "rule": "16",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "m2-18-podatek-z-zastrzezeniem",
+   "rule": "15",
+   "expected": "not_applicable",
+   "got": "not_applicable",
+   "pending": false
+  },
+  {
+   "case": "m2-18-podatek-z-zastrzezeniem",
+   "rule": "3",
+   "expected": "not_applicable",
+   "got": "not_applicable",
+   "pending": false
+  },
+  {
+   "case": "m2-19-prognoza-i-podatek-bez-zastrzezen",
+   "rule": "15",
+   "expected": "fail",
+   "got": "fail",
+   "pending": false
+  },
+  {
+   "case": "m2-19-prognoza-i-podatek-bez-zastrzezen",
+   "rule": "16",
+   "expected": "fail",
+   "got": "fail",
+   "pending": false
+  },
+  {
+   "case": "m2-20-ostrzezenie-zargonowe",
+   "rule": "9",
+   "expected": "fail",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "m2-20-ostrzezenie-zargonowe",
+   "rule": "10",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "m2-21-ostrzezenie-po-angielsku",
+   "rule": "10",
+   "expected": "fail",
+   "got": "fail",
+   "pending": false
+  },
+  {
+   "case": "m2-22-ostrzezenie-proste-z-anglicyzmami",
+   "rule": "9",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "m2-22-ostrzezenie-proste-z-anglicyzmami",
+   "rule": "10",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "m2-23-porownanie-bez-zrodla",
+   "rule": "11",
+   "expected": "fail",
+   "got": "fail",
+   "pending": false
+  },
+  {
+   "case": "m2-24-porownanie-ze-zrodlem",
+   "rule": "11",
+   "expected": "pass",
+   "got": "not_applicable",
+   "pending": false
+  },
+  {
+   "case": "m2-25-aprobata-knf",
+   "rule": "17",
+   "expected": "fail",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "m2-26-rzeczowa-informacja-o-zezwoleniu",
+   "rule": "17",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "m2-26-rzeczowa-informacja-o-zezwoleniu",
+   "rule": "18",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "m2-26-rzeczowa-informacja-o-zezwoleniu",
+   "rule": "3",
+   "expected": "not_applicable",
+   "got": "not_applicable",
+   "pending": false
+  },
+  {
+   "case": "m2-27-nadzor-jako-bezpieczenstwo",
+   "rule": "18",
+   "expected": "fail",
+   "got": "fail",
+   "pending": false
+  },
+  {
+   "case": "m2-28-ostrzezenie-mala-czcionka",
+   "rule": "4",
+   "expected": "fail",
+   "got": "fail",
+   "pending": false
+  },
+  {
+   "case": "m2-28-ostrzezenie-mala-czcionka",
+   "rule": "5",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "m2-29-ostrzezenie-niski-kontrast",
+   "rule": "4",
+   "expected": "pass",
+   "got": "fail",
+   "pending": false
+  },
+  {
+   "case": "m2-29-ostrzezenie-niski-kontrast",
+   "rule": "5",
+   "expected": "fail",
+   "got": "fail",
+   "pending": false
+  },
+  {
+   "case": "m2-30-ostrzezenie-w-stopce-przyciete-na-mobile",
+   "rule": "6",
+   "expected": "fail",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "m2-30-ostrzezenie-w-stopce-przyciete-na-mobile",
+   "rule": "8",
+   "expected": "fail",
+   "got": "not_applicable",
+   "pending": false
+  },
+  {
+   "case": "m2-31-wizualnie-poprawna",
+   "rule": "4",
+   "expected": "pass",
+   "got": "fail",
+   "pending": false
+  },
+  {
+   "case": "m2-31-wizualnie-poprawna",
+   "rule": "5",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "m2-31-wizualnie-poprawna",
+   "rule": "6",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "m2-31-wizualnie-poprawna",
+   "rule": "7",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "m2-31-wizualnie-poprawna",
+   "rule": "8",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  }
+ ]
+}

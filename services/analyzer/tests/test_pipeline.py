@@ -151,8 +151,9 @@ class TestAnalyze:
         )
         finding = analyze(doc, entities, config)
 
-        assert len(finding.rule_results) == 2
-        crashed = finding.rule_results[0]
+        # 5 wypelniaczy DET 4-8 + awaria + pass
+        assert len(finding.rule_results) == 7
+        crashed = next(r for r in finding.rule_results if r.rule_id == "?")
         assert crashed.verdict is Verdict.NOT_APPLICABLE
         assert "zglosil blad" in crashed.evidence.summary
         # Awaria nie podniosla score'u
@@ -179,7 +180,9 @@ class TestAnalyze:
     def test_brak_regul_daje_poprawny_finding(self):
         """Faza, w ktorej reguly jeszcze nie istnieja, tez musi dzialac."""
         finding = analyze(_doc("Kup akcje przez XYZ"))
-        assert finding.rule_results == []
+        # Zostaja tylko wypelniacze DET 4-8 (not_applicable), brak ocen
+        assert [r.rule_id for r in finding.rule_results] == ["4", "5", "6", "7", "8"]
+        assert all(r.verdict is Verdict.NOT_APPLICABLE for r in finding.rule_results)
         assert finding.risk_score == 0.0
         assert finding.id
         assert finding.document_id == "d1"

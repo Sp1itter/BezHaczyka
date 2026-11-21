@@ -1,0 +1,966 @@
+{
+ "synthetic": true,
+ "offline": false,
+ "elapsed_s": 271.5,
+ "per_rule": {
+  "1": {
+   "n": 16,
+   "tp": 0,
+   "fp": 0,
+   "fn": 2,
+   "tn": 14,
+   "accuracy": 0.875,
+   "pending": 0
+  },
+  "2": {
+   "n": 16,
+   "tp": 2,
+   "fp": 3,
+   "fn": 1,
+   "tn": 10,
+   "accuracy": 0.75,
+   "pending": 0
+  },
+  "3": {
+   "n": 14,
+   "tp": 5,
+   "fp": 1,
+   "fn": 2,
+   "tn": 6,
+   "accuracy": 0.7142857142857143,
+   "pending": 0
+  },
+  "9": {
+   "n": 6,
+   "tp": 0,
+   "fp": 0,
+   "fn": 1,
+   "tn": 5,
+   "accuracy": 0.8333333333333334,
+   "pending": 0
+  },
+  "10": {
+   "n": 5,
+   "tp": 1,
+   "fp": 0,
+   "fn": 0,
+   "tn": 4,
+   "accuracy": 0.8,
+   "pending": 0
+  },
+  "11": {
+   "n": 3,
+   "tp": 1,
+   "fp": 0,
+   "fn": 0,
+   "tn": 2,
+   "accuracy": 1.0,
+   "pending": 0
+  },
+  "12a": {
+   "n": 5,
+   "tp": 1,
+   "fp": 0,
+   "fn": 1,
+   "tn": 3,
+   "accuracy": 0.8,
+   "pending": 0
+  },
+  "12b": {
+   "n": 4,
+   "tp": 1,
+   "fp": 0,
+   "fn": 1,
+   "tn": 2,
+   "accuracy": 0.75,
+   "pending": 0
+  },
+  "14": {
+   "n": 5,
+   "tp": 1,
+   "fp": 0,
+   "fn": 1,
+   "tn": 3,
+   "accuracy": 0.8,
+   "pending": 0
+  },
+  "15": {
+   "n": 3,
+   "tp": 0,
+   "fp": 0,
+   "fn": 1,
+   "tn": 2,
+   "accuracy": 0.6666666666666666,
+   "pending": 0
+  },
+  "16": {
+   "n": 4,
+   "tp": 2,
+   "fp": 0,
+   "fn": 0,
+   "tn": 2,
+   "accuracy": 1.0,
+   "pending": 0
+  },
+  "17": {
+   "n": 10,
+   "tp": 1,
+   "fp": 0,
+   "fn": 0,
+   "tn": 9,
+   "accuracy": 1.0,
+   "pending": 0
+  },
+  "18": {
+   "n": 8,
+   "tp": 1,
+   "fp": 0,
+   "fn": 1,
+   "tn": 6,
+   "accuracy": 0.75,
+   "pending": 0
+  }
+ },
+ "mismatches": [
+  {
+   "case": "h2-02",
+   "rule": "1",
+   "expected": "fail",
+   "got": "not_applicable",
+   "summary": "Materiał nie zawiera oficjalnej nazwy firmy inwestycyjnej.",
+   "quote": null
+  },
+  {
+   "case": "h2-02",
+   "rule": "15",
+   "expected": "fail",
+   "got": "not_applicable",
+   "summary": "Material nie zawiera prognozy przyszlych wynikow ani odwolania do traktowania podatkowego, wiec te reguly nie maja zastosowania (art. 44 ust. 6 i 7 rozporzadzenia del. 2017/565).",
+   "quote": null
+  },
+  {
+   "case": "h2-03",
+   "rule": "3",
+   "expected": "pass",
+   "got": "not_applicable",
+   "summary": "Material nie zawiera twierdzen o potencjalnych zyskach, wiec wymog bezposredniego towarzyszenia informacji o ryzyku nie ma zastosowania.",
+   "quote": null
+  },
+  {
+   "case": "h2-04",
+   "rule": "2",
+   "expected": "pass",
+   "got": "fail",
+   "summary": "Brak jednoznacznego oznaczenia materiału jako reklamowego.",
+   "quote": null
+  },
+  {
+   "case": "h2-05",
+   "rule": "12a",
+   "expected": "fail",
+   "got": "not_applicable",
+   "summary": "Material nie prezentuje wynikow historycznych, wiec reguly dotyczace ich okresu, waluty i zastrzezenia nie maja zastosowania (art. 44 ust. 4 rozporzadzenia del. 2017/565).",
+   "quote": null
+  },
+  {
+   "case": "h2-05",
+   "rule": "12b",
+   "expected": "fail",
+   "got": "not_applicable",
+   "summary": "Material nie prezentuje wynikow historycznych, wiec reguly dotyczace ich okresu, waluty i zastrzezenia nie maja zastosowania (art. 44 ust. 4 rozporzadzenia del. 2017/565).",
+   "quote": null
+  },
+  {
+   "case": "h2-05",
+   "rule": "14",
+   "expected": "fail",
+   "got": "not_applicable",
+   "summary": "Material nie prezentuje wynikow historycznych, wiec reguly dotyczace ich okresu, waluty i zastrzezenia nie maja zastosowania (art. 44 ust. 4 rozporzadzenia del. 2017/565).",
+   "quote": null
+  },
+  {
+   "case": "h2-07",
+   "rule": "3",
+   "expected": "fail",
+   "got": "not_applicable",
+   "summary": "Material nie zawiera twierdzen o potencjalnych zyskach, wiec wymog bezposredniego towarzyszenia informacji o ryzyku nie ma zastosowania.",
+   "quote": null
+  },
+  {
+   "case": "h2-10",
+   "rule": "3",
+   "expected": "fail",
+   "got": "pass",
+   "summary": "Ostrzezenie o ryzyku towarzyszy twierdzeniu o zyskach: 157 znakow odstepu przy progu 300 (os: tekst).",
+   "quote": "C charakteryzują się ryzykiem wynikającym z dźwigni, ryzykiem kontrapartii, ryzykiem luki cenowej oraz ryzykie"
+  },
+  {
+   "case": "h2-10",
+   "rule": "9",
+   "expected": "fail",
+   "got": "pass",
+   "summary": "Ostrzeżenie o ryzyku jest przedstawione w prostym języku, np. 'możesz stracić pieniądze'.",
+   "quote": "Informacja prawna: instrumenty pochodne OTC charakteryzują się ryzykiem wynikającym z dźwigni, ryzykiem kontrapartii, ryzykiem luki cenowej oraz ryzykiem rolowania pozycji zgodnie z § 4 ust. 2 Regulaminu świadczenia usług, co może skutkować efektami ekspozycji niekorzystnymi z perspektywy bilansu kontrahenta."
+  },
+  {
+   "case": "h2-11",
+   "rule": "2",
+   "expected": "pass",
+   "got": "fail",
+   "summary": "Brak jednoznacznego oznaczenia materiału jako reklamowego.",
+   "quote": null
+  },
+  {
+   "case": "h2-12",
+   "rule": "2",
+   "expected": "fail",
+   "got": "pass",
+   "summary": "rozstrzygniete w kodzie: w materiale wystepuje jednoznaczne oznaczenie reklamy ('reklama').",
+   "quote": "reklama"
+  },
+  {
+   "case": "h2-12",
+   "rule": "3",
+   "expected": "pass",
+   "got": "fail",
+   "summary": "Material zawiera twierdzenie o zyskach, ale NIE ZAWIERA zadnej informacji o ryzyku (pomiar na osi: tekst).",
+   "quote": "eniędzy. Podatek od zysków zależy od Twojej indywidualnej sytuacji podatkowej i przepisy mogą się zmienić. Kod"
+  },
+  {
+   "case": "h2-12",
+   "rule": "10",
+   "expected": "pass",
+   "got": "not_applicable",
+   "summary": "brak informacji o ryzyku; jej brak ocenia regula 3",
+   "quote": null
+  },
+  {
+   "case": "h2-13",
+   "rule": "2",
+   "expected": "pass",
+   "got": "fail",
+   "summary": "Brak jednoznacznego oznaczenia materiału jako reklamowego.",
+   "quote": null
+  },
+  {
+   "case": "h2-13",
+   "rule": "18",
+   "expected": "pass",
+   "got": "not_applicable",
+   "summary": "Brak informacji o bezpieczeństwie inwestycji.",
+   "quote": null
+  },
+  {
+   "case": "h2-15",
+   "rule": "18",
+   "expected": "fail",
+   "got": "pass",
+   "summary": "Materiał nie łączy nadzoru z bezpieczeństwem inwestycji, a jedynie podkreśla zgodność z nadzorem.",
+   "quote": null
+  },
+  {
+   "case": "h2-16",
+   "rule": "1",
+   "expected": "fail",
+   "got": "not_applicable",
+   "summary": "Materiał nie zawiera oficjalnej nazwy firmy inwestycyjnej.",
+   "quote": null
+  }
+ ],
+ "pending": [],
+ "rows": [
+  {
+   "case": "h2-01",
+   "rule": "1",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "h2-01",
+   "rule": "2",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "h2-01",
+   "rule": "3",
+   "expected": "fail",
+   "got": "fail",
+   "pending": false
+  },
+  {
+   "case": "h2-01",
+   "rule": "9",
+   "expected": "not_applicable",
+   "got": "not_applicable",
+   "pending": false
+  },
+  {
+   "case": "h2-01",
+   "rule": "10",
+   "expected": "not_applicable",
+   "got": "not_applicable",
+   "pending": false
+  },
+  {
+   "case": "h2-01",
+   "rule": "17",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "h2-02",
+   "rule": "1",
+   "expected": "fail",
+   "got": "not_applicable",
+   "pending": false
+  },
+  {
+   "case": "h2-02",
+   "rule": "2",
+   "expected": "fail",
+   "got": "fail",
+   "pending": false
+  },
+  {
+   "case": "h2-02",
+   "rule": "3",
+   "expected": "fail",
+   "got": "fail",
+   "pending": false
+  },
+  {
+   "case": "h2-02",
+   "rule": "15",
+   "expected": "fail",
+   "got": "not_applicable",
+   "pending": false
+  },
+  {
+   "case": "h2-02",
+   "rule": "17",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "h2-02",
+   "rule": "18",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "h2-03",
+   "rule": "1",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "h2-03",
+   "rule": "2",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "h2-03",
+   "rule": "3",
+   "expected": "pass",
+   "got": "not_applicable",
+   "pending": false
+  },
+  {
+   "case": "h2-03",
+   "rule": "9",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "h2-03",
+   "rule": "10",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "h2-03",
+   "rule": "18",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "h2-04",
+   "rule": "1",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "h2-04",
+   "rule": "2",
+   "expected": "pass",
+   "got": "fail",
+   "pending": false
+  },
+  {
+   "case": "h2-04",
+   "rule": "3",
+   "expected": "fail",
+   "got": "fail",
+   "pending": false
+  },
+  {
+   "case": "h2-04",
+   "rule": "16",
+   "expected": "fail",
+   "got": "fail",
+   "pending": false
+  },
+  {
+   "case": "h2-04",
+   "rule": "18",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "h2-05",
+   "rule": "1",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "h2-05",
+   "rule": "2",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "h2-05",
+   "rule": "12a",
+   "expected": "fail",
+   "got": "not_applicable",
+   "pending": false
+  },
+  {
+   "case": "h2-05",
+   "rule": "12b",
+   "expected": "fail",
+   "got": "not_applicable",
+   "pending": false
+  },
+  {
+   "case": "h2-05",
+   "rule": "14",
+   "expected": "fail",
+   "got": "not_applicable",
+   "pending": false
+  },
+  {
+   "case": "h2-05",
+   "rule": "17",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "h2-06",
+   "rule": "1",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "h2-06",
+   "rule": "2",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "h2-06",
+   "rule": "12a",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "h2-06",
+   "rule": "12b",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "h2-06",
+   "rule": "14",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "h2-06",
+   "rule": "15",
+   "expected": "not_applicable",
+   "got": "not_applicable",
+   "pending": false
+  },
+  {
+   "case": "h2-07",
+   "rule": "1",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "h2-07",
+   "rule": "2",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "h2-07",
+   "rule": "3",
+   "expected": "fail",
+   "got": "not_applicable",
+   "pending": false
+  },
+  {
+   "case": "h2-07",
+   "rule": "11",
+   "expected": "fail",
+   "got": "fail",
+   "pending": false
+  },
+  {
+   "case": "h2-07",
+   "rule": "17",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "h2-07",
+   "rule": "18",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "h2-08",
+   "rule": "1",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "h2-08",
+   "rule": "2",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "h2-08",
+   "rule": "3",
+   "expected": "not_applicable",
+   "got": "not_applicable",
+   "pending": false
+  },
+  {
+   "case": "h2-08",
+   "rule": "11",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "h2-08",
+   "rule": "12a",
+   "expected": "not_applicable",
+   "got": "not_applicable",
+   "pending": false
+  },
+  {
+   "case": "h2-08",
+   "rule": "14",
+   "expected": "not_applicable",
+   "got": "not_applicable",
+   "pending": false
+  },
+  {
+   "case": "h2-09",
+   "rule": "1",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "h2-09",
+   "rule": "2",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "h2-09",
+   "rule": "3",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "h2-09",
+   "rule": "9",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "h2-09",
+   "rule": "10",
+   "expected": "fail",
+   "got": "fail",
+   "pending": false
+  },
+  {
+   "case": "h2-09",
+   "rule": "15",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "h2-10",
+   "rule": "1",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "h2-10",
+   "rule": "2",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "h2-10",
+   "rule": "3",
+   "expected": "fail",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "h2-10",
+   "rule": "9",
+   "expected": "fail",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "h2-10",
+   "rule": "10",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "h2-10",
+   "rule": "17",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "h2-11",
+   "rule": "1",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "h2-11",
+   "rule": "2",
+   "expected": "pass",
+   "got": "fail",
+   "pending": false
+  },
+  {
+   "case": "h2-11",
+   "rule": "3",
+   "expected": "not_applicable",
+   "got": "not_applicable",
+   "pending": false
+  },
+  {
+   "case": "h2-11",
+   "rule": "16",
+   "expected": "fail",
+   "got": "fail",
+   "pending": false
+  },
+  {
+   "case": "h2-11",
+   "rule": "17",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "h2-12",
+   "rule": "1",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "h2-12",
+   "rule": "2",
+   "expected": "fail",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "h2-12",
+   "rule": "3",
+   "expected": "pass",
+   "got": "fail",
+   "pending": false
+  },
+  {
+   "case": "h2-12",
+   "rule": "9",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "h2-12",
+   "rule": "10",
+   "expected": "pass",
+   "got": "not_applicable",
+   "pending": false
+  },
+  {
+   "case": "h2-12",
+   "rule": "16",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "h2-13",
+   "rule": "1",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "h2-13",
+   "rule": "2",
+   "expected": "pass",
+   "got": "fail",
+   "pending": false
+  },
+  {
+   "case": "h2-13",
+   "rule": "3",
+   "expected": "not_applicable",
+   "got": "not_applicable",
+   "pending": false
+  },
+  {
+   "case": "h2-13",
+   "rule": "11",
+   "expected": "not_applicable",
+   "got": "not_applicable",
+   "pending": false
+  },
+  {
+   "case": "h2-13",
+   "rule": "17",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "h2-13",
+   "rule": "18",
+   "expected": "pass",
+   "got": "not_applicable",
+   "pending": false
+  },
+  {
+   "case": "h2-14",
+   "rule": "1",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "h2-14",
+   "rule": "2",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "h2-14",
+   "rule": "3",
+   "expected": "fail",
+   "got": "fail",
+   "pending": false
+  },
+  {
+   "case": "h2-14",
+   "rule": "17",
+   "expected": "fail",
+   "got": "fail",
+   "pending": false
+  },
+  {
+   "case": "h2-14",
+   "rule": "18",
+   "expected": "fail",
+   "got": "fail",
+   "pending": false
+  },
+  {
+   "case": "h2-15",
+   "rule": "1",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "h2-15",
+   "rule": "2",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "h2-15",
+   "rule": "3",
+   "expected": "not_applicable",
+   "got": "not_applicable",
+   "pending": false
+  },
+  {
+   "case": "h2-15",
+   "rule": "9",
+   "expected": "not_applicable",
+   "got": "not_applicable",
+   "pending": false
+  },
+  {
+   "case": "h2-15",
+   "rule": "17",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "h2-15",
+   "rule": "18",
+   "expected": "fail",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "h2-16",
+   "rule": "1",
+   "expected": "fail",
+   "got": "not_applicable",
+   "pending": false
+  },
+  {
+   "case": "h2-16",
+   "rule": "2",
+   "expected": "fail",
+   "got": "fail",
+   "pending": false
+  },
+  {
+   "case": "h2-16",
+   "rule": "3",
+   "expected": "fail",
+   "got": "fail",
+   "pending": false
+  },
+  {
+   "case": "h2-16",
+   "rule": "12a",
+   "expected": "fail",
+   "got": "fail",
+   "pending": false
+  },
+  {
+   "case": "h2-16",
+   "rule": "12b",
+   "expected": "fail",
+   "got": "fail",
+   "pending": false
+  },
+  {
+   "case": "h2-16",
+   "rule": "14",
+   "expected": "fail",
+   "got": "fail",
+   "pending": false
+  },
+  {
+   "case": "h2-17",
+   "rule": "12a",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "h2-17",
+   "rule": "12b",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "h2-17",
+   "rule": "14",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "h2-17",
+   "rule": "16",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "h2-17",
+   "rule": "17",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  },
+  {
+   "case": "h2-17",
+   "rule": "18",
+   "expected": "pass",
+   "got": "pass",
+   "pending": false
+  }
+ ]
+}

@@ -15,7 +15,7 @@ from dataclasses import fields
 from analyzer.api_client import ApiClient, ApiError
 from pydantic import ValidationError
 
-from analyzer.contracts import Finding, Relation, RuleResult
+from analyzer.contracts import AdDocument, Finding, Relation, RuleResult
 from analyzer.pipeline import AnalyzerConfig, EntityResolution, analyze
 
 log = logging.getLogger("analyzer.worker")
@@ -62,32 +62,82 @@ def _build_det_results(raw: object) -> list[RuleResult]:
     return out
 
 
+def _resolve_document(payload: dict, api: ApiClient) -> tuple[AdDocument | None, str]:
+    """Zwroc (dokument, rozpoznany ksztalt payloadu).
+
+    Ksztalty: "document_id" (pobranie z API), "document" (zagniezdzony
+    AdDocument), "flat" (plaski AdDocument — tak enqueuje scraper).
+    Zly dokument -> (None, ksztalt) z ostrzezeniem, bez wyjatku.
+    """
+    raw_doc, shape = None, ""
+    if isinstance(payload.get("document"), dict):
+        raw_doc, shape = payload["document"], "document"
+    elif "id" in payload and ("url" in payload or "text" in payload):
+        raw_doc, shape = payload, "flat"
+    if raw_doc is not None:
+        try:
+            return AdDocument.model_validate(raw_doc), shape
+        except ValidationError as exc:
+            log.warning("Niepoprawny AdDocument w payloadzie (%s): %s", shape, exc)
+            return None, shape
+
+    document_id = payload.get("document_id")
+    if not document_id or not isinstance(document_id, str):
+        log.warning("Zadanie bez document_id ani dokumentu - pomijam")
+        return None, ""
+    try:
+        return api.get_document(document_id), "document_id"
+    except ApiError as exc:
+        log.error("Pobranie dokumentu %s nieudane: %s", document_id, exc)
+        return None, "document_id"
+
+
+def _save_finding(finding: Finding) -> None:
+    """Fallback dla demo bez API: gdy FINDINGS_OUT_DIR, zapisz Finding do JSON."""
+    out_dir = os.environ.get("FINDINGS_OUT_DIR")
+    if not out_dir:
+        return
+    try:
+        os.makedirs(out_dir, exist_ok=True)
+        path = os.path.join(out_dir, f"{finding.document_id}.json")
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write(finding.model_dump_json(indent=2))
+    except OSError as exc:
+        log.warning("Zapis findingu do %s nieudany: %s", out_dir, exc)
+
+
 def handle_job(
     payload: dict, *, api: ApiClient, config: AnalyzerConfig | None = None
 ) -> Finding | None:
-    """Obsluz jedno zadanie. Zwraca Finding albo None (brak id / blad API).
+    """Obsluz jedno zadanie. Zwraca Finding albo None (brak dokumentu / blad API).
 
     Nigdy nie rzuca ApiError w gore: None oznacza zadanie do ponowienia.
+    Akceptuje trzy ksztalty payloadu: {"document_id"}, {"document": {...}}
+    oraz plaski AdDocument; kazdy moze miec "det_results".
     """
-    document_id = payload.get("document_id") if isinstance(payload, dict) else None
-    if not document_id or not isinstance(document_id, str):
-        log.warning("Zadanie bez document_id - pomijam")
+    if not isinstance(payload, dict):
+        log.warning("Payload zadania nie jest slownikiem - pomijam")
         return None
 
-    try:
-        doc = api.get_document(document_id)
-    except ApiError as exc:
-        log.error("Pobranie dokumentu %s nieudane: %s", document_id, exc)
+    doc, shape = _resolve_document(payload, api)
+    if doc is None:
         return None
+    log.info("Payload rozpoznany jako %r (dokument %s)", shape, doc.id)
 
     entities = _build_resolution(payload.get("entity_resolution"))
     det_results = _build_det_results(payload.get("det_results"))
+    if config is None:
+        # Leniwie: registry ciagnie klienta Ollamy; test i import go nie potrzebuja.
+        from analyzer.rules_llm.registry import default_config
+
+        config = default_config()
     finding = analyze(doc, entities, config, det_results=det_results)
 
+    _save_finding(finding)
     try:
         api.post_finding(finding)
     except ApiError as exc:
-        log.error("Wyslanie findingu dla %s nieudane: %s", document_id, exc)
+        log.error("Wyslanie findingu dla %s nieudane: %s", doc.id, exc)
         return None
     return finding
 

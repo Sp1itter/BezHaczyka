@@ -77,6 +77,59 @@ PROFIT_CLAIM_PATTERNS: tuple[str, ...] = (
     r"\d+[.,]?\d*\s*%",
 )
 
+# --------------------------------------------------------------------------- #
+# Wykluczenia: to NIE jest obietnica zysku
+# --------------------------------------------------------------------------- #
+
+_PROFIT_WORD = (
+    r"(?:zysk\w*|zarob\w*|zarabia\w*|rentown\w*|stop\w*\s+zwrotu|dochod\w*|wynik\w*)"
+)
+# Zaprzeczenie/zastrzezenie: "nie oznacza gwarancji zysku", "nie gwarantujemy
+# zyskow", "brak gwarancji zysku", "bez gwarancji zarobku". Celowo wymagamy
+# slowa o gwarancji/obietnicy: "bez ryzyka zarobisz" to nadal obietnica.
+_NEGATED_PROFIT = re.compile(
+    r"\b(?:nie|ani|bez|brak)\s+(?:\w+\s+){0,2}?"
+    r"(?:gwarancj\w*|gwarantuj\w*|obiecuj\w*|zapewnia\w*|zapewnic\w*)"
+    r"\s+(?:\w+\s+){0,2}?" + _PROFIT_WORD
+)
+# "podatek od zyskow kapitalowych" to nazwa podatku, nie obietnica
+_TAX_NAME = re.compile(r"\bzysk\w*\s+kapitalow\w*")
+_FEE_WORD = re.compile(r"\b(?:podatek|podatk\w*|opodatkowan\w*|prowizj\w*|oplat\w*|koszt\w*|marz[aey]\b)")
+_PERCENT = re.compile(r"\d+[.,]?\d*\s*%")
+# Granica zdania; kropka po skrocie ("min. 3 zl") i przed cyfra nie konczy zdania.
+_SENTENCE_BREAK = re.compile(
+    r"(?<!\bmin)(?<!\bmln)(?<!\bmld)(?<!\btys)(?<!\bnp)(?<!\btj)(?<!\bok)"
+    r"[.!?]+\s+(?=[a-z])"
+)
+
+
+def _blank(chars: list[str], start: int, end: int) -> None:
+    for i in range(start, end):
+        chars[i] = " "
+
+
+def mask_non_claims(norm: str) -> str:
+    """Zamaskuj (spacjami, ta sama dlugosc) fragmenty, ktore nie sa obietnica zysku.
+
+    Wejscie: tekst po normalize(). Maskowane: zaprzeczone zastrzezenia o zysku,
+    nazwa podatku "zysk kapitalowy" oraz procenty w zdaniach o podatkach,
+    prowizjach i oplatach (stawka 19%, prowizja 0,29% to nie stopa zwrotu).
+    """
+    chars = list(norm)
+    for rx in (_NEGATED_PROFIT, _TAX_NAME):
+        for m in rx.finditer(norm):
+            _blank(chars, m.start(), m.end())
+    start = 0
+    bounds = [m.end() for m in _SENTENCE_BREAK.finditer(norm)] + [len(norm)]
+    for end in bounds:
+        sentence = norm[start:end]
+        if _FEE_WORD.search(sentence):
+            for pm in _PERCENT.finditer(sentence):
+                _blank(chars, start + pm.start(), start + pm.end())
+        start = end
+    return "".join(chars)
+
+
 ADVISORY_BUSINESS_PATTERNS: tuple[str, ...] = (
     r"wealth\s+management",
     r"investment\s+consulting",
@@ -119,7 +172,7 @@ def has_profit_claims(text: str) -> bool:
     nalezy do Modulu 1 albo 3 — bo obietnica zysku uruchamia wymog
     informacji o ryzyku (art. 44 ust. 2 lit. b rozp. 2017/565).
     """
-    norm = normalize(text)
+    norm = mask_non_claims(normalize(text))
     return _has_any(norm, PROFIT_CLAIM_SIGNALS) or _matches_any(
         norm, PROFIT_CLAIM_PATTERNS
     )
