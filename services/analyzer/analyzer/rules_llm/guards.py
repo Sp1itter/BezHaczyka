@@ -95,11 +95,15 @@ def _replace(
 
 AD_MARKER_PATTERNS: tuple[str, ...] = (
     r"\breklama\b",
-    r"\bmaterial\w* (reklamow|promocyjn|marketingow)\w*",
+    r"\bkomunikat\w* (marketingow|reklamow|promocyjn)\w*",
+    r"\bmaterial\w* (reklamow|promocyjn|marketingow|sponsorowan)\w*",
+    r"\btresc\w* (sponsorowan|reklamow|promocyjn)\w*",
     r"#ad\b",
     r"#reklama",
+    r"#wspolprac\w*(platn|reklamow)\w*",
     r"\bwspolprac\w* (platn|reklamow)\w*",
-    r"\bsponsorowan\w*",
+    r"\bsponsor\w*",
+    r"\bpartner\w* (material\w*|odcink\w*|wpis\w*|post\w*)",
 )
 
 
@@ -267,6 +271,14 @@ _REGULATOR = re.compile(r"\bknf\b|\bkomisj\w*\s+nadzoru")
 # Zatwierdzenie PROSPEKTU to prawdziwa czynnosc organu, nie aprobata produktu.
 _DOCUMENT_CONTEXT = re.compile(r"prospekt|memorandum|statut|regulamin|sprawozdan")
 _MAX_DISTANCE = 60
+_NEGATORS = frozenset({"nie", "ani", "bez", "brak"})
+
+
+def _negated_before(norm: str, pos: int) -> bool:
+    """Czy tuz przed pozycja (<= 3 slowa, to samo zdanie) stoi nie/ani/bez/brak."""
+    sentence_start = max(norm.rfind(c, 0, pos) for c in ".!?") + 1
+    words = norm[sentence_start:pos].split()[-3:]
+    return any(w.strip(",;:()\"") in _NEGATORS for w in words)
 
 
 def _guard_rule_17(current: RuleResult, text: str) -> RuleResult:
@@ -275,6 +287,8 @@ def _guard_rule_17(current: RuleResult, text: str) -> RuleResult:
     m = _norm_with_map(text)
     norm = m[0]
     for a in _APPROVAL.finditer(norm):
+        if _negated_before(norm, a.start()):
+            continue  # "KNF nie ocenia ani nie zatwierdza" to zaprzeczenie
         for r in _REGULATOR.finditer(norm):
             if r.start() >= a.end():
                 gap = r.start() - a.end()
@@ -316,12 +330,51 @@ _GUARDS: dict[str, Callable[[RuleResult, str], RuleResult]] = {
 }
 
 
+# Reguly 17 i 18 dotycza WYLACZNIE materialow odwolujacych sie do organu nadzoru
+# (art. 44 ust. 8). Na prawdziwym korpusie FB Bielik dal fail 18 ("powoluje sie
+# na nadzor KNF") dla reklamy apartamentu i ETP, w ktorych nie ma slowa o
+# nadzorze - wysoki risk_level dla materialu bez naruszenia. Warunek wstepny
+# jest obiektywny, wiec rozstrzygamy go w kodzie, jak warunki 12a/12b/14.
+_SUPERVISION = re.compile(
+    r"\bknf\b|\bkomisj\w*\s+nadzoru|\bnadzor\w*|\bregulator\w*|\bregulowan\w*"
+    r"|\besma\b|\bbafin\b|\bcysec\b|\bfca\b|\bzezwoleni\w*|\blicencj\w*"
+)
+_SUPERVISION_RULES = frozenset({"17", "18"})
+
+
+def _no_supervision_reference(current: RuleResult) -> RuleResult:
+    # Material bez odwolania do organu nadzoru SPELNIA wymog art. 44 ust. 8
+    # (nie sugeruje aprobaty, nie uzywa nadzoru jako argumentu bezpieczenstwa).
+    # PASS, nie not_applicable: scoring jest proporcjonalny do ocenionych regul.
+    return RuleResult(
+        rule_id=current.rule_id,
+        rule_name=current.rule_name,
+        engine=Engine.HYBRID,
+        verdict=Verdict.PASS,
+        confidence=1.0,
+        severity=current.severity,
+        legal_basis=current.legal_basis,
+        evidence=Evidence(
+            kind=EvidenceKind.ABSENCE,
+            summary=(
+                "rozstrzygniete w kodzie: material nie odwoluje sie do organu "
+                "nadzoru, wiec nie sugeruje jego aprobaty ani nie uzywa nadzoru "
+                "jako argumentu bezpieczenstwa."
+            ),
+        ),
+    )
+
+
 def apply_guards(
     results: list[RuleResult], text: str, rule_meta: RuleMeta | None = None
 ) -> list[RuleResult]:
     """Zastosuj straznikow do wynikow wsadu. `not_applicable` zostaje bez zmian."""
+    has_supervision = bool(_SUPERVISION.search(normalize(text)))
     out: list[RuleResult] = []
     for r in results:
+        if r.rule_id in _SUPERVISION_RULES and not has_supervision:
+            out.append(r if r.verdict is Verdict.NOT_APPLICABLE else _no_supervision_reference(r))
+            continue
         guard = _GUARDS.get(r.rule_id)
         if guard is None or r.verdict is Verdict.NOT_APPLICABLE:
             out.append(r)

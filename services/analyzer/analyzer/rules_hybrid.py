@@ -35,7 +35,7 @@ from analyzer.contracts import (
     Verdict,
     ViewportProbe,
 )
-from analyzer.router import PROFIT_CLAIM_PATTERNS, normalize
+from analyzer.router import PROFIT_CLAIM_PATTERNS, mask_non_claims, normalize
 from analyzer.rules_llm import preconditions
 from analyzer.rules_llm.lang_consistency import EN_RISK_PATTERNS, PL_RISK_PATTERNS
 
@@ -83,13 +83,19 @@ class Proximity:
         return self.distance <= self.threshold
 
 
-def _matches(text: str, patterns: tuple[str, ...]) -> bool:
+def _norm_for(text: str, patterns: tuple[str, ...]) -> str:
+    """normalize(); dla wzorcow obietnicy zysku dodatkowo bez zaprzeczen/oplat."""
     norm = normalize(text)
+    return mask_non_claims(norm) if patterns is PROFIT_CLAIM_PATTERNS else norm
+
+
+def _matches(text: str, patterns: tuple[str, ...]) -> bool:
+    norm = _norm_for(text, patterns)
     return any(re.search(p, norm) for p in patterns)
 
 
 def _first_match_offset(text: str, patterns: tuple[str, ...]) -> int | None:
-    norm = normalize(text)
+    norm = _norm_for(text, patterns)
     offsets = [m.start() for p in patterns if (m := re.search(p, norm))]
     return min(offsets) if offsets else None
 
