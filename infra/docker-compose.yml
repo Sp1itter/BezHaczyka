@@ -263,7 +263,7 @@ services:
       API_UPSTREAM: ${DASHBOARD_API_UPSTREAM:-http://dashboard-mock:4000}
     restart: unless-stopped
     ports:
-      - "127.0.0.1:${DASHBOARD_PORT:-7080}:8080"
+      - "${DASHBOARD_BIND:-127.0.0.1}:${DASHBOARD_PORT:-7080}:8080"
     networks: [investwatch]
 
   # --- ollama (opcjonalnie, CPU): profil `ollama`, port nieopublikowany --------
