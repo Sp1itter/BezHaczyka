@@ -40,6 +40,8 @@ log = logging.getLogger("api")
 _PARENTS = Path(__file__).resolve().parents
 DEFAULT_GOLD = (_PARENTS[3] if len(_PARENTS) > 3 else _PARENTS[-1]) / "fixtures" / "gold" / "labels.json"
 
+CSV_MAX_ROWS = 50000  # twardy limit eksportu CSV
+
 Status = Literal["new", "in_review", "confirmed", "dismissed", "triage"]
 
 
@@ -255,22 +257,25 @@ def create_app(store: SqlStore | None = None, gold_path: Path | None = None) -> 
         relation: str | None = None,
         flag: str | None = None,
         since: datetime | None = None,
-        limit: int = Query(200, ge=1, le=1000),
-        offset: int = Query(0, ge=0),
     ) -> Response:
-        items, _ = await _report(source, relation, flag, since, limit, offset)
+        # CSV = wszystkie pasujace wiersze (bez stronicowania), twardy limit bezpieczenstwa.
+        items, total = await _report(source, relation, flag, since, CSV_MAX_ROWS, 0)
+        try:
+            cols = await run_in_threadpool(st().module1_columns)
+        except ReportUnavailable as e:
+            raise HTTPException(503, str(e))
         buf = io.StringIO()
-        if items:
-            w = csv.DictWriter(buf, fieldnames=list(items[0]))
-            w.writeheader()
-            for it in items:
-                w.writerow({k: ";".join(str(x) for x in v) if isinstance(v, list)
-                            else ("" if v is None else v) for k, v in it.items()})
+        w = csv.writer(buf)
+        w.writerow(cols)
+        for it in items:
+            w.writerow([";".join(str(x) for x in v) if isinstance(v, list)
+                        else ("" if v is None else v) for v in (it.get(c) for c in cols)])
         stamp = datetime.now(timezone.utc).strftime("%Y%m%d")
         return Response(
             content="﻿" + buf.getvalue(),
             media_type="text/csv; charset=utf-8",
-            headers={"Content-Disposition": f'attachment; filename="modul1-raport-{stamp}.csv"'},
+            headers={"Content-Disposition": f'attachment; filename="modul1-raport-{stamp}.csv"',
+                     "X-Total-Count": str(total)},
         )
 
     # --- alerty na zywo -----------------------------------------------------------
