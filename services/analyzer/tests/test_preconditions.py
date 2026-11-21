@@ -91,6 +91,11 @@ class TestWynikiHistoryczne:
             "wynik za 2022 byl dodatni",
             "kurs wzrosl o 12%",
             "YTD +4%",
+            "W 2022 r. zyskalismy 18%",
+            "Zarobilismy 18% w 2022 roku",
+            "Fundusz od 2018 roku przynosi srednio 7% rocznie",
+            "W zeszlym roku zarobilam 40% na portfelu",
+            "Wzrost 5% r/r",
         ],
     )
     def test_rozpoznaje_wyniki_historyczne(self, tekst: str) -> None:
@@ -104,6 +109,8 @@ class TestWynikiHistoryczne:
             "Potencjalny zysk do 30%",
             "Zainwestuj dzis w akcje naszej spolki",
             "Oferujemy rachunek maklerski bez oplat",
+            "W 2027 r. zarobisz 18%",
+            "Od 2027 roku mozesz zarabiac 7% rocznie",
         ],
     )
     def test_prognoza_nie_jest_wynikiem_historycznym(self, tekst: str) -> None:

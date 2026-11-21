@@ -16,14 +16,16 @@ from __future__ import annotations
 import os
 import re
 import statistics
+import tempfile
 from pathlib import Path
 import unicodedata
 from dataclasses import dataclass
 from typing import Callable, Iterable, Sequence
 
 from .contracts import AdDocument, Transcript, TranscriptSegment
+from .media_fetch import resolve_media
 
-DEFAULT_WHISPER_MODEL = "medium"
+DEFAULT_WHISPER_MODEL = "small"
 
 # Wzorce regex na tekscie znormalizowanym (male litery, bez ogonkow).
 # Polski jest fleksyjny, wiec dopasowujemy rdzenie z koncowkami, nie literaly.
@@ -259,9 +261,19 @@ def make_local_transcriber(
             "fixtures/demo-ads/facebook"))
     """
     base = Path(root)
+    cache = Path(os.getenv("STT_MEDIA_CACHE") or Path(tempfile.gettempdir()) / "investwatch-media")
 
     def _transcribe(doc: AdDocument) -> Transcript | None:
-        path = resolve_media_path(doc, base)
+        # 1. media[] dokumentu (sciezka, http(s), s3://) przez media_fetch
+        path: Path | None = None
+        for item in doc.media:
+            if item.kind in ("video", "audio") and item.path:
+                path = resolve_media(item.path, cache)
+                if path is not None:
+                    break
+        # 2. stara sciezka: korpus pod root po ad_archive_id
+        if path is None:
+            path = resolve_media_path(doc, base)
         if path is None:
             return None
         return transcribe(str(path), model_size=model_size)

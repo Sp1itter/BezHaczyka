@@ -159,7 +159,7 @@ class TestPrzeplywuDetResults:
 
     def test_brak_wynikow_det_nie_wywraca_potoku(self) -> None:
         f = analyze(_doc(), EntityResolution(), AnalyzerConfig(), det_results=None)
-        assert f.rule_results == []
+        assert [r.rule_id for r in f.rule_results] == ["4", "5", "6", "7", "8"]
         assert f.risk_score == 0.0
 
 
@@ -263,7 +263,8 @@ class TestWorkeraZDetResults:
         }
         finding = handle_job(payload, api=api)  # type: ignore[arg-type]
         assert finding is not None
-        assert [r.rule_id for r in finding.rule_results] == ["4"]
+        assert [r.rule_id for r in finding.rule_results] == ["4", "5", "6", "7", "8"]
+        assert finding.rule_results[1].verdict is Verdict.NOT_APPLICABLE
 
     def test_brak_det_results_w_payloadzie_jest_dozwolony(self) -> None:
         from analyzer.worker import handle_job
@@ -272,7 +273,7 @@ class TestWorkeraZDetResults:
         api, _ = self._api(doc)
         finding = handle_job({"document_id": doc.id}, api=api)  # type: ignore[arg-type]
         assert finding is not None
-        assert finding.rule_results == []
+        assert [r.rule_id for r in finding.rule_results] == ["4", "5", "6", "7", "8"]
 
     def test_det_results_nie_bedace_lista_sa_ignorowane(self) -> None:
         from analyzer.worker import handle_job
@@ -284,4 +285,4 @@ class TestWorkeraZDetResults:
             api=api,  # type: ignore[arg-type]
         )
         assert finding is not None
-        assert finding.rule_results == []
+        assert [r.rule_id for r in finding.rule_results] == ["4", "5", "6", "7", "8"]

@@ -206,3 +206,55 @@ class TestProgowZKonfiguracji:
         assert get_threshold("rules.rule_3.max_distance_px", None) == 600
         assert get_threshold("rules.rule_3.max_offset_chars", None) == 300
         assert get_threshold("rules.rule_3.max_gap_seconds", None) == 5.0
+
+
+class TestProporcjonalnosciCzcionki:
+    """Os geometrii: dowod proporcji ryzyko/zysk (nie zmienia werdyktu)."""
+
+    @staticmethod
+    def _n(text: str, y: float, font: float) -> TextNode:
+        return _node(text, y).model_copy(update={"font_px": font})
+
+    def test_pass_zawiera_miary_czcionek(self):
+        r = assess_rule_3(_doc([self._n(ZYSK, 310, 32), self._n(RYZYKO, 360, 9)]))
+        assert r.verdict is Verdict.PASS
+        m = r.evidence.measured
+        assert m["font_zysku_px"] == 32
+        assert m["font_ryzyka_px"] == 9
+        assert m["proporcja_font_ryzyko_do_zysku"] == 0.28
+        assert "9 px wobec 32 px" in r.evidence.summary
+        assert "0,28" in r.evidence.summary
+
+    def test_fail_zawiera_miary_czcionek(self):
+        r = assess_rule_3(_doc([self._n(ZYSK, 310, 32), self._n(RYZYKO, 4080, 9)]))
+        assert r.verdict is Verdict.FAIL
+        assert r.evidence.measured["proporcja_font_ryzyko_do_zysku"] == 0.28
+        assert "0,28" in r.evidence.summary
+
+    def test_werdykt_nie_zalezy_od_czcionki(self):
+        r = assess_rule_3(_doc([self._n(ZYSK, 310, 32), self._n(RYZYKO, 360, 1)]))
+        assert r.verdict is Verdict.PASS
+
+    def test_inne_osie_nie_maja_pol_czcionek(self):
+        r = assess_rule_3(_doc(nodes=None, text=f"{ZYSK} {RYZYKO}"))
+        assert "font_zysku_px" not in r.evidence.measured
+        assert "Czcionka ostrzezenia" not in r.evidence.summary
+        p = measure_text(_doc(nodes=None, text=f"{ZYSK} {RYZYKO}"))
+        assert p.profit_font_px is None and p.risk_font_px is None
+
+    def test_proximity_geometrii_niesie_czcionki(self):
+        p = measure_geometry(_doc([self._n(ZYSK, 310, 32), self._n(RYZYKO, 360, 9)]))
+        assert p.profit_font_px == 32 and p.risk_font_px == 9
+
+
+class TestWykluczeniaObietnicyZysku:
+    def test_zastrzezenie_nie_jest_obietnica_zysku(self):
+        doc = _doc(nodes=None, text="Jestesmy pod nadzorem KNF, co nie oznacza gwarancji zysku.")
+        assert measure_text(doc) is None
+
+    def test_stawka_podatku_nie_jest_obietnica_zysku(self):
+        doc = _doc(nodes=None, text="Podatek od zyskow kapitalowych z ETF wynosi obecnie 19%.")
+        assert measure_text(doc) is None
+
+    def test_prawdziwa_obietnica_nadal_wykryta(self):
+        assert measure_text(_doc(nodes=None, text="Bez ryzyka zarobisz 10%")) is not None

@@ -146,7 +146,13 @@ class TestOverrideWBatch2:
                 assert r.engine is Engine.LLM
 
     def test_niepewny_pomiar_zachowuje_werdykt_modelu(self) -> None:
-        results = evaluate_batch_2(_doc("Kup akcje teraz."), _client("fail"))
+        # ryzyko jest, ale material za krotki na pomiar jezyka -> werdykt modelu
+        results = evaluate_batch_2(_doc("Kup. Ryzyko."), _client("fail"))
         r10 = next(r for r in results if r.rule_id == "10")
         assert r10.verdict is Verdict.FAIL
         assert r10.engine is Engine.LLM
+
+    def test_brak_ryzyka_wymusza_not_applicable(self) -> None:
+        results = evaluate_batch_2(_doc("Kup akcje teraz."), _client("pass"))
+        r10 = next(r for r in results if r.rule_id == "10")
+        assert r10.verdict is Verdict.NOT_APPLICABLE
