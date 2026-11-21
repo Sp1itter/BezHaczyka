@@ -109,11 +109,11 @@ SOURCE_SUFFIXES = {".py", ".ts", ".tsx", ".js", ".jsx", ".yml", ".yaml", ".json"
 SOURCE_NAMES = {"Dockerfile", ".env.example", ".dockerignore", "Makefile"}
 SKIP_DIRS = {".venv", "node_modules", "graphify-out", "DocsTaskINWESTWATCH"}
 
-# Lockfile npm: adresy rejestru to zrodlo pobrania paczek przy BUILDZIE (z hashem
-# integrity), nie wywolanie w runtime. Plik jest generowany przez npm, wiec nie da
-# sie w nim trzymac znacznika compliance:allow-file. Jest wlasnie tym, co spelnia
-# wymog przypietych wersji dla frontu — wylaczamy go jawnie, po nazwie.
-SKIP_NAMES = {"package-lock.json"}
+# Lockfile menedzerow paczek zapisuje adres rejestru, z ktorego pobrano kazda
+# paczke (`resolved`, `funding`). To pochodzenie zaleznosci przy budowie, a nie
+# wywolanie sieci w dzialajacej aplikacji - pomijamy je TYLKO w kontroli adresow.
+# Sekrety, licencje i przypiete wersje dalej obejmuja te pliki.
+HOST_CHECK_SKIP_NAMES = {"package-lock.json", "yarn.lock", "pnpm-lock.yaml"}
 
 # Jawne wyjatki. Potrzebne, bo pliki, ktore OPISUJA zakazane wzorce (testy
 # tego checkera, dokumentacja licencji), same je zawieraja i checker zglaszalby
@@ -145,7 +145,6 @@ def _scannable(files: list[Path]) -> list[Path]:
         f
         for f in files
         if (f.suffix in SOURCE_SUFFIXES or f.name in SOURCE_NAMES)
-        and f.name not in SKIP_NAMES
         and f.exists()
         and not is_allowlisted_file(f)
     ]
@@ -206,6 +205,8 @@ def check_external_hosts(files: list[Path]) -> list[str]:
     problems: list[str] = []
     url_re = re.compile(r"https?://([A-Za-z0-9_.\-]+)")
     for f in _scannable(files):
+        if f.name in HOST_CHECK_SKIP_NAMES:
+            continue
         for lineno, line in _lines(f):
             for host in url_re.findall(line):
                 if _host_allowed(host):

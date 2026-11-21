@@ -1,0 +1,1568 @@
+{
+ "synthetic": true,
+ "cases": [
+  {
+   "id": "m2-01-wzorcowa-obligacje",
+   "opis": "Wzorcowa reklama funduszu obligacji: nazwa firmy, oznaczenie, ostrzezenie przy obietnicy zysku, prosty jezyk, ten sam jezyk.",
+   "expected": {
+    "1": "pass",
+    "2": "pass",
+    "3": "pass",
+    "9": "pass",
+    "10": "pass"
+   },
+   "doc": {
+    "id": "m2-01-wzorcowa-obligacje",
+    "source": "synthetic",
+    "url": "https://example.invalid/synthetic/m2-01-wzorcowa-obligacje",
+    "fetched_at": "2026-11-21T12:00:00Z",
+    "publisher": {
+     "display_name": "Fikcyjny Dom Maklerski Alfa S.A.",
+     "is_official_firm_channel": true
+    },
+    "lang": "pl",
+    "text": "REKLAMA. Fikcyjny Dom Maklerski Alfa S.A. zaprasza do zapoznania się z ofertą Fikcyjnego Funduszu Obligacji Alfa. Fundusz może przynieść zysk do 6% w skali roku, ale inwestowanie wiąże się z ryzykiem. Możesz stracić część lub całość wpłaconych pieniędzy. Zapoznaj się z prospektem informacyjnym.",
+    "render_probe": null
+   }
+  },
+  {
+   "id": "m2-02-brak-nazwy-firmy",
+   "opis": "Reklama oznaczona, ale bez oficjalnej nazwy firmy: tylko marka produktu, domena i konto. Brak porownan.",
+   "expected": {
+    "1": "fail",
+    "2": "pass",
+    "11": "not_applicable"
+   },
+   "doc": {
+    "id": "m2-02-brak-nazwy-firmy",
+    "source": "synthetic",
+    "url": "https://example.invalid/synthetic/m2-02-brak-nazwy-firmy",
+    "fetched_at": "2026-11-21T12:00:00Z",
+    "publisher": {
+     "display_name": "SuperZysk Plus",
+     "is_official_firm_channel": true
+    },
+    "lang": "pl",
+    "text": "REKLAMA. SuperZysk Plus — fundusz inwestycyjny dla każdego! Wejdź na super-zysk-plus.example.invalid i obserwuj @superzysk. Inwestowanie wiąże się z ryzykiem utraty kapitału.",
+    "render_probe": null
+   }
+  },
+  {
+   "id": "m2-03-brak-oznaczenia-reklamy",
+   "opis": "Podana pelna nazwa firmy, ale brak jakiegokolwiek oznaczenia reklamy; tylko zachecenie do inwestowania.",
+   "expected": {
+    "1": "pass",
+    "2": "fail"
+   },
+   "doc": {
+    "id": "m2-03-brak-oznaczenia-reklamy",
+    "source": "synthetic",
+    "url": "https://example.invalid/synthetic/m2-03-brak-oznaczenia-reklamy",
+    "fetched_at": "2026-11-21T12:00:00Z",
+    "publisher": {
+     "display_name": "Fikcyjny Dom Maklerski Alfa S.A.",
+     "is_official_firm_channel": true
+    },
+    "lang": "pl",
+    "text": "Fikcyjny Dom Maklerski Alfa S.A. zaprasza do inwestowania w jednostki uczestnictwa Fikcyjnego Funduszu Akcji Beta. Zacznij już dziś, otwórz rachunek w kilka minut. Inwestowanie wiąże się z ryzykiem utraty kapitału.",
+    "render_probe": null
+   }
+  },
+  {
+   "id": "m2-04-zysk-ostrzezenie-daleko-tekst",
+   "opis": "Obietnica zysku na poczatku, ostrzezenie o ryzyku dopiero po ponad 300 znakach tekstu (os tekstowa, bez RenderProbe).",
+   "expected": {
+    "3": "fail"
+   },
+   "doc": {
+    "id": "m2-04-zysk-ostrzezenie-daleko-tekst",
+    "source": "synthetic",
+    "url": "https://example.invalid/synthetic/m2-04-zysk-ostrzezenie-daleko-tekst",
+    "fetched_at": "2026-11-21T12:00:00Z",
+    "publisher": {
+     "display_name": "Fikcyjny Dom Maklerski Alfa S.A.",
+     "is_official_firm_channel": true
+    },
+    "lang": "pl",
+    "text": "REKLAMA. Fikcyjny Dom Maklerski Alfa S.A. i Fikcyjny Fundusz Akcji Gamma: zarabiaj do 15% rocznie! Nasz zespół analityków od lat wybiera spółki o najlepszych perspektywach, a klienci cenią sobie prostotę: zakładasz rachunek w kilka minut, wybierasz fundusz i wpłacasz dowolną kwotę. Obsługa klienta jest dostępna w dni robocze od ósmej do osiemnastej, a aplikacja mobilna działa całą dobę na telefonach i tabletach. Dołącz do tysięcy zadowolonych klientów, którzy zaczynali od niewielkich wpłat miesięcznych. Ważne: inwestowanie wiąże się z ryzykiem utraty kapitału.",
+    "render_probe": null
+   }
+  },
+  {
+   "id": "m2-05-zysk-bez-ostrzezenia",
+   "opis": "Obietnica zysku i zadnej wzmianki o ryzyku; brak ostrzezenia wiec reguly 9 i 10 nie maja przedmiotu.",
+   "expected": {
+    "1": "pass",
+    "2": "pass",
+    "3": "fail",
+    "9": "not_applicable",
+    "10": "not_applicable"
+   },
+   "doc": {
+    "id": "m2-05-zysk-bez-ostrzezenia",
+    "source": "synthetic",
+    "url": "https://example.invalid/synthetic/m2-05-zysk-bez-ostrzezenia",
+    "fetched_at": "2026-11-21T12:00:00Z",
+    "publisher": {
+     "display_name": "Fikcyjny Dom Maklerski Alfa S.A.",
+     "is_official_firm_channel": true
+    },
+    "lang": "pl",
+    "text": "REKLAMA. Fikcyjny Dom Maklerski Alfa S.A. przedstawia Fikcyjny Fundusz Akcji Delta. Zarobisz nawet 20% w skali roku, a pierwsze wpłaty zaksięgujemy w jeden dzień. Zapisz się na stronie i zacznij zarabiać.",
+    "render_probe": null
+   }
+  },
+  {
+   "id": "m2-06-geometria-ostrzezenie-daleko",
+   "opis": "RenderProbe (mobile): obietnica zysku na gorze, ostrzezenie o ryzyku ok. 2000 px nizej.",
+   "expected": {
+    "3": "fail"
+   },
+   "doc": {
+    "id": "m2-06-geometria-ostrzezenie-daleko",
+    "source": "synthetic",
+    "url": "https://example.invalid/synthetic/m2-06-geometria-ostrzezenie-daleko",
+    "fetched_at": "2026-11-21T12:00:00Z",
+    "publisher": {
+     "display_name": "Fikcyjny Dom Maklerski Alfa S.A.",
+     "is_official_firm_channel": true
+    },
+    "lang": "pl",
+    "text": "REKLAMA\nZarabiaj do 12% rocznie z Fikcyjnym Funduszem Obligacji Beta\nFikcyjny Dom Maklerski Alfa S.A. — otwórz rachunek w 5 minut\nDołącz do nas i zacznij inwestować jeszcze dziś\nInwestowanie wiąże się z ryzykiem utraty kapitału.",
+    "render_probe": {
+     "viewports": {
+      "mobile": {
+       "dominant_font_px": 28,
+       "page_height_px": 2400.0,
+       "nodes": [
+        {
+         "text": "REKLAMA",
+         "font_px": 12,
+         "font_weight": 400,
+         "color": "#111111",
+         "background_effective": "#ffffff",
+         "background_confidence": "resolved",
+         "contrast_ratio": 12.0,
+         "bbox": {
+          "x": 24,
+          "y": 20,
+          "w": 342,
+          "h": 40
+         },
+         "visible": true,
+         "clipped": false,
+         "dom_path": "div.ad > p",
+         "in_footer": false
+        },
+        {
+         "text": "Zarabiaj do 12% rocznie z Fikcyjnym Funduszem Obligacji Beta",
+         "font_px": 28,
+         "font_weight": 700,
+         "color": "#111111",
+         "background_effective": "#ffffff",
+         "background_confidence": "resolved",
+         "contrast_ratio": 12.0,
+         "bbox": {
+          "x": 24,
+          "y": 80,
+          "w": 342,
+          "h": 40
+         },
+         "visible": true,
+         "clipped": false,
+         "dom_path": "div.ad > p",
+         "in_footer": false
+        },
+        {
+         "text": "Fikcyjny Dom Maklerski Alfa S.A. — otwórz rachunek w 5 minut",
+         "font_px": 16,
+         "font_weight": 400,
+         "color": "#111111",
+         "background_effective": "#ffffff",
+         "background_confidence": "resolved",
+         "contrast_ratio": 12.0,
+         "bbox": {
+          "x": 24,
+          "y": 320,
+          "w": 342,
+          "h": 40
+         },
+         "visible": true,
+         "clipped": false,
+         "dom_path": "div.ad > p",
+         "in_footer": false
+        },
+        {
+         "text": "Dołącz do nas i zacznij inwestować jeszcze dziś",
+         "font_px": 16,
+         "font_weight": 400,
+         "color": "#111111",
+         "background_effective": "#ffffff",
+         "background_confidence": "resolved",
+         "contrast_ratio": 12.0,
+         "bbox": {
+          "x": 24,
+          "y": 900,
+          "w": 342,
+          "h": 40
+         },
+         "visible": true,
+         "clipped": false,
+         "dom_path": "div.ad > p",
+         "in_footer": false
+        },
+        {
+         "text": "Inwestowanie wiąże się z ryzykiem utraty kapitału.",
+         "font_px": 12,
+         "font_weight": 400,
+         "color": "#111111",
+         "background_effective": "#ffffff",
+         "background_confidence": "resolved",
+         "contrast_ratio": 12.0,
+         "bbox": {
+          "x": 24,
+          "y": 2100,
+          "w": 342,
+          "h": 40
+         },
+         "visible": true,
+         "clipped": false,
+         "dom_path": "div.ad > p",
+         "in_footer": false
+        }
+       ]
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "m2-07-geometria-ostrzezenie-obok",
+   "opis": "RenderProbe (mobile): ostrzezenie o ryzyku bezposrednio pod obietnica zysku; brak wynikow historycznych.",
+   "expected": {
+    "3": "pass",
+    "13": "not_applicable"
+   },
+   "doc": {
+    "id": "m2-07-geometria-ostrzezenie-obok",
+    "source": "synthetic",
+    "url": "https://example.invalid/synthetic/m2-07-geometria-ostrzezenie-obok",
+    "fetched_at": "2026-11-21T12:00:00Z",
+    "publisher": {
+     "display_name": "Fikcyjny Dom Maklerski Alfa S.A.",
+     "is_official_firm_channel": true
+    },
+    "lang": "pl",
+    "text": "REKLAMA\nZarabiaj do 12% rocznie z Fikcyjnym Funduszem Obligacji Beta\nInwestowanie wiąże się z ryzykiem utraty kapitału.\nFikcyjny Dom Maklerski Alfa S.A.",
+    "render_probe": {
+     "viewports": {
+      "mobile": {
+       "dominant_font_px": 28,
+       "page_height_px": 2400.0,
+       "nodes": [
+        {
+         "text": "REKLAMA",
+         "font_px": 12,
+         "font_weight": 400,
+         "color": "#111111",
+         "background_effective": "#ffffff",
+         "background_confidence": "resolved",
+         "contrast_ratio": 12.0,
+         "bbox": {
+          "x": 24,
+          "y": 20,
+          "w": 342,
+          "h": 40
+         },
+         "visible": true,
+         "clipped": false,
+         "dom_path": "div.ad > p",
+         "in_footer": false
+        },
+        {
+         "text": "Zarabiaj do 12% rocznie z Fikcyjnym Funduszem Obligacji Beta",
+         "font_px": 28,
+         "font_weight": 700,
+         "color": "#111111",
+         "background_effective": "#ffffff",
+         "background_confidence": "resolved",
+         "contrast_ratio": 12.0,
+         "bbox": {
+          "x": 24,
+          "y": 80,
+          "w": 342,
+          "h": 40
+         },
+         "visible": true,
+         "clipped": false,
+         "dom_path": "div.ad > p",
+         "in_footer": false
+        },
+        {
+         "text": "Inwestowanie wiąże się z ryzykiem utraty kapitału.",
+         "font_px": 14,
+         "font_weight": 400,
+         "color": "#111111",
+         "background_effective": "#ffffff",
+         "background_confidence": "resolved",
+         "contrast_ratio": 12.0,
+         "bbox": {
+          "x": 24,
+          "y": 150,
+          "w": 342,
+          "h": 40
+         },
+         "visible": true,
+         "clipped": false,
+         "dom_path": "div.ad > p",
+         "in_footer": false
+        },
+        {
+         "text": "Fikcyjny Dom Maklerski Alfa S.A.",
+         "font_px": 16,
+         "font_weight": 400,
+         "color": "#111111",
+         "background_effective": "#ffffff",
+         "background_confidence": "resolved",
+         "contrast_ratio": 12.0,
+         "bbox": {
+          "x": 24,
+          "y": 240,
+          "w": 342,
+          "h": 40
+         },
+         "visible": true,
+         "clipped": false,
+         "dom_path": "div.ad > p",
+         "in_footer": false
+        }
+       ]
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "m2-08-dominacja-wyniku-hist",
+   "opis": "RenderProbe: wynik historyczny (48 px) to najwiekszy element reklamy, reszta 16-20 px; brak zastrzezenia o wynikach historycznych.",
+   "expected": {
+    "13": "fail",
+    "14": "fail"
+   },
+   "doc": {
+    "id": "m2-08-dominacja-wyniku-hist",
+    "source": "synthetic",
+    "url": "https://example.invalid/synthetic/m2-08-dominacja-wyniku-hist",
+    "fetched_at": "2026-11-21T12:00:00Z",
+    "publisher": {
+     "display_name": "Fikcyjny Dom Maklerski Alfa S.A.",
+     "is_official_firm_channel": true
+    },
+    "lang": "pl",
+    "text": "Zysk 34% w 2023 roku\nFikcyjny Fundusz Akcji Gamma\nREKLAMA. Fikcyjny Dom Maklerski Alfa S.A.\nZałóż rachunek i zacznij inwestować już dziś.\nInwestowanie wiąże się z ryzykiem utraty kapitału.",
+    "render_probe": {
+     "viewports": {
+      "mobile": {
+       "dominant_font_px": 48,
+       "page_height_px": 2400.0,
+       "nodes": [
+        {
+         "text": "Zysk 34% w 2023 roku",
+         "font_px": 48,
+         "font_weight": 700,
+         "color": "#111111",
+         "background_effective": "#ffffff",
+         "background_confidence": "resolved",
+         "contrast_ratio": 12.0,
+         "bbox": {
+          "x": 24,
+          "y": 60,
+          "w": 342,
+          "h": 40
+         },
+         "visible": true,
+         "clipped": false,
+         "dom_path": "div.ad > p",
+         "in_footer": false
+        },
+        {
+         "text": "Fikcyjny Fundusz Akcji Gamma",
+         "font_px": 20,
+         "font_weight": 400,
+         "color": "#111111",
+         "background_effective": "#ffffff",
+         "background_confidence": "resolved",
+         "contrast_ratio": 12.0,
+         "bbox": {
+          "x": 24,
+          "y": 150,
+          "w": 342,
+          "h": 40
+         },
+         "visible": true,
+         "clipped": false,
+         "dom_path": "div.ad > p",
+         "in_footer": false
+        },
+        {
+         "text": "REKLAMA. Fikcyjny Dom Maklerski Alfa S.A.",
+         "font_px": 16,
+         "font_weight": 400,
+         "color": "#111111",
+         "background_effective": "#ffffff",
+         "background_confidence": "resolved",
+         "contrast_ratio": 12.0,
+         "bbox": {
+          "x": 24,
+          "y": 220,
+          "w": 342,
+          "h": 40
+         },
+         "visible": true,
+         "clipped": false,
+         "dom_path": "div.ad > p",
+         "in_footer": false
+        },
+        {
+         "text": "Załóż rachunek i zacznij inwestować już dziś.",
+         "font_px": 16,
+         "font_weight": 400,
+         "color": "#111111",
+         "background_effective": "#ffffff",
+         "background_confidence": "resolved",
+         "contrast_ratio": 12.0,
+         "bbox": {
+          "x": 24,
+          "y": 280,
+          "w": 342,
+          "h": 40
+         },
+         "visible": true,
+         "clipped": false,
+         "dom_path": "div.ad > p",
+         "in_footer": false
+        },
+        {
+         "text": "Inwestowanie wiąże się z ryzykiem utraty kapitału.",
+         "font_px": 12,
+         "font_weight": 400,
+         "color": "#111111",
+         "background_effective": "#ffffff",
+         "background_confidence": "resolved",
+         "contrast_ratio": 12.0,
+         "bbox": {
+          "x": 24,
+          "y": 340,
+          "w": 342,
+          "h": 40
+         },
+         "visible": true,
+         "clipped": false,
+         "dom_path": "div.ad > p",
+         "in_footer": false
+        }
+       ]
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "m2-09-wynik-hist-skromny",
+   "opis": "RenderProbe: wynik historyczny 14 px, naglowek produktu 36 px; zastrzezenie o wynikach historycznych obecne.",
+   "expected": {
+    "13": "pass",
+    "14": "pass"
+   },
+   "doc": {
+    "id": "m2-09-wynik-hist-skromny",
+    "source": "synthetic",
+    "url": "https://example.invalid/synthetic/m2-09-wynik-hist-skromny",
+    "fetched_at": "2026-11-21T12:00:00Z",
+    "publisher": {
+     "display_name": "Fikcyjny Dom Maklerski Alfa S.A.",
+     "is_official_firm_channel": true
+    },
+    "lang": "pl",
+    "text": "Fikcyjny Fundusz Akcji Gamma\nREKLAMA. Fikcyjny Dom Maklerski Alfa S.A.\nZysk 34% w 2023 roku\nWyniki historyczne nie są wiarygodnym wskaźnikiem przyszłych wyników.\nInwestowanie wiąże się z ryzykiem utraty kapitału.",
+    "render_probe": {
+     "viewports": {
+      "mobile": {
+       "dominant_font_px": 36,
+       "page_height_px": 2400.0,
+       "nodes": [
+        {
+         "text": "Fikcyjny Fundusz Akcji Gamma",
+         "font_px": 36,
+         "font_weight": 700,
+         "color": "#111111",
+         "background_effective": "#ffffff",
+         "background_confidence": "resolved",
+         "contrast_ratio": 12.0,
+         "bbox": {
+          "x": 24,
+          "y": 60,
+          "w": 342,
+          "h": 40
+         },
+         "visible": true,
+         "clipped": false,
+         "dom_path": "div.ad > p",
+         "in_footer": false
+        },
+        {
+         "text": "REKLAMA. Fikcyjny Dom Maklerski Alfa S.A.",
+         "font_px": 16,
+         "font_weight": 400,
+         "color": "#111111",
+         "background_effective": "#ffffff",
+         "background_confidence": "resolved",
+         "contrast_ratio": 12.0,
+         "bbox": {
+          "x": 24,
+          "y": 140,
+          "w": 342,
+          "h": 40
+         },
+         "visible": true,
+         "clipped": false,
+         "dom_path": "div.ad > p",
+         "in_footer": false
+        },
+        {
+         "text": "Zysk 34% w 2023 roku",
+         "font_px": 14,
+         "font_weight": 400,
+         "color": "#111111",
+         "background_effective": "#ffffff",
+         "background_confidence": "resolved",
+         "contrast_ratio": 12.0,
+         "bbox": {
+          "x": 24,
+          "y": 400,
+          "w": 342,
+          "h": 40
+         },
+         "visible": true,
+         "clipped": false,
+         "dom_path": "div.ad > p",
+         "in_footer": false
+        },
+        {
+         "text": "Wyniki historyczne nie są wiarygodnym wskaźnikiem przyszłych wyników.",
+         "font_px": 12,
+         "font_weight": 400,
+         "color": "#111111",
+         "background_effective": "#ffffff",
+         "background_confidence": "resolved",
+         "contrast_ratio": 12.0,
+         "bbox": {
+          "x": 24,
+          "y": 440,
+          "w": 342,
+          "h": 40
+         },
+         "visible": true,
+         "clipped": false,
+         "dom_path": "div.ad > p",
+         "in_footer": false
+        },
+        {
+         "text": "Inwestowanie wiąże się z ryzykiem utraty kapitału.",
+         "font_px": 12,
+         "font_weight": 400,
+         "color": "#111111",
+         "background_effective": "#ffffff",
+         "background_confidence": "resolved",
+         "contrast_ratio": 12.0,
+         "bbox": {
+          "x": 24,
+          "y": 480,
+          "w": 342,
+          "h": 40
+         },
+         "visible": true,
+         "clipped": false,
+         "dom_path": "div.ad > p",
+         "in_footer": false
+        }
+       ]
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "m2-10-wynik-hist-bez-geometrii",
+   "opis": "Wynik historyczny w tekscie, ale brak RenderProbe: dominacji nie da sie ocenic, wiec not_applicable, nie fail.",
+   "expected": {
+    "13": "not_applicable"
+   },
+   "doc": {
+    "id": "m2-10-wynik-hist-bez-geometrii",
+    "source": "synthetic",
+    "url": "https://example.invalid/synthetic/m2-10-wynik-hist-bez-geometrii",
+    "fetched_at": "2026-11-21T12:00:00Z",
+    "publisher": {
+     "display_name": "Fikcyjny Dom Maklerski Alfa S.A.",
+     "is_official_firm_channel": true
+    },
+    "lang": "pl",
+    "text": "REKLAMA. Fikcyjny Dom Maklerski Alfa S.A.: Fikcyjny Fundusz Akcji Gamma. Zysk 34% w 2023 roku! Wyniki historyczne nie są wiarygodnym wskaźnikiem przyszłych wyników. Inwestowanie wiąże się z ryzykiem.",
+    "render_probe": null
+   }
+  },
+  {
+   "id": "m2-11-wyniki-hist-kompletne",
+   "opis": "Komplet: 5 pelnych lat kalendarzowych, okres referencyjny i zrodlo, ostrzezenie o kursach walut i oplatach, zastrzezenie.",
+   "expected": {
+    "12a": "pass",
+    "12b": "pass",
+    "14": "pass"
+   },
+   "doc": {
+    "id": "m2-11-wyniki-hist-kompletne",
+    "source": "synthetic",
+    "url": "https://example.invalid/synthetic/m2-11-wyniki-hist-kompletne",
+    "fetched_at": "2026-11-21T12:00:00Z",
+    "publisher": {
+     "display_name": "Fikcyjny Dom Maklerski Alfa S.A.",
+     "is_official_firm_channel": true
+    },
+    "lang": "pl",
+    "text": "REKLAMA. Fikcyjny Dom Maklerski Alfa S.A. — Fikcyjny Fundusz Akcji Alfa. Wyniki historyczne funduszu w pełnych latach kalendarzowych 2019–2023 (źródło: dane Fikcyjnego TFI Alfa, stan na 31.12.2023): 2019 +8%, 2020 −3%, 2021 +12%, 2022 −6%, 2023 +9%. Wyniki uwzględniają opłatę za zarządzanie i inne obciążenia, które pomniejszają zwrot z inwestycji. Fundusz inwestuje także w aktywa w walutach obcych, a zmiany kursów walut mogą zwiększyć lub zmniejszyć wyniki. Wyniki historyczne nie są wiarygodnym wskaźnikiem przyszłych wyników. Inwestowanie wiąże się z ryzykiem utraty kapitału.",
+    "render_probe": null
+   }
+  },
+  {
+   "id": "m2-12-wynik-hist-wyrywkowy",
+   "opis": "Jeden korzystny rok bez okresu referencyjnego i zrodla (12a fail); jest ostrzezenie o walutach i oplatach oraz zastrzezenie.",
+   "expected": {
+    "12a": "fail",
+    "12b": "pass",
+    "14": "pass"
+   },
+   "doc": {
+    "id": "m2-12-wynik-hist-wyrywkowy",
+    "source": "synthetic",
+    "url": "https://example.invalid/synthetic/m2-12-wynik-hist-wyrywkowy",
+    "fetched_at": "2026-11-21T12:00:00Z",
+    "publisher": {
+     "display_name": "Fikcyjny Dom Maklerski Alfa S.A.",
+     "is_official_firm_channel": true
+    },
+    "lang": "pl",
+    "text": "REKLAMA. Fikcyjny Dom Maklerski Alfa S.A.: Fikcyjny Fundusz Akcji Epsilon zyskał w 2021 roku aż 41%! Wynik jest pomniejszony o opłaty i prowizje, a zmiany kursów walut mogą wpływać na wartość inwestycji. Wyniki historyczne nie są wiarygodnym wskaźnikiem przyszłych wyników. Inwestowanie wiąże się z ryzykiem utraty kapitału.",
+    "render_probe": null
+   }
+  },
+  {
+   "id": "m2-13-wyniki-hist-bez-walut-i-oplat",
+   "opis": "Pelne 5 lat ze zrodlem i zastrzezeniem, ale ani slowa o kursach walut i wplywie oplat (12b fail).",
+   "expected": {
+    "12a": "pass",
+    "12b": "fail",
+    "14": "pass"
+   },
+   "doc": {
+    "id": "m2-13-wyniki-hist-bez-walut-i-oplat",
+    "source": "synthetic",
+    "url": "https://example.invalid/synthetic/m2-13-wyniki-hist-bez-walut-i-oplat",
+    "fetched_at": "2026-11-21T12:00:00Z",
+    "publisher": {
+     "display_name": "Fikcyjny Dom Maklerski Alfa S.A.",
+     "is_official_firm_channel": true
+    },
+    "lang": "pl",
+    "text": "REKLAMA. Fikcyjny Dom Maklerski Alfa S.A. — Fikcyjny Fundusz Akcji Zeta. Stopy zwrotu w pełnych latach kalendarzowych 2019–2023 (źródło: sprawozdania Fikcyjnego TFI Zeta): 2019 +5%, 2020 +2%, 2021 +9%, 2022 −4%, 2023 +7%. Wyniki historyczne nie są wiarygodnym wskaźnikiem przyszłych wyników. Inwestowanie wiąże się z ryzykiem utraty kapitału.",
+    "render_probe": null
+   }
+  },
+  {
+   "id": "m2-14-wyniki-hist-bez-zastrzezenia",
+   "opis": "Pelne dane, zrodlo, waluty i oplaty, ale brak zastrzezenia ze wyniki historyczne nie sa wskaznikiem przyszlych (14 fail).",
+   "expected": {
+    "12a": "pass",
+    "12b": "pass",
+    "14": "fail"
+   },
+   "doc": {
+    "id": "m2-14-wyniki-hist-bez-zastrzezenia",
+    "source": "synthetic",
+    "url": "https://example.invalid/synthetic/m2-14-wyniki-hist-bez-zastrzezenia",
+    "fetched_at": "2026-11-21T12:00:00Z",
+    "publisher": {
+     "display_name": "Fikcyjny Dom Maklerski Alfa S.A.",
+     "is_official_firm_channel": true
+    },
+    "lang": "pl",
+    "text": "REKLAMA. Fikcyjny Dom Maklerski Alfa S.A. — Fikcyjny Fundusz Akcji Eta. Wyniki w pełnych latach kalendarzowych 2019–2023 (źródło: Fikcyjne TFI Eta, dane na 31.12.2023): 2019 +6%, 2020 +1%, 2021 +10%, 2022 −5%, 2023 +8%. Wyniki są pomniejszone o opłaty i prowizje, a zmiany kursów walut mogą wpływać na wynik w złotych. Inwestowanie wiąże się z ryzykiem utraty kapitału.",
+    "render_probe": null
+   }
+  },
+  {
+   "id": "m2-15-tylko-prognoza",
+   "opis": "Czysta prognoza bez wynikow historycznych i bez podatkow: reguly 12a/12b/14 nie dotycza, 15 fail (prognoza bez ostrzezenia), 16 NA.",
+   "expected": {
+    "12a": "not_applicable",
+    "12b": "not_applicable",
+    "14": "not_applicable",
+    "15": "fail",
+    "16": "not_applicable"
+   },
+   "doc": {
+    "id": "m2-15-tylko-prognoza",
+    "source": "synthetic",
+    "url": "https://example.invalid/synthetic/m2-15-tylko-prognoza",
+    "fetched_at": "2026-11-21T12:00:00Z",
+    "publisher": {
+     "display_name": "Fikcyjny Dom Maklerski Alfa S.A.",
+     "is_official_firm_channel": true
+    },
+    "lang": "pl",
+    "text": "REKLAMA. Fikcyjny Dom Maklerski Alfa S.A. i Fikcyjny Fundusz Akcji Teta. Prognozujemy, że za rok zarobisz 20% na wpłaconych środkach. Otwórz rachunek jeszcze dziś. Inwestowanie wiąże się z ryzykiem utraty kapitału.",
+    "render_probe": null
+   }
+  },
+  {
+   "id": "m2-16-prognoza-z-ostrzezeniem",
+   "opis": "Prognoza z wyraznym ostrzezeniem, ze prognoza nie jest wiarygodnym wskaznikiem; brak podatkow.",
+   "expected": {
+    "15": "pass",
+    "16": "not_applicable"
+   },
+   "doc": {
+    "id": "m2-16-prognoza-z-ostrzezeniem",
+    "source": "synthetic",
+    "url": "https://example.invalid/synthetic/m2-16-prognoza-z-ostrzezeniem",
+    "fetched_at": "2026-11-21T12:00:00Z",
+    "publisher": {
+     "display_name": "Fikcyjny Dom Maklerski Alfa S.A.",
+     "is_official_firm_channel": true
+    },
+    "lang": "pl",
+    "text": "REKLAMA. Fikcyjny Dom Maklerski Alfa S.A. — Fikcyjny Fundusz Obligacji Jota. Analitycy szacują, że w przyszłym roku fundusz może przynieść 5% zysku. Prognoza nie jest wiarygodnym wskaźnikiem przyszłych wyników. Inwestowanie wiąże się z ryzykiem utraty kapitału.",
+    "render_probe": null
+   }
+  },
+  {
+   "id": "m2-17-podatek-bez-zastrzezenia",
+   "opis": "Wzmianka o braku podatku Belki bez informacji o zaleznosci od indywidualnej sytuacji; brak prognozy.",
+   "expected": {
+    "16": "fail",
+    "15": "not_applicable"
+   },
+   "doc": {
+    "id": "m2-17-podatek-bez-zastrzezenia",
+    "source": "synthetic",
+    "url": "https://example.invalid/synthetic/m2-17-podatek-bez-zastrzezenia",
+    "fetched_at": "2026-11-21T12:00:00Z",
+    "publisher": {
+     "display_name": "Fikcyjny Dom Maklerski Alfa S.A.",
+     "is_official_firm_channel": true
+    },
+    "lang": "pl",
+    "text": "REKLAMA. Fikcyjny Dom Maklerski Alfa S.A.: inwestuj w Fikcyjny Fundusz Obligacji Kappa na rachunku IKE i skorzystaj z braku podatku Belki. Otwórz konto online. Inwestowanie wiąże się z ryzykiem utraty kapitału.",
+    "render_probe": null
+   }
+  },
+  {
+   "id": "m2-18-podatek-z-zastrzezeniem",
+   "opis": "Wzmianka o podatku z zastrzezeniem o indywidualnej sytuacji i mozliwosci zmian; brak twierdzen o zyskach i prognoz.",
+   "expected": {
+    "16": "pass",
+    "15": "not_applicable",
+    "3": "not_applicable"
+   },
+   "doc": {
+    "id": "m2-18-podatek-z-zastrzezeniem",
+    "source": "synthetic",
+    "url": "https://example.invalid/synthetic/m2-18-podatek-z-zastrzezeniem",
+    "fetched_at": "2026-11-21T12:00:00Z",
+    "publisher": {
+     "display_name": "Fikcyjny Dom Maklerski Alfa S.A.",
+     "is_official_firm_channel": true
+    },
+    "lang": "pl",
+    "text": "REKLAMA. Fikcyjny Dom Maklerski Alfa S.A. oferuje Fikcyjny Fundusz Obligacji Lambda na rachunku IKE. Środki wypłacone po ukończeniu 60. roku życia mogą być zwolnione z podatku od dochodów kapitałowych. Traktowanie podatkowe zależy od indywidualnej sytuacji klienta i może ulec zmianie w przyszłości. Zapoznaj się z regulaminem.",
+    "render_probe": null
+   }
+  },
+  {
+   "id": "m2-19-prognoza-i-podatek-bez-zastrzezen",
+   "opis": "Prognoza zysku i ulga podatkowa, oba bez wymaganych zastrzezen.",
+   "expected": {
+    "15": "fail",
+    "16": "fail"
+   },
+   "doc": {
+    "id": "m2-19-prognoza-i-podatek-bez-zastrzezen",
+    "source": "synthetic",
+    "url": "https://example.invalid/synthetic/m2-19-prognoza-i-podatek-bez-zastrzezen",
+    "fetched_at": "2026-11-21T12:00:00Z",
+    "publisher": {
+     "display_name": "Fikcyjny Dom Maklerski Alfa S.A.",
+     "is_official_firm_channel": true
+    },
+    "lang": "pl",
+    "text": "REKLAMA. Fikcyjny Dom Maklerski Alfa S.A. — Fikcyjny Fundusz Akcji My. Oczekiwany zysk w przyszłym roku to 18%, a do tego bez podatku Belki. Zapisz się dziś. Inwestowanie wiąże się z ryzykiem utraty kapitału.",
+    "render_probe": null
+   }
+  },
+  {
+   "id": "m2-20-ostrzezenie-zargonowe",
+   "opis": "Ostrzezenie o ryzyku napisane niezrozumialym zargonem prawniczo-finansowym (CFD).",
+   "expected": {
+    "9": "fail",
+    "10": "pass"
+   },
+   "doc": {
+    "id": "m2-20-ostrzezenie-zargonowe",
+    "source": "synthetic",
+    "url": "https://example.invalid/synthetic/m2-20-ostrzezenie-zargonowe",
+    "fetched_at": "2026-11-21T12:00:00Z",
+    "publisher": {
+     "display_name": "Fikcyjny Dom Maklerski Alfa S.A.",
+     "is_official_firm_channel": true
+    },
+    "lang": "pl",
+    "text": "REKLAMA. Fikcyjny Dom Maklerski Alfa S.A. — handluj kontraktami CFD na indeksy giełdowe. Ekspozycja na ryzyko rynkowe skorelowane ze zmiennością instrumentu bazowego, przy dźwigni finansowej generującej asymetryczny profil wypłaty i podwyższone ryzyko kontrahenta, wymaga uprzedniej oceny adekwatności.",
+    "render_probe": null
+   }
+  },
+  {
+   "id": "m2-21-ostrzezenie-po-angielsku",
+   "opis": "Polska reklama z ostrzezeniem o ryzyku wylacznie po angielsku.",
+   "expected": {
+    "10": "fail"
+   },
+   "doc": {
+    "id": "m2-21-ostrzezenie-po-angielsku",
+    "source": "synthetic",
+    "url": "https://example.invalid/synthetic/m2-21-ostrzezenie-po-angielsku",
+    "fetched_at": "2026-11-21T12:00:00Z",
+    "publisher": {
+     "display_name": "Fikcyjny Dom Maklerski Alfa S.A.",
+     "is_official_firm_channel": true
+    },
+    "lang": "pl",
+    "text": "REKLAMA. Fikcyjny Dom Maklerski Alfa S.A. zaprasza do inwestowania w Fikcyjny Fundusz Akcji Ni. Zakładaj rachunek online i wybieraj fundusze, które pasują do Twoich celów. Risk warning: investing involves risk and you may lose all of your invested capital.",
+    "render_probe": null
+   }
+  },
+  {
+   "id": "m2-22-ostrzezenie-proste-z-anglicyzmami",
+   "opis": "Proste polskie ostrzezenie z powszechnymi anglicyzmami (stop loss, CFD) - spojne jezykowo i zrozumiale.",
+   "expected": {
+    "9": "pass",
+    "10": "pass"
+   },
+   "doc": {
+    "id": "m2-22-ostrzezenie-proste-z-anglicyzmami",
+    "source": "synthetic",
+    "url": "https://example.invalid/synthetic/m2-22-ostrzezenie-proste-z-anglicyzmami",
+    "fetched_at": "2026-11-21T12:00:00Z",
+    "publisher": {
+     "display_name": "Fikcyjny Dom Maklerski Alfa S.A.",
+     "is_official_firm_channel": true
+    },
+    "lang": "pl",
+    "text": "REKLAMA. Fikcyjny Dom Maklerski Alfa S.A.: kontrakty CFD z możliwością ustawienia stop loss. CFD to złożone instrumenty o wysokim ryzyku szybkiej utraty pieniędzy z powodu dźwigni. Możesz stracić wszystkie wpłacone środki.",
+    "render_probe": null
+   }
+  },
+  {
+   "id": "m2-23-porownanie-bez-zrodla",
+   "opis": "Porownanie z konkurencja bez zrodla i zalozen.",
+   "expected": {
+    "11": "fail"
+   },
+   "doc": {
+    "id": "m2-23-porownanie-bez-zrodla",
+    "source": "synthetic",
+    "url": "https://example.invalid/synthetic/m2-23-porownanie-bez-zrodla",
+    "fetched_at": "2026-11-21T12:00:00Z",
+    "publisher": {
+     "display_name": "Fikcyjny Dom Maklerski Alfa S.A.",
+     "is_official_firm_channel": true
+    },
+    "lang": "pl",
+    "text": "REKLAMA. Fikcyjny Dom Maklerski Alfa S.A.: nasze fundusze są lepsze niż fundusze konkurencji i tańsze niż u innych domów maklerskich! Inwestowanie wiąże się z ryzykiem utraty kapitału.",
+    "render_probe": null
+   }
+  },
+  {
+   "id": "m2-24-porownanie-ze-zrodlem",
+   "opis": "Porownanie kosztow ze wskazanym zrodlem i zalozeniami.",
+   "expected": {
+    "11": "pass"
+   },
+   "doc": {
+    "id": "m2-24-porownanie-ze-zrodlem",
+    "source": "synthetic",
+    "url": "https://example.invalid/synthetic/m2-24-porownanie-ze-zrodlem",
+    "fetched_at": "2026-11-21T12:00:00Z",
+    "publisher": {
+     "display_name": "Fikcyjny Dom Maklerski Alfa S.A.",
+     "is_official_firm_channel": true
+    },
+    "lang": "pl",
+    "text": "REKLAMA. Fikcyjny Dom Maklerski Alfa S.A.: opłaty za zarządzanie Fikcyjnym Funduszem Akcji Omikron są niższe niż średnia dla funduszy akcji (wg Fikcyjnego Raportu Rynku Funduszy 2024, dane na 30.06.2024, przy założeniu inwestycji 10 000 zł przez 5 lat). Inwestowanie wiąże się z ryzykiem utraty kapitału.",
+    "render_probe": null
+   }
+  },
+  {
+   "id": "m2-25-aprobata-knf",
+   "opis": "Reklama sugeruje, ze KNF zatwierdzil produkt.",
+   "expected": {
+    "17": "fail"
+   },
+   "doc": {
+    "id": "m2-25-aprobata-knf",
+    "source": "synthetic",
+    "url": "https://example.invalid/synthetic/m2-25-aprobata-knf",
+    "fetched_at": "2026-11-21T12:00:00Z",
+    "publisher": {
+     "display_name": "Fikcyjny Dom Maklerski Alfa S.A.",
+     "is_official_firm_channel": true
+    },
+    "lang": "pl",
+    "text": "REKLAMA. Fikcyjny Dom Maklerski Alfa S.A.: Fikcyjny Fundusz Akcji Pi — produkt zatwierdzony przez KNF! Komisja Nadzoru Finansowego sprawdziła i pozytywnie oceniła nasz fundusz. Inwestowanie wiąże się z ryzykiem.",
+    "render_probe": null
+   }
+  },
+  {
+   "id": "m2-26-rzeczowa-informacja-o-zezwoleniu",
+   "opis": "Rzeczowa informacja o zezwoleniu i wpisie do rejestru (fikcyjny numer), bez sugerowania aprobaty produktu i bez twierdzen o zyskach.",
+   "expected": {
+    "17": "pass",
+    "18": "pass",
+    "3": "not_applicable"
+   },
+   "doc": {
+    "id": "m2-26-rzeczowa-informacja-o-zezwoleniu",
+    "source": "synthetic",
+    "url": "https://example.invalid/synthetic/m2-26-rzeczowa-informacja-o-zezwoleniu",
+    "fetched_at": "2026-11-21T12:00:00Z",
+    "publisher": {
+     "display_name": "Fikcyjny Dom Maklerski Alfa S.A.",
+     "is_official_firm_channel": true
+    },
+    "lang": "pl",
+    "text": "REKLAMA. Fikcyjny Dom Maklerski Alfa S.A. działa na podstawie zezwolenia Komisji Nadzoru Finansowego (numer fikcyjny: DDM-FIKCYJNY/001) i jest wpisany do rejestru firm inwestycyjnych. Informacja o zezwoleniu nie oznacza oceny ani zatwierdzenia oferowanych produktów. Inwestowanie wiąże się z ryzykiem utraty kapitału.",
+    "render_probe": null
+   }
+  },
+  {
+   "id": "m2-27-nadzor-jako-bezpieczenstwo",
+   "opis": "Powolanie sie na nadzor KNF jako dowod, ze inwestycja jest w pelni bezpieczna.",
+   "expected": {
+    "18": "fail"
+   },
+   "doc": {
+    "id": "m2-27-nadzor-jako-bezpieczenstwo",
+    "source": "synthetic",
+    "url": "https://example.invalid/synthetic/m2-27-nadzor-jako-bezpieczenstwo",
+    "fetched_at": "2026-11-21T12:00:00Z",
+    "publisher": {
+     "display_name": "Fikcyjny Dom Maklerski Alfa S.A.",
+     "is_official_firm_channel": true
+    },
+    "lang": "pl",
+    "text": "REKLAMA. Fikcyjny Dom Maklerski Alfa S.A.: Twoja inwestycja jest w pełni bezpieczna — podlegamy rygorystycznemu nadzorowi KNF, więc nie musisz się niczego obawiać. Otwórz rachunek.",
+    "render_probe": null
+   }
+  },
+  {
+   "id": "m2-28-ostrzezenie-mala-czcionka",
+   "opis": "RenderProbe: ostrzezenie 8 px przy tekscie glownym 16-28 px (regula 4 fail), kontrast dobry (regula 5 pass).",
+   "expected": {
+    "4": "fail",
+    "5": "pass"
+   },
+   "doc": {
+    "id": "m2-28-ostrzezenie-mala-czcionka",
+    "source": "synthetic",
+    "url": "https://example.invalid/synthetic/m2-28-ostrzezenie-mala-czcionka",
+    "fetched_at": "2026-11-21T12:00:00Z",
+    "publisher": {
+     "display_name": "Fikcyjny Dom Maklerski Alfa S.A.",
+     "is_official_firm_channel": true
+    },
+    "lang": "pl",
+    "text": "REKLAMA. Fikcyjny Dom Maklerski Alfa S.A.\nFikcyjny Fundusz Obligacji Rho — stały dochód\nOtwórz rachunek i zacznij inwestować.\nInwestowanie wiąże się z ryzykiem utraty kapitału.",
+    "render_probe": {
+     "viewports": {
+      "mobile": {
+       "dominant_font_px": 28,
+       "page_height_px": 2400.0,
+       "nodes": [
+        {
+         "text": "REKLAMA. Fikcyjny Dom Maklerski Alfa S.A.",
+         "font_px": 14,
+         "font_weight": 400,
+         "color": "#111111",
+         "background_effective": "#ffffff",
+         "background_confidence": "resolved",
+         "contrast_ratio": 12.0,
+         "bbox": {
+          "x": 24,
+          "y": 20,
+          "w": 342,
+          "h": 40
+         },
+         "visible": true,
+         "clipped": false,
+         "dom_path": "div.ad > p",
+         "in_footer": false
+        },
+        {
+         "text": "Fikcyjny Fundusz Obligacji Rho — stały dochód",
+         "font_px": 28,
+         "font_weight": 700,
+         "color": "#111111",
+         "background_effective": "#ffffff",
+         "background_confidence": "resolved",
+         "contrast_ratio": 12.0,
+         "bbox": {
+          "x": 24,
+          "y": 70,
+          "w": 342,
+          "h": 40
+         },
+         "visible": true,
+         "clipped": false,
+         "dom_path": "div.ad > p",
+         "in_footer": false
+        },
+        {
+         "text": "Otwórz rachunek i zacznij inwestować.",
+         "font_px": 16,
+         "font_weight": 400,
+         "color": "#111111",
+         "background_effective": "#ffffff",
+         "background_confidence": "resolved",
+         "contrast_ratio": 12.0,
+         "bbox": {
+          "x": 24,
+          "y": 150,
+          "w": 342,
+          "h": 40
+         },
+         "visible": true,
+         "clipped": false,
+         "dom_path": "div.ad > p",
+         "in_footer": false
+        },
+        {
+         "text": "Inwestowanie wiąże się z ryzykiem utraty kapitału.",
+         "font_px": 8,
+         "font_weight": 400,
+         "color": "#111111",
+         "background_effective": "#ffffff",
+         "background_confidence": "resolved",
+         "contrast_ratio": 10.5,
+         "bbox": {
+          "x": 24,
+          "y": 230,
+          "w": 342,
+          "h": 40
+         },
+         "visible": true,
+         "clipped": false,
+         "dom_path": "div.ad > p",
+         "in_footer": false
+        }
+       ]
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "m2-29-ostrzezenie-niski-kontrast",
+   "opis": "RenderProbe: ostrzezenie 14 px, ale jasnoszare na bialym (kontrast 1.4:1) - regula 5 fail, regula 4 pass.",
+   "expected": {
+    "4": "pass",
+    "5": "fail"
+   },
+   "doc": {
+    "id": "m2-29-ostrzezenie-niski-kontrast",
+    "source": "synthetic",
+    "url": "https://example.invalid/synthetic/m2-29-ostrzezenie-niski-kontrast",
+    "fetched_at": "2026-11-21T12:00:00Z",
+    "publisher": {
+     "display_name": "Fikcyjny Dom Maklerski Alfa S.A.",
+     "is_official_firm_channel": true
+    },
+    "lang": "pl",
+    "text": "REKLAMA. Fikcyjny Dom Maklerski Alfa S.A.\nFikcyjny Fundusz Obligacji Sigma\nOtwórz rachunek i zacznij inwestować.\nInwestowanie wiąże się z ryzykiem utraty kapitału.",
+    "render_probe": {
+     "viewports": {
+      "mobile": {
+       "dominant_font_px": 14,
+       "page_height_px": 2400.0,
+       "nodes": [
+        {
+         "text": "REKLAMA. Fikcyjny Dom Maklerski Alfa S.A.",
+         "font_px": 14,
+         "font_weight": 400,
+         "color": "#111111",
+         "background_effective": "#ffffff",
+         "background_confidence": "resolved",
+         "contrast_ratio": 12.0,
+         "bbox": {
+          "x": 24,
+          "y": 20,
+          "w": 342,
+          "h": 40
+         },
+         "visible": true,
+         "clipped": false,
+         "dom_path": "div.ad > p",
+         "in_footer": false
+        },
+        {
+         "text": "Fikcyjny Fundusz Obligacji Sigma",
+         "font_px": 28,
+         "font_weight": 700,
+         "color": "#111111",
+         "background_effective": "#ffffff",
+         "background_confidence": "resolved",
+         "contrast_ratio": 12.0,
+         "bbox": {
+          "x": 24,
+          "y": 70,
+          "w": 342,
+          "h": 40
+         },
+         "visible": true,
+         "clipped": false,
+         "dom_path": "div.ad > p",
+         "in_footer": false
+        },
+        {
+         "text": "Otwórz rachunek i zacznij inwestować.",
+         "font_px": 16,
+         "font_weight": 400,
+         "color": "#111111",
+         "background_effective": "#ffffff",
+         "background_confidence": "resolved",
+         "contrast_ratio": 12.0,
+         "bbox": {
+          "x": 24,
+          "y": 150,
+          "w": 342,
+          "h": 40
+         },
+         "visible": true,
+         "clipped": false,
+         "dom_path": "div.ad > p",
+         "in_footer": false
+        },
+        {
+         "text": "Inwestowanie wiąże się z ryzykiem utraty kapitału.",
+         "font_px": 14,
+         "font_weight": 400,
+         "color": "#d0d0d0",
+         "background_effective": "#ffffff",
+         "background_confidence": "resolved",
+         "contrast_ratio": 1.4,
+         "bbox": {
+          "x": 24,
+          "y": 230,
+          "w": 342,
+          "h": 40
+         },
+         "visible": true,
+         "clipped": false,
+         "dom_path": "div.ad > p",
+         "in_footer": false
+        }
+       ]
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "m2-30-ostrzezenie-w-stopce-przyciete-na-mobile",
+   "opis": "RenderProbe: na desktopie ostrzezenie widoczne, na mobile 9 px w stopce, przyciete i niewidoczne (reguly 6 i 8 fail).",
+   "expected": {
+    "6": "fail",
+    "8": "fail"
+   },
+   "doc": {
+    "id": "m2-30-ostrzezenie-w-stopce-przyciete-na-mobile",
+    "source": "synthetic",
+    "url": "https://example.invalid/synthetic/m2-30-ostrzezenie-w-stopce-przyciete-na-mobile",
+    "fetched_at": "2026-11-21T12:00:00Z",
+    "publisher": {
+     "display_name": "Fikcyjny Dom Maklerski Alfa S.A.",
+     "is_official_firm_channel": true
+    },
+    "lang": "pl",
+    "text": "REKLAMA. Fikcyjny Dom Maklerski Alfa S.A.\nFikcyjny Fundusz Obligacji Tau\nOtwórz rachunek i zacznij inwestować.\nInwestowanie wiąże się z ryzykiem utraty kapitału.",
+    "render_probe": {
+     "viewports": {
+      "desktop": {
+       "dominant_font_px": 14,
+       "page_height_px": 1600.0,
+       "nodes": [
+        {
+         "text": "REKLAMA. Fikcyjny Dom Maklerski Alfa S.A.",
+         "font_px": 14,
+         "font_weight": 400,
+         "color": "#111111",
+         "background_effective": "#ffffff",
+         "background_confidence": "resolved",
+         "contrast_ratio": 12.0,
+         "bbox": {
+          "x": 24,
+          "y": 20,
+          "w": 342,
+          "h": 40
+         },
+         "visible": true,
+         "clipped": false,
+         "dom_path": "div.ad > p",
+         "in_footer": false
+        },
+        {
+         "text": "Fikcyjny Fundusz Obligacji Tau",
+         "font_px": 28,
+         "font_weight": 700,
+         "color": "#111111",
+         "background_effective": "#ffffff",
+         "background_confidence": "resolved",
+         "contrast_ratio": 12.0,
+         "bbox": {
+          "x": 24,
+          "y": 70,
+          "w": 342,
+          "h": 40
+         },
+         "visible": true,
+         "clipped": false,
+         "dom_path": "div.ad > p",
+         "in_footer": false
+        },
+        {
+         "text": "Otwórz rachunek i zacznij inwestować.",
+         "font_px": 16,
+         "font_weight": 400,
+         "color": "#111111",
+         "background_effective": "#ffffff",
+         "background_confidence": "resolved",
+         "contrast_ratio": 12.0,
+         "bbox": {
+          "x": 24,
+          "y": 150,
+          "w": 342,
+          "h": 40
+         },
+         "visible": true,
+         "clipped": false,
+         "dom_path": "div.ad > p",
+         "in_footer": false
+        },
+        {
+         "text": "Inwestowanie wiąże się z ryzykiem utraty kapitału.",
+         "font_px": 14,
+         "font_weight": 400,
+         "color": "#111111",
+         "background_effective": "#ffffff",
+         "background_confidence": "resolved",
+         "contrast_ratio": 12.0,
+         "bbox": {
+          "x": 24,
+          "y": 230,
+          "w": 342,
+          "h": 40
+         },
+         "visible": true,
+         "clipped": false,
+         "dom_path": "div.ad > p",
+         "in_footer": false
+        }
+       ]
+      },
+      "mobile": {
+       "dominant_font_px": 14,
+       "page_height_px": 2400.0,
+       "nodes": [
+        {
+         "text": "REKLAMA. Fikcyjny Dom Maklerski Alfa S.A.",
+         "font_px": 14,
+         "font_weight": 400,
+         "color": "#111111",
+         "background_effective": "#ffffff",
+         "background_confidence": "resolved",
+         "contrast_ratio": 12.0,
+         "bbox": {
+          "x": 24,
+          "y": 20,
+          "w": 342,
+          "h": 40
+         },
+         "visible": true,
+         "clipped": false,
+         "dom_path": "div.ad > p",
+         "in_footer": false
+        },
+        {
+         "text": "Fikcyjny Fundusz Obligacji Tau",
+         "font_px": 28,
+         "font_weight": 700,
+         "color": "#111111",
+         "background_effective": "#ffffff",
+         "background_confidence": "resolved",
+         "contrast_ratio": 12.0,
+         "bbox": {
+          "x": 24,
+          "y": 70,
+          "w": 342,
+          "h": 40
+         },
+         "visible": true,
+         "clipped": false,
+         "dom_path": "div.ad > p",
+         "in_footer": false
+        },
+        {
+         "text": "Otwórz rachunek i zacznij inwestować.",
+         "font_px": 16,
+         "font_weight": 400,
+         "color": "#111111",
+         "background_effective": "#ffffff",
+         "background_confidence": "resolved",
+         "contrast_ratio": 12.0,
+         "bbox": {
+          "x": 24,
+          "y": 150,
+          "w": 342,
+          "h": 40
+         },
+         "visible": true,
+         "clipped": false,
+         "dom_path": "div.ad > p",
+         "in_footer": false
+        },
+        {
+         "text": "Inwestowanie wiąże się z ryzykiem utraty kapitału.",
+         "font_px": 9,
+         "font_weight": 400,
+         "color": "#111111",
+         "background_effective": "#ffffff",
+         "background_confidence": "resolved",
+         "contrast_ratio": 12.0,
+         "bbox": {
+          "x": 24,
+          "y": 2300,
+          "w": 342,
+          "h": 40
+         },
+         "visible": false,
+         "clipped": true,
+         "dom_path": "div.ad > p",
+         "in_footer": true
+        }
+       ]
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "m2-31-wizualnie-poprawna",
+   "opis": "RenderProbe: ostrzezenie 14 px, wysoki kontrast, poza stopka, widoczne bez klikania na desktopie i mobile (reguly 4-8 pass).",
+   "expected": {
+    "4": "pass",
+    "5": "pass",
+    "6": "pass",
+    "7": "pass",
+    "8": "pass"
+   },
+   "doc": {
+    "id": "m2-31-wizualnie-poprawna",
+    "source": "synthetic",
+    "url": "https://example.invalid/synthetic/m2-31-wizualnie-poprawna",
+    "fetched_at": "2026-11-21T12:00:00Z",
+    "publisher": {
+     "display_name": "Fikcyjny Dom Maklerski Alfa S.A.",
+     "is_official_firm_channel": true
+    },
+    "lang": "pl",
+    "text": "REKLAMA. Fikcyjny Dom Maklerski Alfa S.A.\nFikcyjny Fundusz Obligacji Ypsilon\nOtwórz rachunek i zacznij inwestować.\nInwestowanie wiąże się z ryzykiem utraty kapitału.",
+    "render_probe": {
+     "viewports": {
+      "desktop": {
+       "dominant_font_px": 14,
+       "page_height_px": 1600.0,
+       "nodes": [
+        {
+         "text": "REKLAMA. Fikcyjny Dom Maklerski Alfa S.A.",
+         "font_px": 14,
+         "font_weight": 400,
+         "color": "#111111",
+         "background_effective": "#ffffff",
+         "background_confidence": "resolved",
+         "contrast_ratio": 12.0,
+         "bbox": {
+          "x": 24,
+          "y": 20,
+          "w": 342,
+          "h": 40
+         },
+         "visible": true,
+         "clipped": false,
+         "dom_path": "div.ad > p",
+         "in_footer": false
+        },
+        {
+         "text": "Fikcyjny Fundusz Obligacji Ypsilon",
+         "font_px": 28,
+         "font_weight": 700,
+         "color": "#111111",
+         "background_effective": "#ffffff",
+         "background_confidence": "resolved",
+         "contrast_ratio": 12.0,
+         "bbox": {
+          "x": 24,
+          "y": 70,
+          "w": 342,
+          "h": 40
+         },
+         "visible": true,
+         "clipped": false,
+         "dom_path": "div.ad > p",
+         "in_footer": false
+        },
+        {
+         "text": "Otwórz rachunek i zacznij inwestować.",
+         "font_px": 16,
+         "font_weight": 400,
+         "color": "#111111",
+         "background_effective": "#ffffff",
+         "background_confidence": "resolved",
+         "contrast_ratio": 12.0,
+         "bbox": {
+          "x": 24,
+          "y": 150,
+          "w": 342,
+          "h": 40
+         },
+         "visible": true,
+         "clipped": false,
+         "dom_path": "div.ad > p",
+         "in_footer": false
+        },
+        {
+         "text": "Inwestowanie wiąże się z ryzykiem utraty kapitału.",
+         "font_px": 14,
+         "font_weight": 400,
+         "color": "#111111",
+         "background_effective": "#ffffff",
+         "background_confidence": "resolved",
+         "contrast_ratio": 12.0,
+         "bbox": {
+          "x": 24,
+          "y": 230,
+          "w": 342,
+          "h": 40
+         },
+         "visible": true,
+         "clipped": false,
+         "dom_path": "div.ad > p",
+         "in_footer": false
+        }
+       ]
+      },
+      "mobile": {
+       "dominant_font_px": 14,
+       "page_height_px": 2400.0,
+       "nodes": [
+        {
+         "text": "REKLAMA. Fikcyjny Dom Maklerski Alfa S.A.",
+         "font_px": 14,
+         "font_weight": 400,
+         "color": "#111111",
+         "background_effective": "#ffffff",
+         "background_confidence": "resolved",
+         "contrast_ratio": 12.0,
+         "bbox": {
+          "x": 24,
+          "y": 20,
+          "w": 342,
+          "h": 40
+         },
+         "visible": true,
+         "clipped": false,
+         "dom_path": "div.ad > p",
+         "in_footer": false
+        },
+        {
+         "text": "Fikcyjny Fundusz Obligacji Ypsilon",
+         "font_px": 28,
+         "font_weight": 700,
+         "color": "#111111",
+         "background_effective": "#ffffff",
+         "background_confidence": "resolved",
+         "contrast_ratio": 12.0,
+         "bbox": {
+          "x": 24,
+          "y": 70,
+          "w": 342,
+          "h": 40
+         },
+         "visible": true,
+         "clipped": false,
+         "dom_path": "div.ad > p",
+         "in_footer": false
+        },
+        {
+         "text": "Otwórz rachunek i zacznij inwestować.",
+         "font_px": 16,
+         "font_weight": 400,
+         "color": "#111111",
+         "background_effective": "#ffffff",
+         "background_confidence": "resolved",
+         "contrast_ratio": 12.0,
+         "bbox": {
+          "x": 24,
+          "y": 150,
+          "w": 342,
+          "h": 40
+         },
+         "visible": true,
+         "clipped": false,
+         "dom_path": "div.ad > p",
+         "in_footer": false
+        },
+        {
+         "text": "Inwestowanie wiąże się z ryzykiem utraty kapitału.",
+         "font_px": 14,
+         "font_weight": 400,
+         "color": "#111111",
+         "background_effective": "#ffffff",
+         "background_confidence": "resolved",
+         "contrast_ratio": 12.0,
+         "bbox": {
+          "x": 24,
+          "y": 230,
+          "w": 342,
+          "h": 40
+         },
+         "visible": true,
+         "clipped": false,
+         "dom_path": "div.ad > p",
+         "in_footer": false
+        }
+       ]
+      }
+     }
+    }
+   }
+  }
+ ]
+}
