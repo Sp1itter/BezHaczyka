@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { flagLabel, buildQuery, csvUrl, clip, screenshotInfo, summarize } from "./module1.js";
+import { flagLabel, buildQuery, csvUrl, clip, screenshotInfo, summarize, safeHref } from "./module1.js";
 
 test("etykiety flag", () => {
   assert.equal(flagLabel("firma_zagraniczna"), "firma zagraniczna");
@@ -21,6 +21,16 @@ test("clip i zrzut", () => {
   assert.deepEqual(screenshotInfo("s3://shots/a.png"), { href: null, name: "a.png" });
   assert.equal(screenshotInfo("https://h/a.png").href, "https://h/a.png");
   assert.equal(screenshotInfo(null), null);
+});
+
+test("safeHref", () => {
+  assert.equal(safeHref("http://a.pl/x"), "http://a.pl/x");
+  assert.equal(safeHref("https://a.pl"), "https://a.pl");
+  assert.equal(safeHref("javascript:alert(1)"), null);
+  assert.equal(safeHref("data:text/html,x"), null);
+  assert.equal(safeHref(""), null);
+  assert.equal(safeHref(null), null);
+  assert.equal(safeHref("/relative"), null);
 });
 
 test("kafelki", () => {

@@ -28,11 +28,13 @@ export const clip = (s, n = 140) => {
   return t.length > n ? t.slice(0, n).trimEnd() + "…" : t;
 };
 
+/** Bezpieczny href: tylko http(s), inaczej null (ochrona przed javascript:/data:). */
+export const safeHref = (u) => (typeof u === "string" && /^https?:\/\//i.test(u) ? u : null);
+
 /** Zrzut: http(s) -> href, inaczej sama nazwa pliku. */
 export function screenshotInfo(uri) {
   if (!uri) return null;
-  const name = uri.split("/").pop();
-  return /^https?:\/\//i.test(uri) ? { href: uri, name } : { href: null, name };
+  return { href: safeHref(uri), name: uri.split("/").pop() };
 }
 
 export function summarize(items = [], total = 0) {
