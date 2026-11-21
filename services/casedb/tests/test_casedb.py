@@ -321,3 +321,36 @@ def test_finding_fills_documents_for_api(conn):
     other = str(uuid.uuid4())
     store.save_finding(conn, _finding(other))
     assert conn.execute("SELECT 1 FROM documents WHERE id = %s", (other,)).fetchone() is None
+
+
+def test_migrate_on_legacy_init_sql_schema(conn):
+    # Baza ze starego infra/init.sql (main przed Modulem 1): migracja 002 ma ja doprowadzic do ladu.
+    from casedb import db
+
+    conn.execute("DROP VIEW IF EXISTS module1_report")
+    conn.execute("DROP TABLE IF EXISTS change_events, findings, documents, authorized_entities,"
+                 " ai_results, case_assets, case_content, cases, casedb_migrations CASCADE")
+    conn.execute("""
+        CREATE TABLE documents (id UUID PRIMARY KEY, source TEXT NOT NULL, url TEXT NOT NULL,
+            fetched_at TIMESTAMPTZ NOT NULL, publisher JSONB NOT NULL DEFAULT '{}'::jsonb,
+            lang TEXT NOT NULL DEFAULT 'pl', title TEXT, text TEXT NOT NULL DEFAULT '',
+            html_path TEXT, screenshots JSONB NOT NULL DEFAULT '{}'::jsonb,
+            media JSONB NOT NULL DEFAULT '[]'::jsonb, transcript JSONB, render_probe JSONB,
+            embedding vector(1024), simhash TEXT, scope JSONB NOT NULL DEFAULT '{}'::jsonb);
+        CREATE TABLE findings (id UUID PRIMARY KEY,
+            document_id UUID NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+            primary_module INTEGER NOT NULL, modules INTEGER[] NOT NULL DEFAULT '{}',
+            routing JSONB NOT NULL DEFAULT '{}'::jsonb, risk_score DOUBLE PRECISION NOT NULL,
+            risk_level TEXT NOT NULL, rule_results JSONB NOT NULL DEFAULT '[]'::jsonb,
+            entities JSONB NOT NULL DEFAULT '{}'::jsonb, knn_score DOUBLE PRECISION,
+            status TEXT NOT NULL DEFAULT 'new', created_at TIMESTAMPTZ NOT NULL DEFAULT now());
+        CREATE TABLE authorized_entities (name TEXT NOT NULL, normalized_name TEXT NOT NULL,
+            knf_id TEXT PRIMARY KEY, type TEXT, country TEXT);
+    """)
+    conn.commit()
+    db.migrate(conn)
+    assert store.load_registry(conn, [{"knf_id": "DM-1", "name": "XTB S.A.", "aliases": ["xtb"]}]) == 1
+    cid, _ = store.record_document(conn, _doc())
+    store.save_finding(conn, _finding(cid), _doc())
+    assert conn.execute("SELECT count(*) AS n FROM documents").fetchone()["n"] == 1
+    assert store.latest_finding(conn, cid)["document_snapshot"] is not None
