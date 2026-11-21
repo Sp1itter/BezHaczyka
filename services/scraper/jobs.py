@@ -26,6 +26,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from casedb import db, store
+
 from resolver import Registry, resolve, with_official_flag
 from sources.base import SourceGone
 from sources.meta_json import ad_id_from_url
@@ -158,11 +159,9 @@ def fetch_job(source: str, url: str, recheck: bool = False) -> dict:
 def _enqueue_analysis(redis: Any, doc: Any, case_id: str, resolution: dict) -> None:
     from rq import Queue
 
-    det: list[dict] = []
-    if doc.source == "facebook":
-        from sources.facebook_rules import facebook_det_results
+    from rules_det import evaluate_det  # FB: typografia platformy; pozostale zrodla: R4-R8 z RenderProbe
 
-        det = [r.model_dump(mode="json") for r in facebook_det_results(doc)]
+    det = [r.model_dump(mode="json") for r in evaluate_det(doc)] if doc.render_probe else []
     payload = {
         "document_id": case_id,
         "enqueued_at": datetime.now(UTC).isoformat(),

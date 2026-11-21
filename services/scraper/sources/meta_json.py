@@ -71,13 +71,18 @@ def ad_id_from_url(url: str) -> str:
     return ids[0]
 
 
-def search_url(query: str, country: str = "PL") -> str:
+SEARCH_TYPES = ("keyword_unordered", "keyword_exact_phrase")
+
+
+def search_url(query: str, country: str = "PL", search_type: str = "keyword_unordered") -> str:
+    if search_type not in SEARCH_TYPES:
+        raise ValueError(f"search_type musi byc jednym z {SEARCH_TYPES}, jest {search_type!r}")
     params = {
         "active_status": "active",
         "ad_type": "all",
         "country": country,
         "q": query,
-        "search_type": "keyword_unordered",
+        "search_type": search_type,
         "media_type": "all",
     }
     return f"{AD_LIBRARY_URL}?{urlencode(params)}"

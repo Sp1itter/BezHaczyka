@@ -45,9 +45,6 @@ from render.probe import (
     neutralize_overlays,
     run_probe,
 )
-from state import CircuitBreaker, NodeCache, RateLimiter
-from storage import BlobStore, LocalBlobStore
-
 from sources.base import SourceBlocked, SourceError
 from sources.meta_json import (
     AD_LIBRARY_URL,
@@ -64,6 +61,8 @@ from sources.meta_json import (
     search_url,
     video_urls,
 )
+from state import CircuitBreaker, NodeCache, RateLimiter
+from storage import BlobStore, LocalBlobStore
 
 log = logging.getLogger("scraper.facebook")
 
@@ -313,7 +312,33 @@ class FacebookAdsSource:
         ids = sorted(p.name for p in root.iterdir() if p.is_dir() and p.name.isdigit())
         return [canonical_ad_url(i) for i in ids[: self.config.max_ads_per_run]]
 
+    def discover_nodes(self, query: str, search_type: str = "keyword_unordered") -> dict[str, dict]:
+        """Weze reklam (ad_archive_id -> wezel JSON Meta) dla frazy — dla collectora.
+
+        Zawsze na zywo: przy blokadzie podnosi SourceBlocked i otwiera breaker,
+        NIGDY nie wraca do korpusu offline (collector nie moze wstawic fixtures
+        do magazynu URL-i jako swiezych trafien).
+        """
+        if self.breaker.is_open():
+            raise SourceBlocked("circuit breaker otwarty — zrodlo facebook wstrzymane")
+        try:
+            nodes = self._discover_nodes_live(query, search_type)
+        except SourceBlocked:
+            self.breaker.record_failure()
+            raise
+        except Exception as exc:
+            raise SourceError(f"discover nieudany: {exc}") from exc
+        self.breaker.record_success()
+        return nodes
+
     def _discover_live(self, query: str) -> list[str]:
+        nodes = self._discover_nodes_live(query)
+        for ad_id, node in nodes.items():
+            self.node_cache[ad_id] = node
+        log.info("facebook: discover(%r) -> %d reklam", query, len(nodes))
+        return [canonical_ad_url(i) for i in nodes]
+
+    def _discover_nodes_live(self, query: str, search_type: str = "keyword_unordered") -> dict[str, dict]:
         collected: dict[str, dict] = {}
         with self._browser() as browser:
             ctx = self._new_context(browser, "desktop")
@@ -323,7 +348,7 @@ class FacebookAdsSource:
                 page.on("response", lambda r: self._collect_graphql(r, collected))
                 self.limiter.acquire()
                 page.goto(
-                    search_url(query, self.config.country),
+                    search_url(query, self.config.country, search_type),
                     wait_until="domcontentloaded",
                     timeout=self.config.nav_timeout_s * 1000,
                 )
@@ -344,10 +369,7 @@ class FacebookAdsSource:
                 ctx.close()
 
         ids = list(collected)[: self.config.max_ads_per_run]
-        for ad_id in ids:
-            self.node_cache[ad_id] = collected[ad_id]
-        log.info("facebook: discover(%r) -> %d reklam", query, len(ids))
-        return [canonical_ad_url(i) for i in ids]
+        return {ad_id: collected[ad_id] for ad_id in ids}
 
     # --------------------------------------------------------------- fetch --
 

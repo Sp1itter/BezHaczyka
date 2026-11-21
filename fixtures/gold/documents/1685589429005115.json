@@ -1,0 +1,522 @@
+{
+  "id": "d679ec99-5c19-5b19-b5e8-f42a4ada7b21",
+  "source": "facebook",
+  "url": "https://example.invalid/ads/library/?id=1685589429005115",
+  "fetched_at": "2026-11-21T17:25:50.475270Z",
+  "publisher": {
+    "handle": "@Assethomepl",
+    "display_name": "Assethome - Premium Real Estate",
+    "profile_url": "https://example.invalid/Assethomepl/",
+    "is_official_firm_channel": false
+  },
+  "lang": "pl",
+  "title": "Dowiedz się więcej",
+  "text": "Wyjątkowy resort 15 metrów od plaży! 🤩\nPoznaj Baltic Jet, inwestycję zaprojektowaną na wzór luksusowego jachtu. Obiekt powstanie jedynie 65 metrów od morza a klucze do swojego apartamentu możesz odebrać jeszcze w tym roku! 🗝️🤝\nTo Twój czas, żeby zainwestować i zacząć odpoczywać nad Bałtykiem. Poznaj szczegóły oferty u naszego doradcy 👩🏻💻\nhttps://example.invalid/ustronie-morskie/baltic-jet",
+  "html_path": "s3://raw/d679ec99-5c19-5b19-b5e8-f42a4ada7b21.html",
+  "screenshots": {
+    "desktop": "s3://shots/d679ec99-5c19-5b19-b5e8-f42a4ada7b21-1920.png",
+    "mobile": "s3://shots/d679ec99-5c19-5b19-b5e8-f42a4ada7b21-390.png"
+  },
+  "media": [
+    {
+      "kind": "video",
+      "path": "s3://media/d679ec99-5c19-5b19-b5e8-f42a4ada7b21.mp4",
+      "duration_s": null
+    }
+  ],
+  "transcript": null,
+  "render_probe": {
+    "viewports": {
+      "desktop": {
+        "dominant_font_px": 12.0,
+        "page_height_px": 4612.0,
+        "nodes": [
+          {
+            "text": "Assethome - Premium Real Estate",
+            "font_px": 14.0,
+            "font_weight": 700,
+            "color": "#262626",
+            "background_effective": "#ffffff",
+            "background_source": "ancestor:div:nth-of-type(2)>div:nth-of-type(1)>div:nth-of-type(2)>div:nth-of-type(2)>div>div>div>div",
+            "background_confidence": "resolved",
+            "contrast_ratio": 15.08,
+            "bbox": {
+              "x": 773.0,
+              "y": 413.1,
+              "w": 227.2,
+              "h": 16.0
+            },
+            "visible": true,
+            "clipped": false,
+            "behind_interaction": "link",
+            "collapsed_evidence": "a[href]",
+            "dom_path": "div>div:nth-of-type(1)>div>div>div>div>a>span",
+            "in_footer": false
+          },
+          {
+            "text": "Sponsorowane",
+            "font_px": 12.0,
+            "font_weight": 600,
+            "color": "#737373",
+            "background_effective": "#ffffff",
+            "background_source": "ancestor:div:nth-of-type(2)>div:nth-of-type(1)>div:nth-of-type(2)>div:nth-of-type(2)>div>div>div>div",
+            "background_confidence": "resolved",
+            "contrast_ratio": 4.76,
+            "bbox": {
+              "x": 773.0,
+              "y": 432.1,
+              "w": 86.0,
+              "h": 14.0
+            },
+            "visible": true,
+            "clipped": false,
+            "behind_interaction": null,
+            "collapsed_evidence": null,
+            "dom_path": "div>div>div>span>div>div>span:nth-of-type(1)>strong",
+            "in_footer": false
+          },
+          {
+            "text": "Wyjątkowy resort 15 metrów od plaży! 🤩 Poznaj Baltic Jet, inwestycję zaprojektowaną na wzór luksusowego jachtu. Obiekt powstanie jedynie 65 metrów od morza a klucze do swojego apartamentu możesz odebrać jeszcze w tym roku! 🗝️🤝 To Twój czas, żeby zainwestować i zacząć odpoczywać nad Bałtykiem. Poznaj szczegóły oferty u naszego doradcy 👩🏻💻",
+            "font_px": 12.0,
+            "font_weight": 400,
+            "color": "#262626",
+            "background_effective": "#ffffff",
+            "background_source": "ancestor:div:nth-of-type(2)>div:nth-of-type(1)>div:nth-of-type(2)>div:nth-of-type(2)>div>div>div>div",
+            "background_confidence": "resolved",
+            "contrast_ratio": 15.08,
+            "bbox": {
+              "x": 737.0,
+              "y": 456.1,
+              "w": 438.3,
+              "h": 126.0
+            },
+            "visible": true,
+            "clipped": true,
+            "behind_interaction": null,
+            "collapsed_evidence": null,
+            "dom_path": "div:nth-of-type(2)>div>div:nth-of-type(1)>span>div>div>div>span",
+            "in_footer": false
+          },
+          {
+            "text": "Przepraszamy, wystąpiły problemy z odtworzeniem tego filmu.",
+            "font_px": 15.0,
+            "font_weight": 600,
+            "color": "#ffffff",
+            "background_effective": "#797979",
+            "background_source": "ancestor:div>div:nth-of-type(2)>div>div:nth-of-type(2)>div>div>div>div",
+            "background_confidence": "resolved",
+            "contrast_ratio": 4.35,
+            "bbox": {
+              "x": 768.4,
+              "y": 628.1,
+              "w": 383.1,
+              "h": 40.0
+            },
+            "visible": true,
+            "clipped": false,
+            "behind_interaction": null,
+            "collapsed_evidence": null,
+            "dom_path": "div:nth-of-type(2)>div>div>div>div>div>div:nth-of-type(1)>span",
+            "in_footer": false
+          },
+          {
+            "text": "Dowiedz się więcej",
+            "font_px": 17.0,
+            "font_weight": 600,
+            "color": "#ffffff",
+            "background_effective": "#797979",
+            "background_source": "ancestor:div>div:nth-of-type(2)>div>div:nth-of-type(2)>div>div>div>div",
+            "background_confidence": "resolved",
+            "contrast_ratio": 4.35,
+            "bbox": {
+              "x": 887.6,
+              "y": 674.1,
+              "w": 144.8,
+              "h": 22.0
+            },
+            "visible": true,
+            "clipped": false,
+            "behind_interaction": "link",
+            "collapsed_evidence": "a[href]",
+            "dom_path": "div>div>div>div>div>div:nth-of-type(2)>span>a",
+            "in_footer": false
+          },
+          {
+            "text": "https://example.invalid/USTRONIE-MORSKIE/BALTIC-JET",
+            "font_px": 8.0,
+            "font_weight": 400,
+            "color": "#606770",
+            "background_effective": "#ffffff",
+            "background_source": "ancestor:div>div>div>div:nth-of-type(2)>div>div:nth-of-type(3)>a>div",
+            "background_confidence": "resolved",
+            "contrast_ratio": 5.72,
+            "bbox": {
+              "x": 725.0,
+              "y": 771.1,
+              "w": 224.8,
+              "h": 9.0
+            },
+            "visible": true,
+            "clipped": false,
+            "behind_interaction": "link",
+            "collapsed_evidence": "a[href]",
+            "dom_path": "div>div:nth-of-type(3)>a>div>div:nth-of-type(1)>div:nth-of-type(1)>div>div",
+            "in_footer": false
+          },
+          {
+            "text": "Learn More",
+            "font_px": 14.0,
+            "font_weight": 400,
+            "color": "#242424",
+            "background_effective": "#f2f2f2",
+            "background_source": "ancestor:div:nth-of-type(2)>div>div:nth-of-type(3)>a>div>div:nth-of-type(2)>div>div",
+            "background_confidence": "resolved",
+            "contrast_ratio": 13.84,
+            "bbox": {
+              "x": 1107.4,
+              "y": 768.1,
+              "w": 71.6,
+              "h": 16.0
+            },
+            "visible": true,
+            "clipped": false,
+            "behind_interaction": "link",
+            "collapsed_evidence": "a[href]",
+            "dom_path": "div>div:nth-of-type(2)>div>div>span>div>div>div",
+            "in_footer": false
+          }
+        ]
+      },
+      "tablet": {
+        "dominant_font_px": 12.0,
+        "page_height_px": 10093.0,
+        "nodes": [
+          {
+            "text": "Assethome - Premium Real Estate",
+            "font_px": 14.0,
+            "font_weight": 700,
+            "color": "#262626",
+            "background_effective": "#ffffff",
+            "background_source": "ancestor:div:nth-of-type(2)>div:nth-of-type(1)>div:nth-of-type(2)>div:nth-of-type(2)>div>div>div>div",
+            "background_confidence": "resolved",
+            "contrast_ratio": 15.08,
+            "bbox": {
+              "x": 173.0,
+              "y": 413.1,
+              "w": 227.2,
+              "h": 16.0
+            },
+            "visible": true,
+            "clipped": false,
+            "behind_interaction": "link",
+            "collapsed_evidence": "a[href]",
+            "dom_path": "div>div:nth-of-type(1)>div>div>div>div>a>span",
+            "in_footer": false
+          },
+          {
+            "text": "Sponsorowane",
+            "font_px": 12.0,
+            "font_weight": 600,
+            "color": "#737373",
+            "background_effective": "#ffffff",
+            "background_source": "ancestor:div:nth-of-type(2)>div:nth-of-type(1)>div:nth-of-type(2)>div:nth-of-type(2)>div>div>div>div",
+            "background_confidence": "resolved",
+            "contrast_ratio": 4.76,
+            "bbox": {
+              "x": 173.0,
+              "y": 432.1,
+              "w": 86.0,
+              "h": 14.0
+            },
+            "visible": true,
+            "clipped": false,
+            "behind_interaction": null,
+            "collapsed_evidence": null,
+            "dom_path": "div>div>div>span>div>div>span:nth-of-type(1)>strong",
+            "in_footer": false
+          },
+          {
+            "text": "Wyjątkowy resort 15 metrów od plaży! 🤩 Poznaj Baltic Jet, inwestycję zaprojektowaną na wzór luksusowego jachtu. Obiekt powstanie jedynie 65 metrów od morza a klucze do swojego apartamentu możesz odebrać jeszcze w tym roku! 🗝️🤝 To Twój czas, żeby zainwestować i zacząć odpoczywać nad Bałtykiem. Poznaj szczegóły oferty u naszego doradcy 👩🏻💻",
+            "font_px": 12.0,
+            "font_weight": 400,
+            "color": "#262626",
+            "background_effective": "#ffffff",
+            "background_source": "ancestor:div:nth-of-type(2)>div:nth-of-type(1)>div:nth-of-type(2)>div:nth-of-type(2)>div>div>div>div",
+            "background_confidence": "resolved",
+            "contrast_ratio": 15.08,
+            "bbox": {
+              "x": 137.0,
+              "y": 456.1,
+              "w": 509.4,
+              "h": 126.0
+            },
+            "visible": true,
+            "clipped": true,
+            "behind_interaction": null,
+            "collapsed_evidence": null,
+            "dom_path": "div:nth-of-type(2)>div>div:nth-of-type(1)>span>div>div>div>span",
+            "in_footer": false
+          },
+          {
+            "text": "Przepraszamy, wystąpiły problemy z odtworzeniem tego filmu.",
+            "font_px": 15.0,
+            "font_weight": 600,
+            "color": "#ffffff",
+            "background_effective": "#797979",
+            "background_source": "ancestor:div>div:nth-of-type(2)>div>div:nth-of-type(2)>div>div>div>div",
+            "background_confidence": "resolved",
+            "contrast_ratio": 4.35,
+            "bbox": {
+              "x": 179.0,
+              "y": 638.1,
+              "w": 425.9,
+              "h": 20.0
+            },
+            "visible": true,
+            "clipped": false,
+            "behind_interaction": null,
+            "collapsed_evidence": null,
+            "dom_path": "div:nth-of-type(2)>div>div>div>div>div>div:nth-of-type(1)>span",
+            "in_footer": false
+          },
+          {
+            "text": "Dowiedz się więcej",
+            "font_px": 17.0,
+            "font_weight": 600,
+            "color": "#ffffff",
+            "background_effective": "#797979",
+            "background_source": "ancestor:div>div:nth-of-type(2)>div>div:nth-of-type(2)>div>div>div>div",
+            "background_confidence": "resolved",
+            "contrast_ratio": 4.35,
+            "bbox": {
+              "x": 319.6,
+              "y": 664.1,
+              "w": 144.8,
+              "h": 22.0
+            },
+            "visible": true,
+            "clipped": false,
+            "behind_interaction": "link",
+            "collapsed_evidence": "a[href]",
+            "dom_path": "div>div>div>div>div>div:nth-of-type(2)>span>a",
+            "in_footer": false
+          },
+          {
+            "text": "https://example.invalid/USTRONIE-MORSKIE/BALTIC-JET",
+            "font_px": 8.0,
+            "font_weight": 400,
+            "color": "#606770",
+            "background_effective": "#ffffff",
+            "background_source": "ancestor:div>div>div>div:nth-of-type(2)>div>div:nth-of-type(3)>a>div",
+            "background_confidence": "resolved",
+            "contrast_ratio": 5.72,
+            "bbox": {
+              "x": 125.0,
+              "y": 771.1,
+              "w": 224.8,
+              "h": 9.0
+            },
+            "visible": true,
+            "clipped": false,
+            "behind_interaction": "link",
+            "collapsed_evidence": "a[href]",
+            "dom_path": "div>div:nth-of-type(3)>a>div>div:nth-of-type(1)>div:nth-of-type(1)>div>div",
+            "in_footer": false
+          },
+          {
+            "text": "Learn More",
+            "font_px": 14.0,
+            "font_weight": 400,
+            "color": "#242424",
+            "background_effective": "#f2f2f2",
+            "background_source": "ancestor:div:nth-of-type(2)>div>div:nth-of-type(3)>a>div>div:nth-of-type(2)>div>div",
+            "background_confidence": "resolved",
+            "contrast_ratio": 13.84,
+            "bbox": {
+              "x": 571.4,
+              "y": 768.1,
+              "w": 71.6,
+              "h": 16.0
+            },
+            "visible": true,
+            "clipped": false,
+            "behind_interaction": "link",
+            "collapsed_evidence": "a[href]",
+            "dom_path": "div>div:nth-of-type(2)>div>div>span>div>div>div",
+            "in_footer": false
+          }
+        ]
+      },
+      "mobile": {
+        "dominant_font_px": 12.0,
+        "page_height_px": 17638.0,
+        "nodes": [
+          {
+            "text": "Assethome - Premium Real Estate",
+            "font_px": 14.0,
+            "font_weight": 700,
+            "color": "#262626",
+            "background_effective": "#ffffff",
+            "background_source": "ancestor:div:nth-of-type(2)>div:nth-of-type(1)>div:nth-of-type(2)>div:nth-of-type(2)>div>div>div>div",
+            "background_confidence": "resolved",
+            "contrast_ratio": 15.08,
+            "bbox": {
+              "x": 97.0,
+              "y": 413.1,
+              "w": 227.2,
+              "h": 16.0
+            },
+            "visible": true,
+            "clipped": false,
+            "behind_interaction": "link",
+            "collapsed_evidence": "a[href]",
+            "dom_path": "div>div:nth-of-type(1)>div>div>div>div>a>span",
+            "in_footer": false
+          },
+          {
+            "text": "Sponsorowane",
+            "font_px": 12.0,
+            "font_weight": 600,
+            "color": "#737373",
+            "background_effective": "#ffffff",
+            "background_source": "ancestor:div:nth-of-type(2)>div:nth-of-type(1)>div:nth-of-type(2)>div:nth-of-type(2)>div>div>div>div",
+            "background_confidence": "resolved",
+            "contrast_ratio": 4.76,
+            "bbox": {
+              "x": 97.0,
+              "y": 432.1,
+              "w": 86.0,
+              "h": 14.0
+            },
+            "visible": true,
+            "clipped": false,
+            "behind_interaction": null,
+            "collapsed_evidence": null,
+            "dom_path": "div>div>div>span>div>div>span:nth-of-type(1)>strong",
+            "in_footer": false
+          },
+          {
+            "text": "Wyjątkowy resort 15 metrów od plaży! 🤩 Poznaj Baltic Jet, inwestycję zaprojektowaną na wzór luksusowego jachtu. Obiekt powstanie jedynie 65 metrów od morza a klucze do swojego apartamentu możesz odebrać jeszcze w tym roku! 🗝️🤝 To Twój czas, żeby zainwestować i zacząć odpoczywać nad Bałtykiem. Poznaj szczegóły oferty u naszego doradcy 👩🏻💻",
+            "font_px": 12.0,
+            "font_weight": 400,
+            "color": "#262626",
+            "background_effective": "#ffffff",
+            "background_source": "ancestor:div:nth-of-type(2)>div:nth-of-type(1)>div:nth-of-type(2)>div:nth-of-type(2)>div>div>div>div",
+            "background_confidence": "resolved",
+            "contrast_ratio": 15.08,
+            "bbox": {
+              "x": 61.0,
+              "y": 456.1,
+              "w": 286.8,
+              "h": 158.0
+            },
+            "visible": true,
+            "clipped": true,
+            "behind_interaction": null,
+            "collapsed_evidence": null,
+            "dom_path": "div:nth-of-type(2)>div>div:nth-of-type(1)>span>div>div>div>span",
+            "in_footer": false
+          },
+          {
+            "text": "Przepraszamy, wystąpiły problemy z odtworzeniem tego filmu.",
+            "font_px": 15.0,
+            "font_weight": 600,
+            "color": "#ffffff",
+            "background_effective": "#797979",
+            "background_source": "ancestor:div>div:nth-of-type(2)>div>div:nth-of-type(2)>div>div>div>div",
+            "background_confidence": "resolved",
+            "contrast_ratio": 4.35,
+            "bbox": {
+              "x": 80.4,
+              "y": 628.1,
+              "w": 245.2,
+              "h": 40.0
+            },
+            "visible": true,
+            "clipped": false,
+            "behind_interaction": null,
+            "collapsed_evidence": null,
+            "dom_path": "div:nth-of-type(2)>div>div>div>div>div>div:nth-of-type(1)>span",
+            "in_footer": false
+          },
+          {
+            "text": "Dowiedz się więcej",
+            "font_px": 17.0,
+            "font_weight": 600,
+            "color": "#ffffff",
+            "background_effective": "#797979",
+            "background_source": "ancestor:div>div:nth-of-type(2)>div>div:nth-of-type(2)>div>div>div>div",
+            "background_confidence": "resolved",
+            "contrast_ratio": 4.35,
+            "bbox": {
+              "x": 130.6,
+              "y": 674.1,
+              "w": 144.8,
+              "h": 22.0
+            },
+            "visible": true,
+            "clipped": false,
+            "behind_interaction": "link",
+            "collapsed_evidence": "a[href]",
+            "dom_path": "div>div>div>div>div>div:nth-of-type(2)>span>a",
+            "in_footer": false
+          },
+          {
+            "text": "https://example.invalid/USTRONIE-MORSKIE/BALTIC-JET",
+            "font_px": 8.0,
+            "font_weight": 400,
+            "color": "#606770",
+            "background_effective": "#ffffff",
+            "background_source": "ancestor:div>div>div>div:nth-of-type(2)>div>div:nth-of-type(3)>a>div",
+            "background_confidence": "resolved",
+            "contrast_ratio": 5.72,
+            "bbox": {
+              "x": 49.0,
+              "y": 765.1,
+              "w": 141.4,
+              "h": 21.0
+            },
+            "visible": true,
+            "clipped": false,
+            "behind_interaction": "link",
+            "collapsed_evidence": "a[href]",
+            "dom_path": "div>div:nth-of-type(3)>a>div>div:nth-of-type(1)>div:nth-of-type(1)>div>div",
+            "in_footer": false
+          },
+          {
+            "text": "Learn More",
+            "font_px": 14.0,
+            "font_weight": 400,
+            "color": "#242424",
+            "background_effective": "#f2f2f2",
+            "background_source": "ancestor:div:nth-of-type(2)>div>div:nth-of-type(3)>a>div>div:nth-of-type(2)>div>div",
+            "background_confidence": "resolved",
+            "contrast_ratio": 13.84,
+            "bbox": {
+              "x": 269.4,
+              "y": 768.1,
+              "w": 71.6,
+              "h": 16.0
+            },
+            "visible": true,
+            "clipped": false,
+            "behind_interaction": "link",
+            "collapsed_evidence": "a[href]",
+            "dom_path": "div>div:nth-of-type(2)>div>div>span>div>div>div",
+            "in_footer": false
+          }
+        ]
+      }
+    }
+  },
+  "embedding": null,
+  "simhash": null,
+  "scope": {
+    "status": "uncertain",
+    "instrument_wrapper": null,
+    "underlying": null,
+    "legal_basis": null,
+    "tags": [],
+    "reason": null
+  }
+}
