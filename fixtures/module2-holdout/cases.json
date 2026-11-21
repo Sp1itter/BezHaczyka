@@ -1,0 +1,467 @@
+{
+ "synthetic": true,
+ "holdout": true,
+ "cases": [
+  {
+   "id": "hold-01",
+   "opis": "Post FB TFI z oznaczeniem 'Komunikat marketingowy', ryzyko obok twierdzenia o dochodach",
+   "expected": {
+    "1": "pass",
+    "2": "pass",
+    "3": "pass",
+    "9": "pass",
+    "10": "pass"
+   },
+   "doc": {
+    "id": "hold-01",
+    "source": "facebook",
+    "url": "https://facebook.example.invalid/hold-01",
+    "fetched_at": "2026-11-20T10:00:00Z",
+    "lang": "pl",
+    "publisher": {
+     "handle": "tfigamma",
+     "display_name": "Fikcyjne TFI Gamma S.A.",
+     "profile_url": "https://facebook.example.invalid/tfigamma",
+     "is_official_firm_channel": false
+    },
+    "title": null,
+    "text": "KOMUNIKAT MARKETINGOWY\nFikcyjne TFI Gamma S.A. przedstawia: Gamma Dywidendowy FIO.\nLubisz, gdy portfel pracuje na Ciebie? Fundusz inwestuje w spółki wypłacające dywidendy i może generować regularny dochód do Twojego budżetu.\nPamiętaj: inwestowanie w jednostki uczestnictwa funduszu wiąże się z ryzykiem, w tym z możliwością utraty części lub całości wpłaconych środków. Wartość jednostek może spadać tak samo jak rosnąć.\nSzczegóły: https://gamma.example.invalid/dywidendowy"
+   }
+  },
+  {
+   "id": "hold-02",
+   "opis": "Influencer, #wspolpraca, brak nazwy firmy, wynik historyczny bez okresu i źródła",
+   "expected": {
+    "1": "fail",
+    "2": "fail",
+    "3": "fail",
+    "12a": "fail",
+    "14": "fail"
+   },
+   "doc": {
+    "id": "hold-02",
+    "source": "instagram",
+    "url": "https://instagram.example.invalid/hold-02",
+    "fetched_at": "2026-11-20T10:00:00Z",
+    "lang": "pl",
+    "publisher": {
+     "handle": "kasia_inwestuje",
+     "display_name": "Kasia Inwestuje",
+     "profile_url": "https://instagram.example.invalid/kasia_inwestuje",
+     "is_official_firm_channel": false
+    },
+    "title": null,
+    "text": "Moje ETF-y na emeryturę 🚀 #współpraca\nW zeszłym roku zarobiłam 40% na portfelu ETF i nie zamierzam się zatrzymywać! Ty też tak możesz - wystarczy aplikacja Delta od naszego partnera. Link w bio, zacznij dziś i zbieraj zyski jak ja."
+   }
+  },
+  {
+   "id": "hold-03",
+   "opis": "Opis filmu YT: CFD, prognoza bez zastrzeżenia, ostrzeżenie o ryzyku obecne",
+   "expected": {
+    "1": "pass",
+    "2": "pass",
+    "3": "pass",
+    "9": "pass",
+    "10": "pass",
+    "15": "fail"
+   },
+   "doc": {
+    "id": "hold-03",
+    "source": "youtube",
+    "url": "https://youtube.example.invalid/hold-03",
+    "fetched_at": "2026-11-20T10:00:00Z",
+    "lang": "pl",
+    "publisher": {
+     "handle": "rynkiztomkiem",
+     "display_name": "Rynki z Tomkiem",
+     "profile_url": "https://youtube.example.invalid/rynkiztomkiem",
+     "is_official_firm_channel": false
+    },
+    "title": "DAX do końca roku? Analiza techniczna i CFD",
+    "text": "ODCINEK SPONSOROWANY (reklama) przez Fikcyjny Dom Maklerski Beta S.A.\nW dzisiejszym odcinku omawiam handel kontraktami CFD na indeksy z dźwignią do 1:30. Moja prognoza: DAX do końca roku wzrośnie o około 12%, więc to dobry moment na otwarcie długiej pozycji.\nOstrzeżenie o ryzyku: kontrakty CFD są złożonymi instrumentami i wiążą się z dużym ryzykiem szybkiej utraty środków z powodu dźwigni. 74% rachunków inwestorów detalicznych odnotowuje straty przy handlu CFD u tego dostawcy. Zastanów się, czy rozumiesz działanie CFD i czy stać Cię na wysokie ryzyko utraty pieniędzy."
+   }
+  },
+  {
+   "id": "hold-04",
+   "opis": "Newsletter TFI: tabela tekstowa wyników 5 lat, pełne zastrzeżenia",
+   "expected": {
+    "1": "pass",
+    "12a": "pass",
+    "12b": "pass",
+    "14": "pass",
+    "11": "not_applicable"
+   },
+   "doc": {
+    "id": "hold-04",
+    "source": "newsletter",
+    "url": "https://newsletter.example.invalid/hold-04",
+    "fetched_at": "2026-11-20T10:00:00Z",
+    "lang": "pl",
+    "publisher": {
+     "handle": "tfi_epsilon",
+     "display_name": "Fikcyjne TFI Epsilon S.A.",
+     "profile_url": "https://newsletter.example.invalid/tfi_epsilon",
+     "is_official_firm_channel": false
+    },
+    "title": "Epsilon Obligacji Plus - podsumowanie lat",
+    "text": "Fikcyjne TFI Epsilon S.A. | Materiały reklamowe\n\nFundusz Epsilon Obligacji Plus - stopy zwrotu w latach kalendarzowych (pełne 12 miesięcy):\n2020: +4,1% | 2021: +2,7% | 2022: -6,3% | 2023: +8,2% | 2024: +6,9%\nŹródło: Fikcyjne TFI Epsilon S.A., dane za okres 01.01.2020-31.12.2024, w PLN, po uwzględnieniu opłaty za zarządzanie; nie uwzględniono opłaty dystrybucyjnej ani podatku, które obniżają wynik.\nWyniki osiągnięte w przeszłości nie są wiarygodnym wskaźnikiem wyników przyszłych. Część aktywów funduszu jest denominowana w walutach obcych, a zmiany kursów walut mogą zwiększyć lub zmniejszyć wartość inwestycji."
+   }
+  },
+  {
+   "id": "hold-05",
+   "opis": "Landing page: 'średnio 7% rocznie od 2018', bez źródła i zastrzeżeń",
+   "expected": {
+    "2": "pass",
+    "3": "fail",
+    "12a": "fail",
+    "12b": "fail",
+    "14": "fail"
+   },
+   "doc": {
+    "id": "hold-05",
+    "source": "landing",
+    "url": "https://landing.example.invalid/hold-05",
+    "fetched_at": "2026-11-20T10:00:00Z",
+    "lang": "pl",
+    "publisher": {
+     "handle": "tfizeta",
+     "display_name": "Fikcyjne TFI Zeta S.A.",
+     "profile_url": "https://landing.example.invalid/tfizeta",
+     "is_official_firm_channel": false
+    },
+    "title": "Zeta Zrównoważony - sprawdzony od 2018",
+    "text": "REKLAMA\nFundusz Zeta Zrównoważony od 2018 roku przynosi średnio 7% rocznie. Ponad sześć lat stabilnych zysków - dołącz do tysięcy zadowolonych inwestorów i pomnóż oszczędności z funduszem inwestycyjnym Zeta. Wpłać już od 100 zł!"
+   }
+  },
+  {
+   "id": "hold-06",
+   "opis": "Pułapka: nadzór KNF wspomniany, ale z zastrzeżeniem - nie jest naruszeniem",
+   "expected": {
+    "1": "pass",
+    "2": "pass",
+    "17": "pass",
+    "18": "pass",
+    "3": "not_applicable"
+   },
+   "doc": {
+    "id": "hold-06",
+    "source": "landing",
+    "url": "https://landing.example.invalid/hold-06",
+    "fetched_at": "2026-11-20T10:00:00Z",
+    "lang": "pl",
+    "publisher": {
+     "handle": "dmeta",
+     "display_name": "Fikcyjny Dom Maklerski Eta S.A.",
+     "profile_url": "https://landing.example.invalid/dmeta",
+     "is_official_firm_channel": false
+    },
+    "title": "O nas",
+    "text": "Reklama. Fikcyjny Dom Maklerski Eta S.A. prowadzi rachunki maklerskie i oferuje obrót akcjami oraz obligacjami. Jesteśmy pod nadzorem KNF, co nie oznacza gwarancji zysku ani bezpieczeństwa Twojej inwestycji, a KNF nie ocenia ani nie zatwierdza oferowanych przez nas produktów."
+   }
+  },
+  {
+   "id": "hold-07",
+   "opis": "Newsletter: 'certyfikowany przez KNF', 'z rekomendacją nadzoru', brak oznaczenia reklamy",
+   "expected": {
+    "1": "pass",
+    "2": "fail",
+    "17": "fail",
+    "18": "fail",
+    "3": "not_applicable"
+   },
+   "doc": {
+    "id": "hold-07",
+    "source": "newsletter",
+    "url": "https://newsletter.example.invalid/hold-07",
+    "fetched_at": "2026-11-20T10:00:00Z",
+    "lang": "pl",
+    "publisher": {
+     "handle": "tfiomega",
+     "display_name": "Fikcyjne TFI Omega S.A.",
+     "profile_url": "https://newsletter.example.invalid/tfiomega",
+     "is_official_firm_channel": false
+    },
+    "title": "Omega Akcji - nowość",
+    "text": "Fikcyjne TFI Omega S.A. ma przyjemność zaprezentować fundusz Omega Akcji Globalnych. Produkt certyfikowany przez KNF i objęty rekomendacją nadzoru - to bezpieczna inwestycja, bo czuwa nad nią Komisja Nadzoru Finansowego. Jednostki uczestnictwa dostępne od zaraz."
+   }
+  },
+  {
+   "id": "hold-08",
+   "opis": "Nadzór jako argument bezpieczeństwa, bez sugestii aprobaty; brak nazwy firmy",
+   "expected": {
+    "1": "fail",
+    "2": "pass",
+    "17": "pass",
+    "18": "fail"
+   },
+   "doc": {
+    "id": "hold-08",
+    "source": "facebook",
+    "url": "https://facebook.example.invalid/hold-08",
+    "fetched_at": "2026-11-20T10:00:00Z",
+    "lang": "pl",
+    "publisher": {
+     "handle": "twojbroker",
+     "display_name": "Twój Broker Online",
+     "profile_url": "https://facebook.example.invalid/twojbroker",
+     "is_official_firm_channel": false
+    },
+    "title": null,
+    "text": "REKLAMA | Handluj akcjami i ETF-ami bez zbędnych opłat! Twoje pieniądze są u nas bezpieczne - działamy pod ścisłym nadzorem KNF. Otwórz rachunek w 5 minut."
+   }
+  },
+  {
+   "id": "hold-09",
+   "opis": "IKE pozwala uniknąć podatku - brak zastrzeżenia o sytuacji indywidualnej",
+   "expected": {
+    "1": "pass",
+    "2": "pass",
+    "16": "fail",
+    "15": "not_applicable"
+   },
+   "doc": {
+    "id": "hold-09",
+    "source": "newsletter",
+    "url": "https://newsletter.example.invalid/hold-09",
+    "fetched_at": "2026-11-20T10:00:00Z",
+    "lang": "pl",
+    "publisher": {
+     "handle": "tfisigma",
+     "display_name": "Fikcyjne TFI Sigma S.A.",
+     "profile_url": "https://newsletter.example.invalid/tfisigma",
+     "is_official_firm_channel": false
+    },
+    "title": "IKE w Sigma",
+    "text": "Fikcyjne TFI Sigma S.A. - komunikat marketingowy.\nIKE z funduszami Sigma pozwala uniknąć podatku Belki: zyski z jednostek uczestnictwa funduszu w IKE są całkowicie zwolnione z podatku. Załóż IKE online."
+   }
+  },
+  {
+   "id": "hold-10",
+   "opis": "Podatek z zastrzeżeniem o sytuacji indywidualnej i zmienności przepisów",
+   "expected": {
+    "1": "pass",
+    "2": "pass",
+    "16": "pass",
+    "3": "not_applicable",
+    "10": "not_applicable"
+   },
+   "doc": {
+    "id": "hold-10",
+    "source": "landing",
+    "url": "https://landing.example.invalid/hold-10",
+    "fetched_at": "2026-11-20T10:00:00Z",
+    "lang": "pl",
+    "publisher": {
+     "handle": "dmkappa",
+     "display_name": "Fikcyjny Dom Maklerski Kappa S.A.",
+     "profile_url": "https://landing.example.invalid/dmkappa",
+     "is_official_firm_channel": false
+    },
+    "title": "Podatki od inwestycji w ETF",
+    "text": "Reklama - Fikcyjny Dom Maklerski Kappa S.A.\nPodatek od zysków kapitałowych z ETF wynosi obecnie 19%. Sposób opodatkowania zależy od indywidualnej sytuacji klienta i może ulec zmianie w przyszłości. Rachunek maklerski Kappa umożliwia zakup ETF na GPW."
+   }
+  },
+  {
+   "id": "hold-11",
+   "opis": "Porównanie opłat z konkurencją bez źródła i założeń",
+   "expected": {
+    "1": "pass",
+    "2": "pass",
+    "11": "fail",
+    "3": "not_applicable"
+   },
+   "doc": {
+    "id": "hold-11",
+    "source": "facebook",
+    "url": "https://facebook.example.invalid/hold-11",
+    "fetched_at": "2026-11-20T10:00:00Z",
+    "lang": "pl",
+    "publisher": {
+     "handle": "dmlambda",
+     "display_name": "Fikcyjny Dom Maklerski Lambda S.A.",
+     "profile_url": "https://facebook.example.invalid/dmlambda",
+     "is_official_firm_channel": false
+    },
+    "title": null,
+    "text": "Fikcyjny Dom Maklerski Lambda S.A. - reklama.\nNasze ETF-y są tanie jak nigdzie: 2 razy niższe opłaty niż u Banku X i 3 razy niższe niż u Domu Maklerskiego Y! Przejdź na Lambda i oszczędzaj na każdej transakcji."
+   }
+  },
+  {
+   "id": "hold-12",
+   "opis": "Porównanie z podaniem źródła i założeń",
+   "expected": {
+    "1": "pass",
+    "2": "pass",
+    "11": "pass",
+    "3": "not_applicable"
+   },
+   "doc": {
+    "id": "hold-12",
+    "source": "landing",
+    "url": "https://landing.example.invalid/hold-12",
+    "fetched_at": "2026-11-20T10:00:00Z",
+    "lang": "pl",
+    "publisher": {
+     "handle": "dmmi",
+     "display_name": "Fikcyjny Dom Maklerski Mi S.A.",
+     "profile_url": "https://landing.example.invalid/dmmi",
+     "is_official_firm_channel": false
+    },
+    "title": "Porównanie prowizji",
+    "text": "Komunikat marketingowy - Fikcyjny Dom Maklerski Mi S.A.\nPorównanie prowizji za zlecenie kupna akcji GPW o wartości 5000 zł: Mi 0,29% (min. 3 zł), dostawca A 0,39% (min. 5 zł), dostawca B 0,35% (min. 4 zł).\nŹródło: aktualne tabele opłat i prowizji publikowane przez dostawców, stan na 10.11.2026. Założenia: pakiet podstawowy, zlecenie przez internet, bez promocji i rabatów."
+   }
+  },
+  {
+   "id": "hold-13",
+   "opis": "Polski przekaz, ostrzeżenie wyłącznie po angielsku",
+   "expected": {
+    "1": "pass",
+    "2": "pass",
+    "10": "fail"
+   },
+   "doc": {
+    "id": "hold-13",
+    "source": "facebook",
+    "url": "https://facebook.example.invalid/hold-13",
+    "fetched_at": "2026-11-20T10:00:00Z",
+    "lang": "pl",
+    "publisher": {
+     "handle": "dmni",
+     "display_name": "Fikcyjny Dom Maklerski Ni S.A.",
+     "profile_url": "https://facebook.example.invalid/dmni",
+     "is_official_firm_channel": false
+    },
+    "title": null,
+    "text": "Reklama | Fikcyjny Dom Maklerski Ni S.A.\nHandluj kontraktami CFD na waluty i indeksy z dźwignią. Szybka rejestracja, polska obsługa klienta, platforma w telefonie.\nRisk warning: CFDs are complex instruments and come with a high risk of losing money rapidly due to leverage."
+   }
+  },
+  {
+   "id": "hold-14",
+   "opis": "Prognoza w tytule, bez zastrzeżeń i bez ostrzeżenia o ryzyku",
+   "expected": {
+    "1": "pass",
+    "2": "pass",
+    "15": "fail",
+    "3": "fail"
+   },
+   "doc": {
+    "id": "hold-14",
+    "source": "newsletter",
+    "url": "https://newsletter.example.invalid/hold-14",
+    "fetched_at": "2026-11-20T10:00:00Z",
+    "lang": "pl",
+    "publisher": {
+     "handle": "dmomikron",
+     "display_name": "Fikcyjny Dom Maklerski Omikron S.A.",
+     "profile_url": "https://newsletter.example.invalid/dmomikron",
+     "is_official_firm_channel": false
+    },
+    "title": "Prognoza 2027: złoto (ETC) do 3500 USD!",
+    "text": "Materiały reklamowe - Fikcyjny Dom Maklerski Omikron S.A.\nNasi analitycy przewidują, że cena złota wzrośnie w 2027 roku o 20%, a notowany na giełdzie ETC oparty na złocie pozwoli Ci na tym zarobić. Kup ETC na rachunku Omikron już dziś."
+   }
+  },
+  {
+   "id": "hold-15",
+   "opis": "Prognoza z wyraźnym zastrzeżeniem i ostrzeżeniem o ryzyku",
+   "expected": {
+    "1": "pass",
+    "2": "pass",
+    "15": "pass",
+    "3": "pass",
+    "10": "pass"
+   },
+   "doc": {
+    "id": "hold-15",
+    "source": "newsletter",
+    "url": "https://newsletter.example.invalid/hold-15",
+    "fetched_at": "2026-11-20T10:00:00Z",
+    "lang": "pl",
+    "publisher": {
+     "handle": "tfipi",
+     "display_name": "Fikcyjne TFI Pi S.A.",
+     "profile_url": "https://newsletter.example.invalid/tfipi",
+     "is_official_firm_channel": false
+    },
+    "title": "Perspektywy rynku obligacji",
+    "text": "Fikcyjne TFI Pi S.A. | reklama\nPrognozujemy, że rentowności obligacji skarbowych spadną w następnym roku, co może sprzyjać wzrostowi wartości jednostek funduszu Pi Obligacji.\nTo jedynie prognoza i nie jest wiarygodnym wskaźnikiem przyszłych wyników. Inwestycja w fundusz wiąże się z ryzykiem, w tym ryzykiem utraty części wpłaconych środków."
+   }
+  },
+  {
+   "id": "hold-16",
+   "opis": "Post FB: 'w 2022 r. zyskaliśmy 18%' - jeden rok, bez źródła/kursów/opłat, z zastrzeżeniem",
+   "expected": {
+    "1": "pass",
+    "12a": "fail",
+    "12b": "fail",
+    "14": "pass",
+    "3": "pass"
+   },
+   "doc": {
+    "id": "hold-16",
+    "source": "facebook",
+    "url": "https://facebook.example.invalid/hold-16",
+    "fetched_at": "2026-11-20T10:00:00Z",
+    "lang": "pl",
+    "publisher": {
+     "handle": "tfirho",
+     "display_name": "Fikcyjne TFI Rho S.A.",
+     "profile_url": "https://facebook.example.invalid/tfirho",
+     "is_official_firm_channel": false
+    },
+    "title": null,
+    "text": "Fikcyjne TFI Rho S.A. - reklama.\nW 2022 r. zyskaliśmy 18% w funduszu Rho Surowcowy - czas na kolejne udane lata!\nWyniki historyczne nie gwarantują takich wyników w przyszłości, a inwestowanie wiąże się z ryzykiem utraty kapitału."
+   }
+  },
+  {
+   "id": "hold-17",
+   "opis": "Ostrzeżenie napisane żargonem, niezrozumiałe dla przeciętnego odbiorcy",
+   "expected": {
+    "1": "pass",
+    "2": "pass",
+    "9": "fail",
+    "10": "pass"
+   },
+   "doc": {
+    "id": "hold-17",
+    "source": "landing",
+    "url": "https://landing.example.invalid/hold-17",
+    "fetched_at": "2026-11-20T10:00:00Z",
+    "lang": "pl",
+    "publisher": {
+     "handle": "dmsigmaplus",
+     "display_name": "Fikcyjny Dom Maklerski Sigma-Plus S.A.",
+     "profile_url": "https://landing.example.invalid/dmsigmaplus",
+     "is_official_firm_channel": false
+    },
+    "title": "Kontrakty futures na indeksy",
+    "text": "Reklama - Fikcyjny Dom Maklerski Sigma-Plus S.A.\nHandluj kontraktami futures na indeksy GPW z wysoką dźwignią.\nInformacja: instrument charakteryzuje się wrażliwością na zmiany parametrów delta, gamma i vega oraz ekspozycją na ryzyko bazy, korelacji krzyżowej i konwergencji, a wymóg depozytu zabezpieczającego podlega dynamicznej rekalibracji wg modelu SPAN."
+   }
+  },
+  {
+   "id": "hold-18",
+   "opis": "Tabela 5 lat kalendarzowych ze źródłem, bez ostrzeżeń o walutach/opłatach i bez zastrzeżenia",
+   "expected": {
+    "1": "pass",
+    "2": "pass",
+    "12a": "pass",
+    "12b": "fail",
+    "14": "fail"
+   },
+   "doc": {
+    "id": "hold-18",
+    "source": "facebook",
+    "url": "https://facebook.example.invalid/hold-18",
+    "fetched_at": "2026-11-20T10:00:00Z",
+    "lang": "pl",
+    "publisher": {
+     "handle": "tfitheta",
+     "display_name": "Fikcyjne TFI Theta S.A.",
+     "profile_url": "https://facebook.example.invalid/tfitheta",
+     "is_official_firm_channel": false
+    },
+    "title": null,
+    "text": "Fikcyjne TFI Theta S.A. - reklama.\nTheta Akcji Europejskich - wyniki w latach kalendarzowych:\n2020: +2,4% | 2021: +17,9% | 2022: -11,2% | 2023: +13,5% | 2024: +9,1%\nŹródło: Fikcyjne TFI Theta S.A., dane za okres 01.01.2020-31.12.2024."
+   }
+  }
+ ]
+}
