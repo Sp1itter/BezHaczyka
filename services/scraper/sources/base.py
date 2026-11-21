@@ -31,3 +31,10 @@ class SourceBlocked(SourceError):
     w petli, tylko otwieramy circuit breaker i przechodzimy na korpus offline
     (par. 10, anty-cel „demo zalezne od wifi").
     """
+
+
+class SourceGone(SourceError):
+    """Material nie istnieje (404/410, film usuniety lub prywatny).
+
+    Osobny typ, bo `recheck` ustawia wtedy `gone_at`, zamiast ponawiac zadanie.
+    """

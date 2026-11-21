@@ -1,30 +1,49 @@
-# Obraz scrapera: workery RQ (q:ingest, q:render) i harmonogram — ten sam obraz, rozne CMD.
-FROM python:3.12.7-slim-bookworm
+# Obraz serwisu scraper: worker RQ (q:ingest, q:render) i scheduler (ten sam obraz, inna komenda).
+#
+# Kontekst budowania to katalog services/ (potrzebny pakiet casedb obok scrapera):
+#   docker build -f scraper/Dockerfile -t investwatch-scraper services/
+# (w docker-compose: build.context ../services, dockerfile scraper/Dockerfile)
+#
+# Tag bazowy MUSI odpowiadac wersji playwright w requirements.txt (1.65.2): przegladarki
+# w obrazie sa zbudowane pod ta wersje biblioteki. Obraz zawiera Chromium i zaleznosci systemowe.
+FROM mcr.microsoft.com/playwright/python:v1.65.2-noble
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
-    PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+    PIP_BREAK_SYSTEM_PACKAGES=1
 
-# Uklad jak w repo (services/scraper) — sources/facebook.py liczy fixtures przez parents[3] => /app/fixtures
-WORKDIR /app/services/scraper
-
-COPY requirements.txt .
-# libatomic1 — node z playwrighta wymaga go w wariancie slim
-RUN apt-get update && apt-get install -y --no-install-recommends libatomic1 \
-    && pip install -r requirements.txt \
-    && python -m playwright install --with-deps chromium \
-    && chmod -R a+rX /ms-playwright \
+# ffmpeg: konwersja/probkowanie mediow (media.py). --no-install-recommends i czyszczenie
+# indeksu apt ograniczaja rozmiar warstwy.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
-# Caly kontekst (wyjatki w .dockerignore: tests, youtube, tools...)
-COPY . .
+# Obraz jest jednozadaniowy, wiec zaleznosci ida do Pythona systemowego (PIP_BREAK_SYSTEM_PACKAGES:
+# Ubuntu noble oznacza go jako "externally managed"; obraz Playwrighta nie ma python3-venv).
+# Zaleznosci jako osobna warstwa: zmiana kodu nie wymusza ponownej instalacji.
+COPY scraper/requirements.txt /tmp/requirements.txt
+RUN pip install -r /tmp/requirements.txt
 
-# Uzytkownik bez shella, uid/gid 10003
-RUN groupadd --gid 10003 scraper \
-    && useradd --uid 10003 --gid 10003 --no-create-home --shell /usr/sbin/nologin scraper \
-    && mkdir -p /app/services/scraper/data && chown scraper:scraper /app/services/scraper/data
+# Wspolna warstwa danych (pakiet casedb) z kontekstu services/.
+COPY casedb /tmp/casedb
+RUN pip install /tmp/casedb && rm -rf /tmp/casedb /tmp/requirements.txt
 
-USER scraper
-CMD ["python", "worker_main.py", "q:ingest"]
+# Sciezka kodu ma znaczenie: sources/facebook.py liczy domyslny korpus offline wzgledem
+# katalogu repo (parents[3]/fixtures/demo-ads/facebook), wiec kod laduje w <repo>/services/scraper.
+# Korpus montuje compose (volume ../fixtures/demo-ads), FB_FIXTURES_DIR wskazuje go jawnie.
+WORKDIR /opt/iw/services/scraper
+COPY scraper/contracts.py scraper/jobs.py scraper/media.py scraper/net.py scraper/resolver.py \
+     scraper/scheduler.py scraper/schedule.yaml scraper/state.py scraper/storage.py scraper/worker.py \n     scraper/worker_main.py scraper/scheduler_main.py ./
+COPY scraper/sources/ ./sources/
+COPY scraper/render/ ./render/
+
+# Uzytkownik nie-root (pwuser z obrazu Playwrighta); katalog roboczy na dane lokalne trybu bez S3.
+RUN mkdir -p /opt/iw/services/scraper/data && chown -R pwuser:pwuser /opt/iw/services/scraper/data
+USER pwuser
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+    CMD ["python", "worker.py", "--ping"]
+
+CMD ["python", "worker.py"]

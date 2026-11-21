@@ -1,6 +1,8 @@
 # Obraz serwisu analyzer (worker analizy reklam).
 #
-# Build z katalogu services/analyzer:  docker build -t investwatch-analyzer .
+# Kontekst budowania to katalog services/ (potrzebny pakiet casedb obok analyzera):
+#   docker build -f analyzer/Dockerfile -t investwatch-analyzer services/
+# (w docker-compose: build.context ../services, dockerfile analyzer/Dockerfile)
 
 # Tag przypiety do konkretnej wersji poprawki (nie `latest`, nie sam `3.12`),
 # zeby build byl powtarzalny i zgodny z wymogiem weryfikowalnego lancucha dostaw.
@@ -36,13 +38,17 @@ WORKDIR /app
 # zostaje w cache Dockera tak dlugo, jak dlugo nie zmieni sie requirements.txt,
 # wiec zmiana kodu nie wymusza ponownego pobierania ~kilkuset MB wheeli.
 # Wersje w requirements.txt sa przypiete przez ==, wiec pip install jest powtarzalny.
-COPY requirements.txt ./
+COPY analyzer/requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
+
+# Pakiet casedb (jedyna warstwa danych) instalowany pip-em z kontekstu services/.
+COPY casedb /tmp/casedb
+RUN pip install --no-cache-dir /tmp/casedb && rm -rf /tmp/casedb
 
 # Kod aplikacji dopiero teraz - czesto sie zmienia, wiec jest na koncu.
 # Kopiujemy tylko pakiet `analyzer`, a nie caly katalog: bez tego do obrazu
 # trafilyby .venv, tests/ i tools/ (duzo balastu i potencjalnie wrazliwe pliki).
-COPY analyzer/ ./analyzer/
+COPY analyzer/analyzer/ ./analyzer/
 
 # Od tego miejsca wszystko wykonuje sie jako uzytkownik analyzer.
 USER analyzer

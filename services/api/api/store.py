@@ -3,7 +3,7 @@
 Dwie implementacje z jednym interfejsem:
 
 - PostgresStore — produkcja i docker-compose. Tabele `documents` i `findings`
-  tworzy infra/init.sql (pgvector, JSONB, INTEGER[]). Ten modul ich NIE tworzy,
+  tworzy migracja services/casedb (002_modul1.sql; pgvector, JSONB, INTEGER[]). Ten modul ich NIE tworzy,
   zeby schemat mial jedno zrodlo prawdy.
 - SqliteStore — praca bez Dockera (na zadnej maszynie zespolu go nie bylo).
   Ten sam ksztalt kolumn, JSON trzymany jako tekst. Uzywany tez w testach.
@@ -28,7 +28,7 @@ from api.contracts import AdDocument, Finding
 
 log = logging.getLogger("api.store")
 
-# Wymiar kolumny documents.embedding w infra/init.sql (bge-m3).
+# Wymiar kolumny documents.embedding w migracji casedb 002_modul1.sql (bge-m3).
 EMBEDDING_DIM = 1024
 
 
@@ -356,7 +356,7 @@ class SqliteStore(SqlStore):
 
 
 # --------------------------------------------------------------------------- #
-# Postgres — schemat z infra/init.sql
+# Postgres — schemat z migracji services/casedb
 # --------------------------------------------------------------------------- #
 
 

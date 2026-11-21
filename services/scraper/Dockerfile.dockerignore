@@ -1,0 +1,15 @@
+# Dla kontekstu services/ (BuildKit czyta <Dockerfile>.dockerignore obok Dockerfile).
+**/__pycache__
+**/*.pyc
+**/.venv
+**/.pytest_cache
+**/.ruff_cache
+**/*.egg-info
+**/.env
+analyzer
+api
+web
+scraper/tests
+scraper/tools
+scraper/record_fb_fixtures.py
+casedb/tests
