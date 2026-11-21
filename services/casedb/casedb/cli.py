@@ -10,7 +10,7 @@ import sys
 from datetime import date, datetime
 from pathlib import Path
 
-from casedb import db, export, ingest, registry, store
+from casedb import db, export, ingest, knf, registry, store
 
 
 def _load(path: str) -> list:
@@ -100,6 +100,12 @@ def main(argv: list[str] | None = None) -> int:
     ps.add_argument("status", choices=store.STATUSES)
     ps.add_argument("--error")
 
+    pk = sub.add_parser("load-knf", help="zaladuj snapshot rejestru KNF (tools/knf_snapshot.py) do knf_entities")
+    pk.add_argument("file", nargs="?", default=str(knf.DEFAULT_SNAPSHOT))
+
+    pl = sub.add_parser("knf-lookup", help="sprawdz nazwe podmiotu w snapshocie KNF")
+    pl.add_argument("name")
+
     args = p.parse_args(argv)
     with db.connect() as conn:
         if args.cmd == "migrate":
@@ -151,6 +157,11 @@ def main(argv: list[str] | None = None) -> int:
                                  version=args.version, endpoint=args.endpoint,
                                  label=args.label, score=args.score)
             conn.commit()
+        elif args.cmd == "load-knf":
+            n = knf.load_snapshot(conn, knf.read_snapshot(args.file))
+            print(f"zaladowano {n} wpisow KNF", file=sys.stderr)
+        elif args.cmd == "knf-lookup":
+            _write([{**r, "fetched_at": r["fetched_at"].isoformat()} for r in knf.lookup(conn, args.name)], None)
         elif args.cmd == "status":
             store.set_status(conn, args.case_id, args.status, args.error)
             conn.commit()

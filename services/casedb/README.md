@@ -30,6 +30,21 @@ docker compose run --rm casedb ai-result <case_id> --task scam --model bielik-4.
 Rejestr KNF: CSV UTF-8 `knf_id,name,type,country,register,aliases,domains,handles,source_url`
 (listy rozdzielone `;`); pakietowy `casedb/data/knf_registry.csv` zawiera tylko przyklady.
 
+## Rejestr KNF (snapshot)
+
+`casedb/data/knf_snapshot.jsonl` to snapshot 10 wykazow KNF "Firmy inwestycyjne i Agenci firm
+inwestycyjnych" (domy i banki maklerskie, notyfikacje ZFI, agenci, cofniete zezwolenia, dane
+historyczne). Ladowanie do tabeli `knf_entities` i sprawdzenie nazwy:
+
+```
+docker compose run --rm --build casedb migrate
+docker compose run --rm casedb load-knf
+docker compose run --rm casedb knf-lookup "XTB S.A."
+```
+
+Odswiezenie snapshotu (z katalogu glownego repo, sama biblioteka standardowa):
+`python tools/knf_snapshot.py`
+
 ## Konfiguracja
 
 | Zmienna | Opis |
