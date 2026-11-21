@@ -84,6 +84,7 @@ _BLOCK_TEXT_MARKERS = (
     "zaloguj się, aby kontynuować",
     "log in to continue",
     "you must log in",
+    "captcha",
 )
 
 DEFAULT_FIXTURES = Path(__file__).resolve().parents[3] / "fixtures" / "demo-ads" / "facebook"
