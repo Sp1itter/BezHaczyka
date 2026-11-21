@@ -11,6 +11,7 @@ import Discover from "./views/Discover.jsx";
 import Alerts from "./views/Alerts.jsx";
 import Calibration from "./views/Calibration.jsx";
 import Review from "./views/Review.jsx";
+import Module1Report from "./views/Module1Report.jsx";
 import { api } from "./api/client.js";
 import { connectAlerts } from "./api/socket.js";
 import { ANALYSTS, MODULE, RISK, SOURCE, STATUS } from "./lib/labels.js";
@@ -23,7 +24,7 @@ const FILTER_GROUPS = [
   { key: "status", label: "Status", options: STATUS },
 ];
 
-const VIEWS = { dashboard: Dashboard, discover: Discover, alerts: Alerts, review: Review, calibration: Calibration };
+const VIEWS = { dashboard: Dashboard, discover: Discover, alerts: Alerts, review: Review, module1: Module1Report, calibration: Calibration };
 
 // Zakres czasu -> from/to w ISO (format, ktory dostaje API).
 function timeRange(range, custom) {
@@ -93,7 +94,7 @@ export default function App() {
       <main>
         <TopBar title={title} query={q} onQuery={setQ} range={range} onRange={setRange}
           custom={custom} onCustom={setCustom} onRefresh={reload} live={live} />
-        {view !== "calibration" && (
+        {view !== "calibration" && view !== "module1" && (
           <FilterBar groups={FILTER_GROUPS} value={filters} onChange={setFilters} onClear={() => setFilters({})} />
         )}
         <div className="content">
