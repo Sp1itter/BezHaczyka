@@ -1,0 +1,11 @@
+{
+  "status": "in_scope",
+  "instrument_wrapper": "cfd",
+  "underlying": "crypto",
+  "legal_basis": "art. 2 ust. 1 pkt 2 lit. h ustawy o obrocie",
+  "tags": [
+    "crypto_derivative",
+    "leveraged"
+  ],
+  "reason": null
+}
