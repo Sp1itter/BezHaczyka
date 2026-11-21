@@ -50,9 +50,9 @@ jest niezweryfikowane, jest to napisane wprost.
 
 ### Osoba C — `services/api`, `services/web`
 
-**Minimum działa lokalnie (bez Dockera).** API: dokumenty, findingi z filtrami,
-zmiana statusu, `/stats`, `/calibration`, WebSocket `/ws/alerts`; 25 testów, a
-`ApiClient` analyzera sprawdzony przeciw niemu (pobranie dokumentu + `POST /findings`).
+**Minimum działa — w Dockerze i bez niego (SQLite).** API: dokumenty, findingi z filtrami,
+zmiana statusu, `/stats`, `/calibration`, WebSocket `/ws/alerts`; `ApiClient` analyzera
+sprawdzony przeciw niemu (pobranie dokumentu + `POST /findings`).
 Dashboard: tabela + szczegóły z dowodami, przegląd z wykresami, panel kalibracji
 liczony po stronie klienta (zgodny z `evaluate.py`: próg 50 → TP 0, FP 0, FN 3, TN 5),
 alerty na żywo. **Zweryfikowane w Dockerze:** postgres + api + web z compose, 45 testów API
