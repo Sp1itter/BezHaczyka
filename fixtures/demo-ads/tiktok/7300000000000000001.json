@@ -1,0 +1,13 @@
+{
+  "id": "7300000000000000001",
+  "author": {"unique_id": "inwestor.przyklad", "nickname": "Inwestor Przykład"},
+  "desc": "Załóż konto u brokera Firma Przykład z moim kodem polecającym PROMO100 i odbierz bonus. Gwarantowany zysk już w pierwszym miesiącu! #inwestycje #broker",
+  "create_time": 1795132800,
+  "lang": "pl",
+  "duration": 42,
+  "links": ["https://broker.example.invalid/?ref=PROMO100"],
+  "subtitles": [
+    {"start": 0.0, "end": 4.5, "text": "Cześć, dzisiaj pokażę wam, jak zarobić na giełdzie bez ryzyka."},
+    {"start": 4.5, "end": 11.0, "text": "Wchodzicie w link w bio, zakładacie konto z moim kodem i macie bonus."}
+  ]
+}

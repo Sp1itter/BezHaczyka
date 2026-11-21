@@ -1,4 +1,4 @@
-"""Zadania RQ Modulu 1 dla wszystkich zrodel (facebook, youtube, www).
+"""Zadania RQ Modulu 1 dla wszystkich zrodel (facebook, youtube, www, tiktok).
 
 Podzial na kolejki:
   q:ingest  discover_job(source, query)   lekkie: wyszukanie URL-i + dedup (Valkey SET `<source>:seen`)
@@ -39,7 +39,7 @@ INGEST_QUEUE = "q:ingest"
 RENDER_QUEUE = "q:render"
 DEFAULT_OUTPUT_QUEUE = "q:gpu"
 DEFAULT_OUTPUT_FUNC = "analyzer.worker.analyze_document"
-SOURCES = ("facebook", "youtube", "www")
+SOURCES = ("facebook", "youtube", "www", "tiktok")
 FETCH_TIMEOUT_S = 600
 _EVIDENCE_KEYS = ("field", "type", "target", "signals", "comment_id")
 
@@ -86,6 +86,10 @@ def build_source(name: str, redis: Any = None, registry: Registry | list[dict] |
         from sources.www import WebPageSource
 
         return WebPageSource(store=blob_store_from_env())
+    if name == "tiktok":
+        from sources.tiktok import TikTokSource
+
+        return TikTokSource.from_env()
     raise ValueError(f"nieznane zrodlo: {name!r} (dozwolone: {', '.join(SOURCES)})")
 
 
