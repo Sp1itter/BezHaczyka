@@ -9,9 +9,12 @@ from __future__ import annotations
 
 import json
 import os
+from collections.abc import Callable
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
+from analyzer import scaling
 from analyzer.llm import OllamaClient
+from analyzer.scaling import QueueState
 
 
 def health_payload(llm_client: OllamaClient | None = None, api=None) -> dict:
@@ -30,14 +33,40 @@ def health_payload(llm_client: OllamaClient | None = None, api=None) -> dict:
     }
 
 
+def _no_states() -> list[QueueState]:
+    return []
+
+
+# Zrodlo stanu kolejek dla /scaling. Domyslnie puste; nadpisywane przez workera
+# (prawdziwy odczyt z Valkeya) albo w testach.
+STATE_PROVIDER: Callable[[], list[QueueState]] = _no_states
+
+
+def _scaling_response() -> tuple[int, dict]:
+    """Zbuduj odpowiedz /scaling. Brak dostepu do kolejek => pusta lista, nie blad."""
+    try:
+        config = scaling.load_scaling_config()
+    except scaling.ScalingConfigError as exc:
+        return 500, {"error": f"Konfiguracja skalowania jest sprzeczna: {exc}"}
+    try:
+        states = list(STATE_PROVIDER())
+    except Exception:  # noqa: BLE001 - /scaling nie moze sam past, gdy kolejka nie odpowiada
+        states = []
+    return 200, scaling.scaling_payload(states, config)
+
+
 class _Handler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:  # noqa: N802 - nazwa narzucona przez http.server
-        if self.path != "/health":
+        if self.path == "/health":
+            status, payload = 200, health_payload()
+        elif self.path == "/scaling":
+            status, payload = _scaling_response()
+        else:
             self.send_response(404)
             self.end_headers()
             return
-        body = json.dumps(health_payload()).encode("utf-8")
-        self.send_response(200)
+        body = json.dumps(payload).encode("utf-8")
+        self.send_response(status)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()

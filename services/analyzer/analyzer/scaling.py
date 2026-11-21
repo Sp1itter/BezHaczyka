@@ -265,3 +265,22 @@ def decide(states: list[QueueState], config: ScalingConfig) -> list[ScalingDecis
         )
         for r in rows
     ]
+
+
+def scaling_payload(states: list[QueueState], config: ScalingConfig) -> dict:
+    """Ksztalt odpowiedzi /scaling: konfiguracja ogolna plus decyzja per kolejka."""
+    by_name = {s.name: s for s in states}
+    queues = []
+    for d in decide(states, config):
+        s = by_name[d.queue]
+        queues.append(
+            {
+                "name": d.queue,
+                "backlog": s.backlog,
+                "workers": d.current,
+                "desired": d.desired,
+                "reason": d.reason,
+                "capped_by": d.capped_by,
+            }
+        )
+    return {"executor": config.executor, "hard_max_total": config.hard_max_total, "queues": queues}
