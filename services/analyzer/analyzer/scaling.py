@@ -160,3 +160,108 @@ def load_scaling_config(path: str | Path | None = None) -> ScalingConfig:
         return DEFAULT_SCALING_CONFIG
     validate_scaling_config(config)
     return config
+
+
+# ---------------------------------------------------------------------------
+# Funkcja decyzyjna - czysta, bez efektow ubocznych
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class QueueState:
+    """Zmierzony stan jednej kolejki."""
+
+    name: str
+    backlog: int
+    workers: int
+    idle_s: float
+
+
+@dataclass(frozen=True)
+class ScalingDecision:
+    """Decyzja dla jednej kolejki. `reason` to zdanie dla operatora."""
+
+    queue: str
+    current: int
+    desired: int
+    reason: str
+    capped_by: str | None
+
+
+def decide(states: list[QueueState], config: ScalingConfig) -> list[ScalingDecision]:
+    """Zamien stan kolejek i konfiguracje na decyzje. Deterministyczna, nie rzuca.
+
+    Kolejnosc krokow: wzrost przy backlogu >= progu; spadek TYLKO gdy backlog == 0
+    ORAZ bezczynnosc >= progu (histereza - bez niej autoskaler oscyluje); przyciecie
+    do [min, max]; limit endpointow Ollamy dla gpu; limit globalny hard_max_total
+    (zdejmujemy z kolejki o najmniejszym backlogu, remis -> nazwa alfabetycznie).
+    Kolejki spoza konfiguracji sa pomijane.
+    """
+    rows: list[dict[str, Any]] = []
+    for s in states:
+        policy = config.queues.get(s.name)
+        if policy is None:
+            logger.warning("Kolejka '%s' nie jest skonfigurowana - pomijam", s.name)
+            continue
+        current = s.workers
+        raw = current
+        reason = f"backlog {s.backlog}, workerow {current}, bez zmian"
+        if s.backlog >= policy.scale_up_backlog:
+            raw = current + 1
+            reason = f"backlog {s.backlog} >= progu {policy.scale_up_backlog}, zwiekszam z {current} do {raw}"
+        elif s.backlog == 0 and s.idle_s >= policy.scale_down_idle_s:
+            raw = current - 1
+            reason = (
+                f"kolejka pusta od {int(s.idle_s)} s (prog {policy.scale_down_idle_s} s), "
+                f"zmniejszam z {current} do {raw}"
+            )
+
+        desired = max(policy.min_workers, min(raw, policy.max_workers))
+        capped_by: str | None = None
+        if raw > policy.max_workers:
+            capped_by = "max_workers"
+        if s.name == "gpu" and raw > len(config.ollama_endpoints):
+            # Limit endpointow ma pierwszenstwo w opisie: to on jest przyczyna biznesowa.
+            desired = min(desired, len(config.ollama_endpoints))
+            capped_by = "ollama_endpoints"
+        if raw < policy.min_workers:
+            reason = (
+                f"kolejka pusta od {int(s.idle_s)} s, ale limit min_workers="
+                f"{policy.min_workers} - zostaje {desired}"
+            )
+        if capped_by == "max_workers":
+            reason = (
+                f"backlog {s.backlog} wymaga wiecej workerow, ale limit "
+                f"max_workers={policy.max_workers}, zostaje {desired}"
+            )
+        elif capped_by == "ollama_endpoints":
+            reason = (
+                f"backlog {s.backlog} wymaga wiecej workerow, ale endpointow Ollamy jest "
+                f"{len(config.ollama_endpoints)}, zostaje {desired}"
+            )
+        rows.append(
+            {"state": s, "policy": policy, "desired": desired, "reason": reason, "capped_by": capped_by}
+        )
+
+    # Limit globalny - petla konczy sie, bo kazda iteracja zmniejsza sume o 1.
+    while sum(r["desired"] for r in rows) > config.hard_max_total:
+        candidates = [r for r in rows if r["desired"] > r["policy"].min_workers]
+        if not candidates:
+            break  # same minima - walidacja konfiguracji wyklucza ten przypadek
+        victim = min(candidates, key=lambda r: (r["state"].backlog, r["state"].name))
+        victim["desired"] -= 1
+        victim["capped_by"] = "hard_max_total"
+        victim["reason"] = (
+            f"limit globalny hard_max_total={config.hard_max_total} osiagniety, zostaje {victim['desired']}"
+        )
+
+    return [
+        ScalingDecision(
+            queue=r["state"].name,
+            current=r["state"].workers,
+            desired=r["desired"],
+            reason=r["reason"],
+            capped_by=r["capped_by"],
+        )
+        for r in rows
+    ]
