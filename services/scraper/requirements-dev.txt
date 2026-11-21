@@ -1,0 +1,5 @@
+-r requirements.txt
+
+pytest==9.2.0           # MIT
+pip-audit==2.10.1       # Apache-2.0 — skan zaleznosci (wymog par. 5)
+ruff==0.17.6            # MIT
