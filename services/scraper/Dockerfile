@@ -35,7 +35,8 @@ RUN pip install /tmp/casedb && rm -rf /tmp/casedb /tmp/requirements.txt
 # Korpus montuje compose (volume ../fixtures/demo-ads), FB_FIXTURES_DIR wskazuje go jawnie.
 WORKDIR /opt/iw/services/scraper
 COPY scraper/contracts.py scraper/jobs.py scraper/media.py scraper/net.py scraper/resolver.py \
-     scraper/scheduler.py scraper/schedule.yaml scraper/state.py scraper/storage.py scraper/worker.py \n     scraper/worker_main.py scraper/scheduler_main.py ./
+     scraper/scheduler.py scraper/schedule.yaml scraper/state.py scraper/storage.py scraper/worker.py \
+     scraper/worker_main.py scraper/scheduler_main.py ./
 COPY scraper/sources/ ./sources/
 COPY scraper/render/ ./render/
 
