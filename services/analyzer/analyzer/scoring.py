@@ -37,13 +37,62 @@ def risk_score(results: list[RuleResult]) -> float:
     return round(100.0 * numerator / denominator, 1)
 
 
-def risk_level(score: float) -> RiskLevel:
-    """Poziom ryzyka. `high` odpala alert WebSocket w dashboardzie."""
+# Progi eskalacji po NAJCIEZSZYM potwierdzonym naruszeniu.
+# Ponizej tej pewnosci nie eskalujemy — heurystyki (np. regula 7 z confidence 0.6)
+# nie moga same podnosic materialu do poziomu wysokiego.
+ESCALATION_MIN_CONFIDENCE = 0.7
+ESCALATION_HIGH_SEVERITY = 5
+ESCALATION_MEDIUM_SEVERITY = 4
+
+
+def max_breach_severity(results: list[RuleResult]) -> int:
+    """Waga najciezszej PEWNEJ zlamanej reguly. 0, gdy nie ma takiej."""
+    return max(
+        (
+            r.severity
+            for r in results
+            if r.verdict is Verdict.FAIL and r.confidence >= ESCALATION_MIN_CONFIDENCE
+        ),
+        default=0,
+    )
+
+
+def risk_level(score: float, results: list[RuleResult] | None = None) -> RiskLevel:
+    """Poziom ryzyka. `high` odpala alert WebSocket w dashboardzie.
+
+    DWA NIEZALEZNE SYGNALY, bo mierza rozne rzeczy:
+
+    `score` mowi, JAKA CZESC wymogow material narusza. Jest proporcjonalny,
+    wiec rozciencza sie liczba regul, ktore material spelnia: to samo naruszenie
+    o wadze 5 daje 45 punktow przy dwoch zdanych regulach i tylko 17 przy osmiu.
+    Jako miara "ile wymogow naruszono" jest poprawny i zostaje bez zmian —
+    panel kalibracji przemiata prog wlasnie po nim.
+
+    `results` mowi, JAK POWAZNE jest najciezsze naruszenie. Nadzorca nie myśli
+    "ta reklama narusza jeden z dziewieciu wymogow, wiec jest 17% zla", tylko
+    "ta reklama narusza art. 44 ust. 8". Dlatego potwierdzone naruszenie reguly
+    o wadze 5 podnosi material do poziomu wysokiego NIEZALEZNIE od tego, ile
+    innych wymogow spelnia.
+
+    Eskalacja NIGDY nie obniza poziomu wynikajacego ze score — bierzemy wyzszy
+    z dwoch sygnalow. Przy `results=None` zachowanie jest takie jak wczesniej.
+    """
     if score >= HIGH_THRESHOLD:
+        ze_score = RiskLevel.HIGH
+    elif score >= MEDIUM_THRESHOLD:
+        ze_score = RiskLevel.MEDIUM
+    else:
+        ze_score = RiskLevel.LOW
+
+    if not results:
+        return ze_score
+
+    severity = max_breach_severity(results)
+    if severity >= ESCALATION_HIGH_SEVERITY:
         return RiskLevel.HIGH
-    if score >= MEDIUM_THRESHOLD:
+    if severity >= ESCALATION_MEDIUM_SEVERITY and ze_score is RiskLevel.LOW:
         return RiskLevel.MEDIUM
-    return RiskLevel.LOW
+    return ze_score
 
 
 def is_flagged(score: float, threshold: float = DEFAULT_FLAG_THRESHOLD) -> bool:

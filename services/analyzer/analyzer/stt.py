@@ -16,11 +16,12 @@ from __future__ import annotations
 import os
 import re
 import statistics
+from pathlib import Path
 import unicodedata
 from dataclasses import dataclass
 from typing import Callable, Iterable, Sequence
 
-from .contracts import Transcript, TranscriptSegment
+from .contracts import AdDocument, Transcript, TranscriptSegment
 
 DEFAULT_WHISPER_MODEL = "medium"
 
@@ -190,3 +191,79 @@ def rate_anomaly(transcript: Transcript, segment: TranscriptSegment) -> float | 
     if median <= 0:
         return None
     return speech_rate(segment) / median
+
+
+# --------------------------------------------------------------------------- #
+# Wpiecie w potok: producent transkryptu dla AdDocument
+# --------------------------------------------------------------------------- #
+
+# Korpus scrapera: fixtures/demo-ads/facebook/<ad_archive_id>/video.mp4
+# Pliki mp4 sa w .gitignore (ok. 29 MB samych page.html, wideo znacznie wiecej),
+# wiec leza TYLKO na maszynie, ktora je nagrala.
+DEFAULT_MEDIA_NAMES = ("video.mp4", "audio.wav", "audio.m4a")
+
+_AD_ID_RE = re.compile(r"[?&]id=(\d+)")
+
+
+def ad_archive_id(doc: AdDocument) -> str | None:
+    """Identyfikator reklamy z kanonicznego URL-a Meta Ad Library.
+
+    UWAGA: `doc.id` to UUID nadany przez scraper, NIE ad_archive_id. Katalogi
+    korpusu sa nazwane ad_archive_id, wiec bez tego wyciagania nie trafimy
+    w pliki na dysku.
+    """
+    m = _AD_ID_RE.search(doc.url or "")
+    return m.group(1) if m else None
+
+
+def resolve_media_path(doc: AdDocument, root: Path) -> Path | None:
+    """Znajdz lokalny plik audio/wideo dla dokumentu. None, gdy go nie ma.
+
+    Dwie sciezki, w tej kolejnosci:
+      1. `media[].path` wskazuje istniejacy plik lokalny,
+      2. katalog korpusu <root>/<ad_archive_id>/ zawiera jeden ze znanych plikow.
+
+    Sciezek `s3://` NIE rozwiazujemy tutaj — pobranie z SeaweedFS nalezy do
+    wolajacego, bo wymaga klienta S3 i nie powinno siedziec w warstwie STT.
+    """
+    for item in doc.media:
+        if item.kind not in ("video", "audio"):
+            continue
+        if item.path and not item.path.startswith("s3://"):
+            p = Path(item.path)
+            if p.is_file():
+                return p
+
+    ad_id = ad_archive_id(doc)
+    if ad_id is None:
+        return None
+    for name in DEFAULT_MEDIA_NAMES:
+        p = root / ad_id / name
+        if p.is_file():
+            return p
+    return None
+
+
+def make_local_transcriber(
+    root: Path | str, *, model_size: str | None = None
+) -> Callable[[AdDocument], Transcript | None]:
+    """Producent transkryptu do podania w AnalyzerConfig.transcriber.
+
+    Szuka pliku na dysku pod `root` i transkrybuje go lokalnie (CPU, int8).
+    Zwraca None, gdy pliku nie ma — brak mediow nie jest bledem, tylko
+    informacja, ze tej reklamy nie da sie ocenic na osi czasu.
+
+    Uzycie:
+        from analyzer.stt import make_local_transcriber
+        cfg = build_config(client, transcriber=make_local_transcriber(
+            "fixtures/demo-ads/facebook"))
+    """
+    base = Path(root)
+
+    def _transcribe(doc: AdDocument) -> Transcript | None:
+        path = resolve_media_path(doc, base)
+        if path is None:
+            return None
+        return transcribe(str(path), model_size=model_size)
+
+    return _transcribe
