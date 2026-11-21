@@ -58,16 +58,18 @@ FORBIDDEN_DEPS = {
 }
 
 # Zewnetrzne API modeli i hostowane inferencje — lamia wymog on-premise.
+# Markery liniowe, bo te definicje Z KONIECZNOSCI zawieraja zakazane wzorce.
+# Celowo marker liniowy, a nie plikowy: reszta tego pliku ma byc skanowana.
 FORBIDDEN_PATTERNS = {
-    r"\bopenai\b": "zewnetrzne API modelu",
-    r"\banthropic\b": "zewnetrzne API modelu",
-    r"api\.openai\.com": "zewnetrzne API modelu",
-    r"generativelanguage\.googleapis": "zewnetrzne API modelu",
-    r"\breplicate\b": "hostowana inferencja",
-    r"\bgroq\b": "hostowana inferencja",
-    r"api-inference\.huggingface": "hostowana inferencja",
-    r"\bcolab\b": "hostowane srodowisko — lamie on-premise",
-    r"\bngrok\b": "tunel do internetu — lamie on-premise",
+    r"\bopenai\b": "zewnetrzne API modelu",  # compliance:allow
+    r"\banthropic\b": "zewnetrzne API modelu",  # compliance:allow
+    r"api\.openai\.com": "zewnetrzne API modelu",  # compliance:allow
+    r"generativelanguage\.googleapis": "zewnetrzne API modelu",  # compliance:allow
+    r"\breplicate\b": "hostowana inferencja",  # compliance:allow
+    r"\bgroq\b": "hostowana inferencja",  # compliance:allow
+    r"api-inference\.huggingface": "hostowana inferencja",  # compliance:allow
+    r"\bcolab\b": "hostowane srodowisko — lamie on-premise",  # compliance:allow
+    r"\bngrok\b": "tunel do internetu — lamie on-premise",  # compliance:allow
 }
 
 SECRET_FILES = {".env", "credentials.json", "secrets.json"}
@@ -78,6 +80,48 @@ SECRET_PATTERNS = {
 
 SOURCE_SUFFIXES = {".py", ".ts", ".tsx", ".js", ".jsx", ".yml", ".yaml", ".json", ".txt"}
 SKIP_DIRS = {".venv", "node_modules", "graphify-out", "DocsTaskINWESTWATCH"}
+
+# Jawne wyjatki. Potrzebne, bo pliki, ktore OPISUJA zakazane wzorce (testy
+# tego checkera, dokumentacja licencji), same je zawieraja i checker zglaszalby
+# sam siebie.
+#
+#   # compliance:allow            — pomija JEDNA linie
+#   # compliance:allow-file       — pomija caly plik (w pierwszych 30 liniach)
+#
+# Wyjatki plikowe sa WYPISYWANE w raporcie, zeby nie dalo sie po cichu
+# wyciszyc prawdziwego problemu o 4 w nocy.
+ALLOW_LINE_MARKER = "compliance:allow"
+ALLOW_FILE_MARKER = "compliance:allow-file"
+
+
+def is_allowlisted_file(path: Path) -> bool:
+    if not path.exists() or path.suffix not in SOURCE_SUFFIXES:
+        return False
+    try:
+        head = path.read_text(encoding="utf-8", errors="ignore").splitlines()[:30]
+    except OSError:
+        return False
+    return any(ALLOW_FILE_MARKER in line for line in head)
+
+
+def _scannable(files: list[Path]) -> list[Path]:
+    return [
+        f
+        for f in files
+        if f.suffix in SOURCE_SUFFIXES and f.exists() and not is_allowlisted_file(f)
+    ]
+
+
+def _lines(path: Path) -> list[tuple[int, str]]:
+    """Linie pliku z numeracja, bez linii oznaczonych markerem."""
+    out: list[tuple[int, str]] = []
+    for lineno, line in enumerate(
+        path.read_text(encoding="utf-8", errors="ignore").splitlines(), 1
+    ):
+        if ALLOW_LINE_MARKER in line:
+            continue
+        out.append((lineno, line))
+    return out
 
 
 def _rel(p: Path) -> str:
@@ -109,12 +153,8 @@ def tracked_files() -> list[Path]:
 def check_external_hosts(files: list[Path]) -> list[str]:
     problems: list[str] = []
     url_re = re.compile(r"https?://([A-Za-z0-9_.\-]+)")
-    for f in files:
-        if f.suffix not in SOURCE_SUFFIXES or not f.exists():
-            continue
-        for lineno, line in enumerate(
-            f.read_text(encoding="utf-8", errors="ignore").splitlines(), 1
-        ):
+    for f in _scannable(files):
+        for lineno, line in _lines(f):
             for host in url_re.findall(line):
                 if host in ALLOWED_HOSTS:
                     continue
@@ -126,13 +166,12 @@ def check_external_hosts(files: list[Path]) -> list[str]:
 
 def check_forbidden_patterns(files: list[Path]) -> list[str]:
     problems: list[str] = []
-    for f in files:
-        if f.suffix not in SOURCE_SUFFIXES or not f.exists():
-            continue
-        text = f.read_text(encoding="utf-8", errors="ignore").lower()
-        for pattern, why in FORBIDDEN_PATTERNS.items():
-            if re.search(pattern, text):
-                problems.append(f"{_rel(f)}: {pattern} — {why}")
+    for f in _scannable(files):
+        for lineno, line in _lines(f):
+            lowered = line.lower()
+            for pattern, why in FORBIDDEN_PATTERNS.items():
+                if re.search(pattern, lowered):
+                    problems.append(f"{_rel(f)}:{lineno} {pattern} — {why}")
     return problems
 
 
@@ -140,17 +179,16 @@ def check_forbidden_deps(files: list[Path]) -> list[str]:
     problems: list[str] = []
     targets = [
         f
-        for f in files
+        for f in _scannable(files)
         if f.name in {"requirements.txt", "requirements-dev.txt", "package.json"}
         or f.name.startswith("docker-compose")
     ]
     for f in targets:
-        if not f.exists():
-            continue
-        text = f.read_text(encoding="utf-8", errors="ignore").lower()
-        for dep, why in FORBIDDEN_DEPS.items():
-            if dep in text:
-                problems.append(f"{_rel(f)}: {dep} — {why}")
+        for lineno, line in _lines(f):
+            lowered = line.lower()
+            for dep, why in FORBIDDEN_DEPS.items():
+                if dep in lowered:
+                    problems.append(f"{_rel(f)}:{lineno} {dep} — {why}")
     return problems
 
 
@@ -159,23 +197,20 @@ def check_secrets(files: list[Path]) -> list[str]:
     for f in files:
         if f.name in SECRET_FILES:
             problems.append(f"{_rel(f)}: plik z sekretami w repozytorium")
-        if f.suffix not in SOURCE_SUFFIXES or not f.exists():
-            continue
-        text = f.read_text(encoding="utf-8", errors="ignore")
-        for pattern, why in SECRET_PATTERNS.items():
-            if re.search(pattern, text):
-                problems.append(f"{_rel(f)}: {why}")
+    for f in _scannable(files):
+        for lineno, line in _lines(f):
+            for pattern, why in SECRET_PATTERNS.items():
+                if re.search(pattern, line):
+                    problems.append(f"{_rel(f)}:{lineno} {why}")
     return problems
 
 
 def check_pinned_versions(files: list[Path]) -> list[str]:
     problems: list[str] = []
-    for f in files:
-        if f.name not in {"requirements.txt", "requirements-dev.txt"} or not f.exists():
+    for f in _scannable(files):
+        if f.name not in {"requirements.txt", "requirements-dev.txt"}:
             continue
-        for lineno, line in enumerate(
-            f.read_text(encoding="utf-8").splitlines(), 1
-        ):
+        for lineno, line in _lines(f):
             stripped = line.split("#")[0].strip()
             if not stripped or stripped.startswith("-"):
                 continue
@@ -197,7 +232,16 @@ CHECKS = [
 
 def main() -> int:
     files = tracked_files()
-    print(f"Sprawdzam {len(files)} plikow sledzonych w gicie.\n")
+    excluded = [f for f in files if is_allowlisted_file(f)]
+
+    print(f"Sprawdzam {len(files)} plikow sledzonych w gicie.")
+    if excluded:
+        # Wypisujemy JAWNIE, zeby wyjatek nie byl cichy. Jesli na tej liscie
+        # pojawi sie plik produkcyjny — to jest problem, nie wygoda.
+        print(f"Pominiete przez {ALLOW_FILE_MARKER} ({len(excluded)}):")
+        for f in excluded:
+            print(f"  - {_rel(f)}")
+    print()
 
     total = 0
     for name, check in CHECKS:
