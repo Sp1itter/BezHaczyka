@@ -27,6 +27,29 @@ ROOT = Path(__file__).resolve().parents[1]
 
 # Adresy dozwolone: lokalne, nazwy serwisow z docker-compose, atrapy testowe,
 # oraz domeny w komentarzach dokumentacyjnych.
+# Domeny zarezerwowane do przykladow i testow (RFC 2606, RFC 6761). Nigdy nie
+# wskazuja prawdziwej uslugi, wiec nie moga lamac wymogu on-premise.
+RESERVED_TLDS = (".example", ".invalid", ".test", ".localhost")
+
+# CELE SCRAPOWANIA i oficjalne rejestry — dozwolone SWIADOMIE.
+#
+# "On-premise" z par. 5 specyfikacji znaczy: brak zewnetrznych API modeli
+# i brak hostowanych zamiennikow naszych wlasnych komponentow (bazy, kolejki,
+# inferencji). NIE znaczy "nigdy nie dotykaj internetu" — produktem jest
+# monitor tresci w internecie, wiec scraper MUSI siegac do serwisow, ktore
+# monitoruje. Rejestr KNF jest wprost wskazany w zalacznikach do zadania
+# jako zrodlo danych o autoryzowanych firmach inwestycyjnych.
+#
+# Lista jest jawna i audytowalna: to zarazem zbior zrodel, ktore monitorujemy.
+# Dowolny INNY zewnetrzny adres nadal jest zglaszany.
+SCRAPING_TARGETS = {
+    "youtube.com", "www.youtube.com", "m.youtube.com", "youtu.be",
+    "facebook.com", "www.facebook.com", "m.facebook.com", "web.facebook.com",
+    "instagram.com", "www.instagram.com",
+    "tiktok.com", "www.tiktok.com",
+    "knf.gov.pl", "www.knf.gov.pl",
+}
+
 ALLOWED_HOSTS = {
     "127.0.0.1",
     "localhost",
@@ -159,13 +182,26 @@ def tracked_files() -> list[Path]:
     return files
 
 
+def _host_allowed(host: str) -> bool:
+    """Czy adres jest dozwolony wobec wymogu on-premise.
+
+    Trzy kategorie dozwolone: lokalne i nazwy serwisow compose (ALLOWED_HOSTS),
+    domeny zarezerwowane do przykladow (RESERVED_TLDS) oraz jawnie zadeklarowane
+    cele scrapowania i rejestry (SCRAPING_TARGETS). Wszystko inne jest zglaszane.
+    """
+    h = host.lower().rstrip(".")
+    if h in ALLOWED_HOSTS or h in SCRAPING_TARGETS:
+        return True
+    return h.endswith(RESERVED_TLDS)
+
+
 def check_external_hosts(files: list[Path]) -> list[str]:
     problems: list[str] = []
     url_re = re.compile(r"https?://([A-Za-z0-9_.\-]+)")
     for f in _scannable(files):
         for lineno, line in _lines(f):
             for host in url_re.findall(line):
-                if host in ALLOWED_HOSTS:
+                if _host_allowed(host):
                     continue
                 problems.append(
                     f"{_rel(f)}:{lineno} zewnetrzny adres: {host}"
