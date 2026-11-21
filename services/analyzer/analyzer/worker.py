@@ -19,6 +19,7 @@ from analyzer.change_detect import detect_change
 from analyzer.contracts import AdDocument, Finding, Relation, RuleResult
 from analyzer.db_store import DbStore
 from analyzer.pipeline import AnalyzerConfig, EntityResolution, analyze
+from analyzer.summary import build_summary
 
 log = logging.getLogger("analyzer.worker")
 
@@ -108,6 +109,17 @@ def _save_finding(finding: Finding) -> None:
         log.warning("Zapis findingu do %s nieudany: %s", out_dir, exc)
 
 
+def _make_summary(finding: Finding, doc: AdDocument) -> tuple[str | None, str | None]:
+    """Podsumowanie findingu (SUMMARY_ENABLED, SUMMARY_LLM). Blad nie przerywa zapisu."""
+    if os.getenv("SUMMARY_ENABLED", "1").strip() == "0":
+        return None, None
+    try:
+        return build_summary(finding, doc, use_llm=os.getenv("SUMMARY_LLM", "1").strip() != "0")
+    except Exception as exc:  # finding zapisujemy tak czy inaczej, bez podsumowania
+        log.error("Podsumowanie %s nieudane: %s", finding.id, exc)
+        return None, None
+
+
 def _detect_and_save_change(store, document_id, prev, finding, prev_doc, doc) -> None:
     """Porownaj z poprzednim przebiegiem i zapisz zdarzenia. Blad nie przerywa zadania."""
     try:
@@ -179,11 +191,13 @@ def handle_job(
         except ApiError as exc:
             log.warning("Brak poprzedniego findingu %s: %s", document_id, exc)
 
+    summary, summary_engine = _make_summary(finding, doc)
+
     try:
         if hasattr(api, "save_vectors"):
             api.save_vectors(doc)
         if hasattr(api, "previous"):
-            api.post_finding(finding, doc)
+            api.post_finding(finding, doc, summary=summary, summary_engine=summary_engine)
         else:
             api.post_finding(finding)
     except ApiError as exc:
