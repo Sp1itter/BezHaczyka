@@ -1,0 +1,11 @@
+{
+  "_opis": "Osoby publiczne, ktorych wizerunek bywa uzywany w reklamach inwestycyjnych. Dopasowanie po nazwisku w tresci; reklama z oficjalnego kanalu (page_id albo domena) nie jest liczona jako podszycie. Operator dopisuje osoby na demie; wpis nie jest zarzutem wobec osoby, tylko sygnalem do sprawdzenia reklamy.",
+  "personas": [
+    {
+      "name": "Jan Przykladowy",
+      "variants": ["Jana Przykladowego", "Janem Przykladowym"],
+      "official_page_ids": ["000000000000000"],
+      "official_domains": ["example.invalid"]
+    }
+  ]
+}
