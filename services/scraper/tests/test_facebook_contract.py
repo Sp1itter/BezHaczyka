@@ -191,3 +191,28 @@ def test_one_page_load_per_ad_for_all_viewports(source, monkeypatch):
 def test_fetch_records_meta_platforms(source):
     source.fetch(canonical_ad_url(AD_ID))
     assert source.last_meta == {"publisher_platforms": ["FACEBOOK", "INSTAGRAM"]}
+
+
+def test_missing_creative_with_json_node_saves_text_without_render(tmp_path, chromium_available):
+    """Brak kreacji w DOM, ale wezel JSON z discover jest: dokument bez sondy i zrzutow."""
+    ad_id = "3456789012345678"
+    (tmp_path / "fx" / ad_id).mkdir(parents=True)
+    (tmp_path / "fx" / ad_id / "page.html").write_text("<html><body><p>pusto</p></body></html>", encoding="utf-8")
+    node = {"ad_archive_id": ad_id, "publisher_platform": ["FACEBOOK"],
+            "snapshot": {"page_name": "Strona", "body": {"text": "Tresc reklamy z JSON-a Ad Library."}}}
+    config = FacebookConfig(mode="replay", fixtures_dir=tmp_path / "fx", min_interval_s=0, card_timeout_s=1)
+    src = FacebookAdsSource(config=config, store=LocalBlobStore(tmp_path / "blobs"), node_cache={ad_id: node})
+    doc = src.fetch(canonical_ad_url(ad_id))
+    assert doc.render_probe is None and doc.screenshots == {}
+    assert "Tresc reklamy z JSON-a" in doc.text
+    assert src.last_meta["render"] == "missing"
+
+
+def test_missing_creative_without_json_node_still_fails(tmp_path, chromium_available):
+    ad_id = "3456789012345678"
+    (tmp_path / ad_id).mkdir()
+    (tmp_path / ad_id / "page.html").write_text("<html><body><p>pusto</p></body></html>", encoding="utf-8")
+    config = FacebookConfig(mode="replay", fixtures_dir=tmp_path, min_interval_s=0, card_timeout_s=1)
+    src = FacebookAdsSource(config=config, store=LocalBlobStore(tmp_path / "blobs"), node_cache={})
+    with pytest.raises(SourceError, match="brak kreacji"):
+        src.fetch(canonical_ad_url(ad_id))

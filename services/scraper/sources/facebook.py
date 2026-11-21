@@ -418,6 +418,7 @@ class FacebookAdsSource:
         html_path: str | None = None
         media: list[MediaItem] = []
         dom_has_video = False
+        missing: SourceError | None = None
 
         # JEDNO zaladowanie strony reklamy (= jedno zapytanie do Meta przez limiter), potem
         # trzy viewporty przez page.set_viewport_size na tej samej stronie. Wczesniej: swiezy
@@ -442,11 +443,26 @@ class FacebookAdsSource:
                     # „zawiesic" goto, choc dokument jest juz wyrenderowany.
                     # O sukcesie decyduje obecnosc kreacji ponizej, nie goto.
                     log.info("facebook %s: goto timeout — sprawdzam karte", ad_id)
-                self._wait_for_creative(page, ad_id, self.config.card_timeout_s)
-                self._wait_for_images(page)
+                missing = None
+                try:
+                    self._wait_for_creative(page, ad_id, self.config.card_timeout_s)
+                except SourceBlocked:
+                    raise
+                except SourceError as exc:
+                    # Kreacji nie ma w DOM (zmiana DOM Meta / inny uklad dialogu), ale tekst
+                    # i metadane reklamy mamy z JSON-a Ad Library (discover albo ta strona).
+                    # Zapisujemy dokument BEZ RenderProbe i zrzutow (extra.meta.render=missing),
+                    # zeby analiza tekstu dostala reklame zamiast failed joba w q:render.
+                    missing = exc
+                else:
+                    self._wait_for_images(page)
                 html = page.content()
                 node = node or ads_from_html(html).get(ad_id) or gql.get(ad_id)
-                if self.config.record_dir and not replay:
+                if missing is not None:
+                    if node is None:
+                        raise missing  # bez kreacji i bez JSON-a nie ma czego analizowac
+                    log.warning("facebook %s: brak kreacji w DOM — zapis bez renderu (tekst z JSON)", ad_id)
+                if self.config.record_dir and not replay and missing is None:
                     # PRZED neutralizacja: replay ma cwiczyc te same pulapki co zywa strona.
                     self._record_snapshot(page, ctx, ad_id)
                 html_path = self.store.put("raw", f"{doc_id}.html", html.encode("utf-8"),
@@ -454,13 +470,19 @@ class FacebookAdsSource:
                 if node is not None and not replay:
                     media = self._download_direct(ctx, node, doc_id)
 
-                for vp, (width, height) in VIEWPORTS.items():
+                for vp, (width, height) in VIEWPORTS.items() if missing is None else ():
                     if vp != first:
                         page.set_viewport_size({"width": width, "height": height})
                         page.wait_for_timeout(self.config.resize_settle_ms)
                         # React Meta potrafi przebudowac dialog po zmianie breakpointu —
                         # creative.js jest idempotentny i oznacza kreacje ponownie.
-                        self._wait_for_creative(page, ad_id, self.config.card_timeout_s / 2)
+                        try:
+                            self._wait_for_creative(page, ad_id, self.config.card_timeout_s / 2)
+                        except SourceBlocked:
+                            raise
+                        except SourceError:
+                            log.warning("facebook %s [%s]: kreacja zniknela po zmianie rozmiaru — pomijam", ad_id, vp)
+                            continue
                         self._wait_for_images(page)
                     removed = neutralize_overlays(page, SCOPE_SELECTOR)
                     guard.lock()  # od teraz zadna nawigacja nie przejdzie
@@ -495,6 +517,8 @@ class FacebookAdsSource:
             title, publisher = None, Publisher()
 
         self.last_meta = {"publisher_platforms": publisher_platforms(node)}
+        if missing is not None:
+            self.last_meta["render"] = "missing"
         return AdDocument(
             id=doc_id,
             source=self.name,
