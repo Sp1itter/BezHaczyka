@@ -1,6 +1,6 @@
 # AGENTS.md - services/casedb
 
-<!-- casedb-handoff v1 | autor: Claude (sesja Hacknation, 2026-11-21) | stan: dzialajacy, przetestowany -->
+<!-- casedb-handoff v1 | autor: Claude (sesja Hacknation, 2026-11-21) | stan: dzialajacy, przetestowany E2E 2026-11-21 -->
 
 Notatka dla kolejnego modelu/agenta. Czytaj przed zmianami w tym katalogu.
 
@@ -37,3 +37,14 @@ i zapisuje wyniki z powrotem (`ai_results`).
 - `tools/check_compliance.py` musi przechodzic (brak zewnetrznych hostow w kodzie, wersje `==`).
 - Sekrety tylko w `.env`. Tylko open source / on-premise.
 - Testy: `TEST_DATABASE_URL=... python -m pytest` (czysci tabele casedb w tej bazie!).
+
+## Stan weryfikacji (2026-11-21, Claude)
+- Docker: `postgres` z compose (port 5432), `casedb migrate` -> `001_cases.sql`.
+- E2E: prawdziwy `services/scraper/youtube/demo.py --limit 3` (3 filmy) + FB z
+  `fixtures/contract-examples/facebook_ad_document.json` (replay korpusu FB wymaga Chromium
+  dla Playwrighta - niezainstalowany). ingest/export/claim/add-column dzialaja,
+  ponowny ingest nie dubluje (upsert po `case_id`), status z `claim` zostaje.
+- `pytest`: 6 passed. Uzywaj `127.0.0.1`, nie `localhost` (Windows: 1 s vs 6,5 min).
+- `pip-audit -r requirements.txt`: brak podatnosci. `check_compliance.py`: casedb czysty
+  (bledy tylko w `services/scraper/youtube`, poza tym katalogiem).
+- Git Bash: `MSYS_NO_PATHCONV=1` przed `docker compose run casedb ... /data/...`.
