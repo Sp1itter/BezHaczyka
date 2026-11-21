@@ -125,6 +125,23 @@ services:
       retries: 3
     networks: [investwatch]
 
+  # --- casedb: wspolna baza przypadkow (YT, FB, WWW + wyniki AI) ---------------
+  # Jednorazowy kontener: przy `docker compose up` stosuje migracje i konczy prace.
+  # Inne komendy: docker compose run --rm casedb export --status new
+  # Pliki do ingestu wrzucaj do ../data/casedb (widoczne w kontenerze jako /data).
+  casedb:
+    build:
+      context: ../services/casedb
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+    volumes:
+      - ../data/casedb:/data
+    restart: "no"
+    networks: [investwatch]
+
   # --- api (Osoba C) ------------------------------------------------------------
   # ZDEFINIOWANY, ale w profilu `full`, zeby `docker compose up` NIE PADAL, dopoki
   # serwis nie istnieje. Gdy Osoba C napisze services/api (z Dockerfile), wystarczy
