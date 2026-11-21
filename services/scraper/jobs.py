@@ -80,7 +80,8 @@ def build_source(name: str, redis: Any = None, registry: Registry | list[dict] |
         from sources.youtube import YouTubeSource, dictionary_from_registry
 
         limiter = RateLimiter(float(os.getenv("YT_MIN_INTERVAL_S", "3")), redis=redis, key="yt:ratelimit")
-        return YouTubeSource(dictionary_from_registry(_rows(registry)), limiter=limiter)
+        curated = [r for r in _rows(registry) if r.get("source", "curated") == "curated"]
+        return YouTubeSource(dictionary_from_registry(curated), limiter=limiter)
     if name == "www":
         from sources.www import WebPageSource
 

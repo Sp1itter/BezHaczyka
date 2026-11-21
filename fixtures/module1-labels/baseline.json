@@ -1,0 +1,201 @@
+{
+  "n": 40,
+  "relation_accuracy": 0.575,
+  "disclosure_precision": 1.0,
+  "disclosure_recall": 0.0833,
+  "disclosure_counts": {
+    "tp": 1,
+    "fp": 0,
+    "fn": 11
+  },
+  "firm_accuracy": 0.8846,
+  "firm_evaluated": 26,
+  "errors": [
+    {
+      "case_id": "1bb43439-916e-58a6-b84b-77aaf73fc95f",
+      "field": "relation",
+      "expected": "official",
+      "got": "third_party"
+    },
+    {
+      "case_id": "e7e7d5cf-1e92-5783-8287-c0fc28a97c5b",
+      "field": "relation",
+      "expected": "official",
+      "got": "third_party"
+    },
+    {
+      "case_id": "b70e6c38-f628-52f5-998e-bc41124f9369",
+      "field": "relation",
+      "expected": "official",
+      "got": "third_party"
+    },
+    {
+      "case_id": "e31fe97f-9628-5360-9fef-b45367d7746a",
+      "field": "relation",
+      "expected": "official",
+      "got": "third_party"
+    },
+    {
+      "case_id": "64d5a7df-4334-541d-9ab5-7cde925336b4",
+      "field": "relation",
+      "expected": "official",
+      "got": "third_party"
+    },
+    {
+      "case_id": "782a7677-f79a-521a-a150-c3022289b26e",
+      "field": "relation",
+      "expected": "official",
+      "got": "third_party"
+    },
+    {
+      "case_id": "8e77b57c-e0d9-54e8-9825-5eb37747914b",
+      "field": "relation",
+      "expected": "official",
+      "got": "third_party"
+    },
+    {
+      "case_id": "4f9d7ec1-a4a6-511e-b280-28e4bdb0eb30",
+      "field": "relation",
+      "expected": "official",
+      "got": "third_party"
+    },
+    {
+      "case_id": "d9aeb3e7-35d2-5336-81a8-ee5b7e7396ba",
+      "field": "relation",
+      "expected": "official",
+      "got": "third_party"
+    },
+    {
+      "case_id": "d9aeb3e7-35d2-5336-81a8-ee5b7e7396ba",
+      "field": "firm",
+      "expected": "Virtune AB",
+      "got": "XTB S.A."
+    },
+    {
+      "case_id": "5ad5ca8e-c954-505a-af94-6af01e59960c",
+      "field": "relation",
+      "expected": "official",
+      "got": "third_party"
+    },
+    {
+      "case_id": "e9e20f12-4111-5cab-bf9e-1c920c138c5c",
+      "field": "relation",
+      "expected": "official",
+      "got": "third_party"
+    },
+    {
+      "case_id": "58902e88-5fdd-595b-81c0-7580057fbee7",
+      "field": "relation",
+      "expected": "official",
+      "got": "third_party"
+    },
+    {
+      "case_id": "58902e88-5fdd-595b-81c0-7580057fbee7",
+      "field": "firm",
+      "expected": "Virtune AB",
+      "got": "XTB S.A."
+    },
+    {
+      "case_id": "124b394d-cdcf-5fa2-bf59-f26653a08e1d",
+      "field": "relation",
+      "expected": "official",
+      "got": "third_party"
+    },
+    {
+      "case_id": "cd130d6b-93fb-55bb-bbdd-0c349ab2c9e7",
+      "field": "relation",
+      "expected": "official",
+      "got": "third_party"
+    },
+    {
+      "case_id": "76252705-eba5-5800-a9dd-055329b4ddc5",
+      "field": "disclosure",
+      "expected": true,
+      "got": false
+    },
+    {
+      "case_id": "410141b3-a39e-5ce0-905f-e4db0725fa69",
+      "field": "disclosure",
+      "expected": true,
+      "got": false
+    },
+    {
+      "case_id": "88b79787-d025-5a78-95bb-aef4543f7955",
+      "field": "disclosure",
+      "expected": true,
+      "got": false
+    },
+    {
+      "case_id": "b5c9dfae-4f20-5478-b9f3-29df12c090d4",
+      "field": "disclosure",
+      "expected": true,
+      "got": false
+    },
+    {
+      "case_id": "154a5e45-8a8e-532c-8397-83fd66fbf18f",
+      "field": "disclosure",
+      "expected": true,
+      "got": false
+    },
+    {
+      "case_id": "18827d5f-8b21-5a0a-bbda-dec7684d298f",
+      "field": "disclosure",
+      "expected": true,
+      "got": false
+    },
+    {
+      "case_id": "18827d5f-8b21-5a0a-bbda-dec7684d298f",
+      "field": "firm",
+      "expected": "Lightyear Europe AS",
+      "got": "Trading 212 Markets Ltd"
+    },
+    {
+      "case_id": "bbcf59c2-b14f-5e81-b520-e5d1cbd55445",
+      "field": "disclosure",
+      "expected": true,
+      "got": false
+    },
+    {
+      "case_id": "3e5fb7b3-6e74-56c6-9482-d8e69daef1e7",
+      "field": "relation",
+      "expected": "unknown",
+      "got": "third_party"
+    },
+    {
+      "case_id": "2bc2dd87-9671-5faa-90a2-9e0199129a09",
+      "field": "relation",
+      "expected": "unknown",
+      "got": "third_party"
+    },
+    {
+      "case_id": "ad4e2215-bfd5-53a1-a9ad-7cf3328b2742",
+      "field": "disclosure",
+      "expected": true,
+      "got": false
+    },
+    {
+      "case_id": "77362fe8-e0df-5d73-8cd3-1b6d67826916",
+      "field": "disclosure",
+      "expected": true,
+      "got": false
+    },
+    {
+      "case_id": "cfcb5a4a-b155-57ad-a4ea-aec978d18c35",
+      "field": "relation",
+      "expected": "unknown",
+      "got": "third_party"
+    },
+    {
+      "case_id": "cfcb5a4a-b155-57ad-a4ea-aec978d18c35",
+      "field": "disclosure",
+      "expected": true,
+      "got": false
+    },
+    {
+      "case_id": "d291a8bc-50c1-5b59-8364-d20c24e251ca",
+      "field": "disclosure",
+      "expected": true,
+      "got": false
+    }
+  ]
+}

@@ -21,7 +21,8 @@ Po `git pull` albo własnej zmianie w `services/<x>` uruchom komendę z tabeli (
 
 | Zmieniło się | Komenda |
 |---|---|
-| `services/<x>/**` | `docker compose up -d --build <x>` (scraper = `scraper-ingest scraper-render scheduler`) |
+| `services/<x>/**` | `docker compose up -d --build <x>` (scraper = `scraper-worker scheduler`) |
+| zmiana resolvera / rejestru KNF | `docker compose exec scraper-worker python tools/reresolve.py` (przelicza `cases.entity_resolution`) |
 | `infra/docker-compose.yml` | `docker compose up -d --build --remove-orphans` |
 | `infra/.env.example` | dopisz nowe zmienne do `.env`, potem `docker compose up -d` |
 | `infra/init.sql` | `docker compose down -v`, potem `docker compose up -d --build` (**UWAGA: kasuje dane**, NIGDY bez zgody człowieka) |
