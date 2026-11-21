@@ -51,3 +51,41 @@ Decyzje dla reguł DET (konsumuje `rules_det`):
 ```
 
 Nagranie zapisuje zamrożony snapshot `page.html` (ok. 3 MB na reklamę). Replay daje identyczną sondę jak przebieg na żywo. HAR nie działa: aplikacja Meta nie renderuje się z nagrania, szczegóły w `render/freeze.js`.
+
+## Collector i flota (praca ciągła)
+
+Dwa niezależne procesy pracują na wspólnej tabeli `url_store`:
+
+| Proces | Komenda (PowerShell, z `services\scraper`) | Co robi |
+|---|---|---|
+| Poziom 1: collector | `.venv\Scripts\python.exe -m collector run` | zapytania z `config\queries.yaml` do Meta Ad Library; zapisuje kandydatów z priorytetem, bez renderu i bez LLM |
+| Poziom 2: flota | `.venv\Scripts\python.exe -m collector fleet` | bierze kandydatów od najwyższego priorytetu (lease, bez dublowania), pobiera, liczy DET; do analyzera wysyła tylko od `analyzer_min_priority` |
+
+Komendy operatora:
+
+```powershell
+.venv\Scripts\python.exe -m collector ctl stats         # liczniki: kandydaci, kolejka, kwarantanna, scalone, gotowe
+.venv\Scripts\python.exe -m collector ctl pause         # wstrzymuje collector; flota dalej przerabia kolejkę
+.venv\Scripts\python.exe -m collector ctl resume
+.venv\Scripts\python.exe -m collector ctl reprioritize  # po zmianie słowników
+.venv\Scripts\python.exe -m collector ctl errors        # odrzucone pliki konfiguracji
+.venv\Scripts\python.exe -m collector seed-synthetic    # plan B: strony z fixtures\demo-ads jako kandydaci
+```
+
+Słowniki, wagi i progi są w `config\lexicons.yaml`, zapytania w `config\queries.yaml`, osoby publiczne w `config\personas.json`. Zmiana działa bez restartu. Plik z błędem jest odrzucany w całości i zostaje poprzednia wersja.
+
+| Zmienna | Domyślnie | Znaczenie |
+|---|---|---|
+| `COLLECTOR_DATABASE_URL` | – | Postgres dla `url_store`; bez niej plik SQLite |
+| `COLLECTOR_DB_PATH` | `data/collector/url_store.sqlite` | plik SQLite |
+| `COLLECTOR_STATE_DIR` | `data/collector` | flaga pauzy, `stats.json`, pobrane dokumenty |
+| `COLLECTOR_CONFIG_DIR` | `services/scraper/config` | słowniki i zapytania |
+| `COLLECTOR_INTERVAL_S` / `COLLECTOR_JITTER_S` | `50` / `15` | przerwa między zapytaniami |
+| `COLLECTOR_MAX_QUERIES_PER_HOUR` | `60` | limit zapytań do Meta |
+| `COLLECTOR_ANALYZE` | `1` | `0` wyłącza wysyłkę do analyzera (sam fetch) |
+| `USER_AGENTS` | – | lista UA rozdzielona `\|\|` (rotacja w obu poziomach) |
+| `PROXY_URLS` | – | lista proxy (przecinek); blokada źródła pauzuje je niezależnie od proxy |
+
+Schemat dla Postgresa: `collector\sql\url_store.postgres.sql` (do migracji `casedb`).
+
+Na noc: maszyna bez usypiania (`powercfg /change standby-timeout-ac 0`), collector i flota w osobnych oknach.
