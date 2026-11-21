@@ -245,12 +245,15 @@ services:
       - "127.0.0.1:${WEB_PORT}:8080"
     networks: [investwatch]
 
-  # --- dashboard: panel nadzorcy (React, nginx 8080) + mock API/Socket.io ------
-  # Placeholder do czasu podpiecia bazy. API_UPSTREAM=http://api:8000 przelacza na services/api.
+  # --- dashboard: panel nadzorcy (React, nginx 8080) -> services/api ------------
+  # /api i /ws idą do DASHBOARD_API_UPSTREAM (domyslnie api:8000, czyli Postgres).
+  # Bez bazy: `docker compose --profile mock up -d dashboard-mock` i
+  # DASHBOARD_API_UPSTREAM=http://dashboard-mock:4000 w .env.
   dashboard-mock:
     build:
       context: ../services/dashboard
       dockerfile: Dockerfile.mock
+    profiles: [mock]
     restart: unless-stopped
     networks: [investwatch]
 
@@ -258,9 +261,10 @@ services:
     build:
       context: ../services/dashboard
     depends_on:
-      - dashboard-mock
+      api:
+        condition: service_healthy
     environment:
-      API_UPSTREAM: ${DASHBOARD_API_UPSTREAM:-http://dashboard-mock:4000}
+      API_UPSTREAM: ${DASHBOARD_API_UPSTREAM:-http://api:8000}
     restart: unless-stopped
     ports:
       - "${DASHBOARD_BIND:-127.0.0.1}:${DASHBOARD_PORT:-7080}:8080"
