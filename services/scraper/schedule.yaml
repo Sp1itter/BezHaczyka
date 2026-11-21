@@ -34,3 +34,10 @@ jobs:
     older_than_minutes: 60
     interval_minutes: 30
     enabled: true
+
+  - name: tiktok-demo
+    kind: discover
+    source: tiktok            # szkielet: tylko fixture'y (fixtures/demo-ads/tiktok), patrz SOURCES.md
+    queries: ["inwestycje"]
+    interval_minutes: 60
+    enabled: false

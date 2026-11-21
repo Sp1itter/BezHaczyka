@@ -57,23 +57,23 @@ def main(argv: list[str] | None = None) -> int:
 
     pr = sub.add_parser("report", help="raporty z widokow")
     pr.add_argument("name", choices=["module1"])
-    pr.add_argument("--source", choices=["youtube", "facebook", "www"])
+    pr.add_argument("--source", choices=["youtube", "facebook", "www", "tiktok"])
     pr.add_argument("--format", choices=["json", "csv"], default="json")
     pr.add_argument("-o", "--output")
 
     pk = sub.add_parser("recheck-list", help="najdawniej widziane przypadki do ponownego pobrania")
     pk.add_argument("--limit", type=int, required=True)
-    pk.add_argument("--source", choices=["youtube", "facebook", "www"])
+    pk.add_argument("--source", choices=["youtube", "facebook", "www", "tiktok"])
     pk.add_argument("--older-than-minutes", type=int, default=0)
 
     pi = sub.add_parser("ingest", help="wczytaj wynik scrapera (plik JSON lub - dla stdin)")
-    pi.add_argument("source", choices=["youtube", "facebook", "www"])
+    pi.add_argument("source", choices=["youtube", "facebook", "www", "tiktok"])
     pi.add_argument("files", nargs="+")
 
     pe = sub.add_parser("export", help="eksport przypadkow do JSON")
     pe.add_argument("--case-id", action="append", default=[])
     pe.add_argument("--status")
-    pe.add_argument("--source", choices=["youtube", "facebook", "www"])
+    pe.add_argument("--source", choices=["youtube", "facebook", "www", "tiktok"])
     pe.add_argument("--limit", type=int)
     pe.add_argument("--claim", metavar="WORKER",
                     help="zarezerwuj przypadki 'new' (status -> queued) i wyeksportuj")

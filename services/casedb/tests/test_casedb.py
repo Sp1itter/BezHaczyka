@@ -403,3 +403,22 @@ def test_migrate_on_legacy_init_sql_schema(conn):
     store.save_finding(conn, _finding(cid), _doc())
     assert conn.execute("SELECT count(*) AS n FROM documents").fetchone()["n"] == 1
     assert store.latest_finding(conn, cid)["document_snapshot"] is not None
+
+
+def test_record_document_meta_platforms_in_module1_report(conn):
+    er = {"publisher_relation": "third_party", "mentions_authorized_firm": True}
+    cid, _ = store.record_document(conn, _doc(), entity_resolution=er)
+    report = "SELECT platformy FROM module1_report WHERE case_id = %s"
+    assert conn.execute(report, (cid,)).fetchone()["platformy"] is None
+
+    meta = {"publisher_platforms": ["FACEBOOK", "INSTAGRAM", "THREADS"]}
+    _, out = store.record_document(conn, _doc(), entity_resolution=er, meta=meta)
+    assert out == "unchanged"  # stary rekord uzupelniony bez zmiany tresci
+    row = conn.execute("SELECT extra FROM cases WHERE case_id = %s", (cid,)).fetchone()
+    assert row["extra"]["meta"] == meta and "publisher" in row["extra"]
+    assert conn.execute(report, (cid,)).fetchone()["platformy"] == ["FACEBOOK", "INSTAGRAM", "THREADS"]
+
+    _, out = store.record_document(conn, _doc(text="Nowa tresc"), entity_resolution=er,
+                                   meta={"publisher_platforms": ["INSTAGRAM"]})
+    assert out == "changed"
+    assert conn.execute(report, (cid,)).fetchone()["platformy"] == ["INSTAGRAM"]

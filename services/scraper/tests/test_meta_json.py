@@ -16,6 +16,7 @@ from sources.meta_json import (
     link_urls,
     primary_body,
     publisher_from,
+    publisher_platforms,
     search_url,
     unwrap_meta_redirect,
     video_urls,
@@ -165,3 +166,21 @@ def test_publisher_without_profile_uri_falls_back_to_page_id():
     pub = publisher_from(_node())
     assert pub.profile_url == f"{FB}/1"
     assert pub.handle is None
+
+
+def test_publisher_platforms_from_fixture():
+    html = (FIXTURES / "facebook" / AD_ID / "page.html").read_text(encoding="utf-8")
+    assert publisher_platforms(ads_from_html(html)[AD_ID]) == ["FACEBOOK", "INSTAGRAM"]
+
+
+@pytest.mark.parametrize(("node", "expected"), [
+    ({"publisher_platform": ["facebook", "INSTAGRAM", "FACEBOOK", "THREADS", "", 3]},
+     ["FACEBOOK", "INSTAGRAM", "THREADS"]),
+    ({"publisher_platform": "AUDIENCE_NETWORK"}, ["AUDIENCE_NETWORK"]),
+    ({"snapshot": {"publisher_platform": ["MESSENGER"]}}, ["MESSENGER"]),
+    ({"snapshot": {}}, []),
+    ({"publisher_platform": {"x": 1}}, []),
+    (None, []),
+])
+def test_publisher_platforms_normalizes(node, expected):
+    assert publisher_platforms(node) == expected
