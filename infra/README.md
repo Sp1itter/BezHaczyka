@@ -18,9 +18,9 @@ Bielika, Ollamy ani pobierania 6,3 GB modeli. Dostajesz: Postgres+pgvector
 (`localhost:5432`, schemat z `init.sql`), Valkey (`6379`), SeaweedFS S3 (`8333`)
 i korpus demo jako statyczne pliki (`http://localhost:8080/`).
 
-Gdy napiszesz `services/api` i `services/web` (każdy z `Dockerfile`), usuń linie
-`profiles: ["full"]` w `docker-compose.yml` - wtedy zwykłe `docker compose up` je poda.
-Przyjęte założenia: `api` słucha na 8000, `web` na 80, Dockerfile w `services/api` i `services/web`.
+`api` i `web` są w compose bez profilu, więc zwykłe `docker compose up` je poda:
+API na `localhost:${API_PORT}` (8000), dashboard na `localhost:${WEB_PORT}` (3000).
+Praca bez Dockera (SQLite + vite): `services/api/README.md`, `services/web/README.md`.
 
 ## Budowanie na kontrakcie bez uruchamiania analizy
 
@@ -74,5 +74,7 @@ przez `host.docker.internal:11434`. Potrzebna tylko osobie uruchamiającej analy
       sprawdź, czy port 8081 nie jest zajęty na hoście.
 - [ ] `host.docker.internal:11434` osiągalny z kontenera (Linux: wymaga wpisu `extra_hosts`;
       Ollama musi słuchać na adresie dostępnym z kontenera, np. `OLLAMA_HOST=0.0.0.0`).
-- [ ] Analyzer wysyła do `http://api:8000` - dopóki `api` jest w profilu `full`, to adres nieosiągalny.
+- [ ] Analyzer wysyła do `http://api:8000` - `api` jest już w compose; sprawdź `POST /findings` z workera.
+- [ ] `api` łączy się z Postgresem (`/health` zwraca `"db": true`, `"dialect": "postgresql"`) - `PostgresStore` nie był uruchomiony.
+- [ ] Dashboard na `localhost:3000` łączy się z `/ws/alerts` przez nginx (pill „alerty na żywo”).
 - [ ] Wolne porty 5432, 6379, 8333, 8080, 8000, 3000 na hoście.
