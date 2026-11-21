@@ -18,7 +18,7 @@ Kolejki, deduplikacja, limiter, resolver KNF, zapis do bazy i analiza są wspól
 2. `jobs.py`: nazwa w `SOURCES` i gałąź w `build_source`.
 3. `schedule.yaml`: zadanie `kind: discover` z `source: <nazwa>`; na start `enabled: false`.
 4. Baza: migracja w `services/casedb/casedb/migrations/` rozszerzająca `cases_source_check`
-   (wzór: `015_source_tiktok.sql`).
+   (wzór: `016_source_tiktok.sql`).
 5. Fixture w `fixtures/demo-ads/<nazwa>/` i wpis w `ADAPTERS` w `tests/test_source_contract.py`.
    Bez wpisu `test_every_source_has_adapter` nie przejdzie.
 6. Testy jednostkowe źródła (`tests/test_<nazwa>.py`).
