@@ -19,7 +19,16 @@ BRAK ostrzezenia ocenia regula 3 (HYBRID, analyzer), a nie reguly polozenia.
 
 from __future__ import annotations
 
-from contracts import AdDocument, Engine, Evidence, EvidenceKind, RuleResult, TextNode, Verdict
+from contracts import (
+    AdDocument,
+    Engine,
+    Evidence,
+    EvidenceKind,
+    RuleResult,
+    TextNode,
+    Verdict,
+)
+
 from sources.facebook import (
     _RISK_RE,
     PLATFORM_TYPOGRAPHY_REASON,

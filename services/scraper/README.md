@@ -1,8 +1,25 @@
-# scraper: FacebookAdsSource (Meta Ad Library)
+# scraper: Moduł 1 (facebook, youtube, www)
 
-Ten katalog zawiera źródło `facebook`, sondę RenderProbe i ich testy oraz niezależne [demo scrapera YouTube](youtube/README.md).
-YouTube działa przez CLI lub `scan`/`start_background`, z własnymi zależnościami. Podłączenie do wspólnych kolejek i kontraktów pozostaje kolejnym etapem.
-Właścicielem serwisu jest osoba A: `Dockerfile`, compose, `WebPageSource` i `rules_det` są po jej stronie.
+Serwis zbiera reklamy firm inwestycyjnych z trzech źródeł (`sources/facebook.py`, `sources/youtube.py`,
+`sources/www.py`), rozpoznaje podmioty względem rejestru KNF (`resolver.py`), zapisuje dokumenty
+w bazie (pakiet `casedb`) i zleca analizę kolejką `q:gpu`. Przepływ i kontrakty: `docs/MODUL1-ARCHITEKTURA.md`.
+
+| Plik | Rola |
+|---|---|
+| `jobs.py` | `discover_job(source, query)` (`q:ingest`), `fetch_job(source, url)`, `recheck_job(limit, older_than_minutes)` (`q:render`/`q:ingest`), fabryka `build_source` |
+| `resolver.py` | `Registry` (z `casedb.store.registry_entries`, cache 10 min) i `resolve(doc, registry)` -> pola `EntityResolution` |
+| `scheduler.py`, `schedule.yaml` | harmonogram (rq-scheduler): `python -m scheduler`, `--once` = jednorazowy przebieg |
+| `worker.py` | worker RQ na `q:ingest` + `q:render` (obraz: `Dockerfile`, kontekst budowania `services/`) |
+
+Resolver: wzmianka firmy to domena z URL-a > dokładna nazwa/alias > fuzzy (rapidfuzz, próg 90, nazwy
+od 8 znaków); aliasy krótsze niż 3 znaki są ignorowane. Relacja: `official` (domena/handle/nazwa
+publikującego należy do firmy), `third_party` (firma wymieniona, publikujący to kto inny), `unknown`
+(brak wzmianki). `disclosure_found` i `affiliate_link` liczone z tekstu, transkryptu i linków w treści.
+Ograniczenie: strona zbiorcza z linkiem „…w XTB” w treści też liczy się jako wzmianka.
+
+Rejestr: `python tools/knf_registry.py --dry-run` (w katalogu głównym repo) uzupełnia
+`knf_registry.csv` o nowe podmioty z wykazów KNF (adresy w kolumnie `source_url`), nie nadpisując
+ręcznych aliasów/domen. Po zmianie CSV: `docker compose run --rm casedb load-registry`.
 
 ## Quick start
 
@@ -20,7 +37,7 @@ python -m venv .venv
 |---|---|---|
 | `discover(query)` | `q:ingest` | Otwiera wyszukiwanie Ad Library (PL, aktywne). Bierze węzły reklam z inline JSON i z `/api/graphql/`, zwraca `…/ads/library/?id=<ad_archive_id>` |
 | `fetch(url)` | `q:render` | Ładuje widok `?id=` na 3 viewportach, usuwa nakładki bez klikania, blokuje nawigację, uruchamia RenderProbe, robi zrzuty desktop/mobile, pobiera mp4. Tekst pochodzi z JSON-a Meta |
-| `jobs.py` | RQ | `discover_job`, `fetch_job`, `schedule_facebook(scheduler)` (CronJob Modułu 1) |
+| `jobs.py` | RQ | `discover_job(source, query)`, `fetch_job(source, url)` - patrz wyżej; harmonogram w `scheduler.py` |
 
 Decyzje dla reguł DET (konsumuje `rules_det`):
 - `platform_rule_override(rule_id, "facebook")`: reguły 4, 5 i 8 zwracają `not_applicable` z powodem „typografia platformy (Meta Ad Library)”.
@@ -33,16 +50,17 @@ Decyzje dla reguł DET (konsumuje `rules_det`):
 |---|---|---|
 | `FB_MODE` | `auto` | `live` / `replay` / `auto` (gdy sieć zawiedzie albo breaker jest otwarty, przełącza się na korpus offline) |
 | `FB_COUNTRY` | `PL` | kraj wyświetlania reklam |
-| `FB_QUERIES` / `FB_REFRESH_MIN` | – / `30` | frazy rozdzielone `;` i interwał CronJoba |
 | `FB_MAX_ADS_PER_RUN` / `FB_MAX_SCROLLS` | `25` / `3` | twardy limit ruchu na jeden przebieg |
 | `FB_MIN_INTERVAL_S` | `5` | globalny odstęp między zapytaniami do Meta (Valkey, wspólny dla wszystkich workerów) |
 | `FB_BREAKER_THRESHOLD` / `FB_BREAKER_COOLDOWN_S` | `2` / `1800` | po 2 blokadach źródło pauzuje 30 min |
 | `FB_FIXTURES_DIR` | `fixtures/demo-ads/facebook` | korpus offline |
-| `SCRAPER_USER_AGENTS` | – | lista UA rozdzielona `\|\|` |
-| `SCRAPER_PROXY` | – | jedno opcjonalne proxy (bez rotacji) |
+| `SCRAPER_USER_AGENTS` / `SCRAPER_PROXIES` | – | listy UA / proxy rozdzielone `\|\|` (`SCRAPER_PROXY`: pojedyncze proxy) |
+| `YT_MIN_INTERVAL_S` | `3` | odstęp między zapytaniami do YouTube (Valkey `yt:ratelimit`) |
+| `DATABASE_URL` | – | baza `casedb` (w compose składana z `POSTGRES_*`) |
+| `SCHEDULE_FILE` / `SCHEDULE_DISABLE` / `SCHEDULE_INTERVAL_<NAZWA>` | `schedule.yaml` / – / – | nadpisania harmonogramu |
 | `S3_ENDPOINT`, `S3_ACCESS_KEY`, `S3_SECRET_KEY` | – | SeaweedFS; bez tych zmiennych pliki trafiają do `SCRAPER_DATA_DIR` |
 | `VALKEY_URL` | `redis://valkey:6379/0` | kolejki i stan |
-| `SCRAPER_OUTPUT_QUEUE` / `SCRAPER_OUTPUT_FUNC` | – | przekazanie dokumentu do analyzera przez nazwę funkcji, bez importu |
+| `SCRAPER_OUTPUT_QUEUE` / `SCRAPER_OUTPUT_FUNC` | `q:gpu` / `analyzer.worker.analyze_document` | zlecenie analizy przez nazwę funkcji, bez importu |
 
 ## Korpus demo (nagrać wieczorem przed demo)
 

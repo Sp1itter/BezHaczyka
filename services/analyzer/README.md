@@ -57,7 +57,8 @@ Wzór: `.env.example` (`.env` nie trafia do gita).
 | `analyzer/rules_llm/registry.py` | `default_config()`: potok produkcyjny (LLM, embeddingi, Whisper) |
 | `analyzer/completeness.py` | wykrywanie materiału częściowego |
 | `analyzer/stt.py`, `media_fetch.py` | Whisper; media: ścieżka, http(s), `s3://` |
-| `analyzer/worker.py` | worker RQ na `q:gpu` |
+| `analyzer/worker.py` | worker RQ na `q:gpu`; magazyn `ANALYZER_STORE=db|api` |
+| `analyzer/db_store.py`, `change_detect.py` | zapis do casedb (Moduł 1), wykrywanie zmian między przebiegami |
 | `analyzer/casedb_adapter.py`, `casedb_bridge.py` | przypadek <-> `AdDocument`/`Finding`, claim i upsert |
 | `tools/casedb_batch.py` | analiza przypadków casedb |
 | `tools/eval_rules.py` | ewaluacja per reguła (`fixtures/module2-cases/`) |
@@ -95,6 +96,23 @@ Ewaluacja:
 .venv/Scripts/python.exe tools/evaluate.py
 .venv/Scripts/python.exe tools/score_corpus.py
 ```
+
+## Integracja z bazą (casedb, Moduł 1)
+
+Worker (`analyzer.worker.analyze_document`) bierze dokumenty i zapisuje wyniki
+przez magazyn wybierany zmienną `ANALYZER_STORE`: `db` (`analyzer/db_store.py`,
+pakiet `casedb`, połączenie z `DATABASE_URL`; domyślny, gdy `DATABASE_URL` jest
+ustawione) albo `api` (`api_client.py`, serwis `services/api`).
+Kontrakt zadania: `docs/MODUL1-ARCHITEKTURA.md` (payload `document_id`,
+`entity_resolution`, `det_results`, `enqueued_at`; payload z całym `AdDocument`
+jest nadal przyjmowany). Po analizie worker zapisuje Finding z migawką dokumentu
+i wektorami, porównuje z poprzednim Findingiem (`change_detect.detect_change`)
+i zapisuje `ChangeEvent`. Wyjątek analizy ustawia status sprawy `error` i jest
+rzucany dalej (RQ oznacza job jako failed). W trybie `db` migawka trafia też do
+tabeli `documents`, więc dashboard (`services/api` + `services/web`) widzi wyniki.
+
+Obraz buduje się z katalogu `services/` (potrzebny pakiet `casedb`):
+`docker build -f analyzer/Dockerfile -t investwatch-analyzer services/`.
 
 ## Zasady
 

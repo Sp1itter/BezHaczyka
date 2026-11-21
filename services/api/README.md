@@ -14,7 +14,8 @@ python -m venv .venv
 ```
 
 Bez `DATABASE_URL` baza to `services/api/data/api-dev.sqlite`. W compose
-`DATABASE_URL=postgresql://...` i tabele z `infra/init.sql`.
+`DATABASE_URL=postgresql://...`, a tabele `documents` i `findings` tworzy migracja
+`services/casedb` (`002_modul1.sql`; analyzer w trybie `ANALYZER_STORE=db` wypełnia obie).
 
 ## Endpointy
 

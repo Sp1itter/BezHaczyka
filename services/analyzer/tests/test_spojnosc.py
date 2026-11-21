@@ -240,3 +240,23 @@ class TestZaleznosci:
             if not pakiet or pakiet.startswith("-"):
                 continue
             assert "==" in pakiet, f"wersja nieprzypieta: {pakiet!r}"
+
+
+class TestBudowanieZCasedb:
+    def test_dockerfile_kontekst_services_i_casedb(self) -> None:
+        d = (ANALYZER_ROOT / "Dockerfile").read_text(encoding="utf-8")
+        assert "COPY analyzer/requirements.txt" in d
+        assert "COPY analyzer/analyzer/" in d
+        assert "COPY casedb /tmp/casedb" in d and "pip install --no-cache-dir /tmp/casedb" in d
+
+    def test_psycopg_ta_sama_wersja_co_casedb(self) -> None:
+        pyproject = ANALYZER_ROOT.parent / "casedb" / "pyproject.toml"
+        if not pyproject.exists():
+            pytest.skip("brak casedb")
+        ich = re.search(r"psycopg\[binary\]==([\w.]+)", pyproject.read_text(encoding="utf-8"))
+        nasza = re.search(
+            r"^psycopg\[binary\]==([\w.]+)",
+            (ANALYZER_ROOT / "requirements.txt").read_text(encoding="utf-8"),
+            re.M,
+        )
+        assert ich and nasza and ich.group(1) == nasza.group(1)

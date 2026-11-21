@@ -28,7 +28,12 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from contracts import AdDocument
-from sources.facebook import DEFAULT_FIXTURES, FacebookAdsSource, FacebookConfig, feed_fold_evidence
+from sources.facebook import (
+    DEFAULT_FIXTURES,
+    FacebookAdsSource,
+    FacebookConfig,
+    feed_fold_evidence,
+)
 from sources.facebook_rules import facebook_det_results
 from sources.meta_json import ad_text, ads_from_html, canonical_ad_url
 from storage import LocalBlobStore

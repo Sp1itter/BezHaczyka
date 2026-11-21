@@ -1,0 +1,36 @@
+# Harmonogram Modulu 1 (czytany przez `python -m scheduler`).
+# Nadpisania z env: SCHEDULE_FILE (inna sciezka), SCHEDULE_DISABLE="nazwa1,nazwa2",
+# SCHEDULE_INTERVAL_<NAZWA> (minuty; nazwa wielkimi literami, '-' -> '_', np. SCHEDULE_INTERVAL_FB_INWESTYCJE=15).
+jobs:
+  - name: fb-inwestycje
+    kind: discover            # discover: wyszukanie URL-i i zlecenie pobrania nowych
+    source: facebook
+    queries: ["XTB", "kod polecający broker", "konto maklerskie bonus"]
+    interval_minutes: 60
+    enabled: true
+
+  - name: yt-finfluencerzy
+    kind: discover
+    source: youtube
+    # frazy = iloczyn firm z rejestru KNF i ponizszych fraz (np. "XTB kod polecający"), max `limit`;
+    # knf_ids: firmy najczesciej promowane przez finfluencerow (kolejnosc = priorytet), bez listy: caly rejestr
+    queries_from_registry:
+      knf_ids: [DM-XTB, ZFI-ETORO, ZFI-T212, ZFI-REVOLUT, BM-MBANK, DM-BOS, ZFI-IBKR, ZFI-LIGHTYEAR]
+      phrases: ["kod polecający", "link partnerski", "współpraca"]
+      limit: 24
+    interval_minutes: 120
+    enabled: true
+
+  - name: www-demo
+    kind: discover
+    source: www
+    seeds: ["http://nginx/www/index.html"]   # korpus demo serwowany przez nginx z compose
+    interval_minutes: 30
+    enabled: true
+
+  - name: recheck
+    kind: recheck             # recheck: ponowne pobranie najdawniej widzianych przypadkow
+    limit: 20
+    older_than_minutes: 60
+    interval_minutes: 30
+    enabled: true

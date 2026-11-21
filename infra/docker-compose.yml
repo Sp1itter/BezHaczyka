@@ -1,37 +1,17 @@
-# InvestWatch - caly stos. Z katalogu infra/:
+# InvestWatch - stos infrastrukturalny (przetestowany: `docker compose up -d --build`
+# stawia caly stos Modulu 1 jedna komenda; patrz infra/README.md).
+#
+# Uruchamianie z katalogu infra/:
 #   cp .env.example .env
-#   docker compose up -d --build
-# Profil `ollama` jest opcjonalny: docker compose --profile ollama up -d
+#   docker compose up -d --build                           (bazy, casedb, analyzer, scraper, scheduler, nginx, api, web)
+#   docker compose up -d postgres valkey seaweedfs nginx   (same bazy, do pracy nad API i frontem)
+#   docker compose exec scheduler python -m scheduler --once   (jednorazowy przebieg zadan, demo)
+# Profil `ollama` jest opcjonalny (Ollama w kontenerze, CPU): docker compose --profile ollama up -d
 #
 # LICENCJE (par. 3.1): tylko permisywne obrazy, przypiete tagiem, zadnego `latest`.
 # AGPL / SSPL sa zakazane - tools/check_compliance.py je odrzuca.
 
 name: investwatch
-
-# Wspolna definicja scrapera (jeden obraz, trzy serwisy).
-x-scraper: &scraper
-  image: investwatch-scraper:local
-  build:
-    context: ../services/scraper
-  env_file: .env
-  restart: unless-stopped
-  depends_on:
-    valkey:
-      condition: service_healthy
-    seaweedfs:
-      condition: service_healthy
-  networks: [investwatch]
-  volumes:
-    - ../fixtures/demo-ads:/app/fixtures/demo-ads:ro
-  shm_size: "1gb"
-  environment:
-    VALKEY_URL: redis://valkey:6379/0
-    S3_ENDPOINT: http://seaweedfs:8333
-    S3_ACCESS_KEY: ${S3_ACCESS_KEY}
-    S3_SECRET_KEY: ${S3_SECRET_KEY}
-    FB_FIXTURES_DIR: /app/fixtures/demo-ads/facebook
-    SCRAPER_OUTPUT_QUEUE: q:gpu
-    SCRAPER_OUTPUT_FUNC: analyzer.worker.analyze_document
 
 services:
 
@@ -72,16 +52,32 @@ services:
     networks: [investwatch]
 
   # --- SeaweedFS (Apache-2.0): magazyn obiektow z API S3 -----------------------
-  # Zamiennik obrazow AGPLv3; `server -s3` = master+volume+filer+S3 w jednym procesie.
+  # Zamiennik dla obrazow AGPLv3 (patrz par. 3.1). Tryb `server -s3` to master +
+  # volume + filer + brama S3 w jednym procesie - wystarczy na demo.
+  # Autoryzacja S3: plik tozsamosci generowany przy starcie z S3_ACCESS_KEY / S3_SECRET_KEY
+  # (.env), wiec klucze nie sa w repozytorium, a brama nie jest otwarta dla kazdego.
+  # Male woluminy (128 MB, max 100): domyslne 30 GB nie mieszcza sie na malym dysku dewelopera
+  # i serwer odpowiada wtedy `no free volumes left` (kazdy bucket tworzy wlasne woluminy).
   seaweedfs:
     image: chrislusf/seaweedfs:3.68
-    command: ["server", "-dir=/data", "-s3", "-s3.port=8333"]
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        cat > /tmp/s3.json <<EOF
+        {"identities":[{"name":"investwatch","credentials":[{"accessKey":"$${S3_ACCESS_KEY}","secretKey":"$${S3_SECRET_KEY}"}],"actions":["Admin","Read","Write","List","Tagging"]}]}
+        EOF
+        exec weed server -dir=/data -s3 -s3.port=8333 -s3.config=/tmp/s3.json \
+          -master.volumeSizeLimitMB=128 -volume.max=100
+    environment:
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
     volumes:
       - seaweeddata:/data
     ports:
       - "127.0.0.1:${S3_PORT}:8333"
     healthcheck:
-      # Master wystawia /cluster/status na 9333 (busybox wget).
+      # Master wystawia /cluster/status na 9333 (obraz oparty na alpine, busybox wget).
       test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:9333/cluster/status || exit 1"]
       interval: 10s
       timeout: 5s
@@ -99,44 +95,15 @@ services:
       - "127.0.0.1:${DEMO_CORPUS_PORT}:80"
     networks: [investwatch]
 
-  # --- analyzer: worker analizy reklam ----------------------------------------
-  # Ollama domyslnie NATYWNIE na hoscie (GPU bez NVIDIA Container Toolkit);
-  # kontener celuje w host.docker.internal:11434. Alternatywa: profil `ollama` (CPU).
-  analyzer:
-    build:
-      context: ../services/analyzer
-    depends_on:
-      postgres:
-        condition: service_healthy
-      valkey:
-        condition: service_healthy
-      api:
-        condition: service_healthy
-    restart: unless-stopped
-    env_file: .env
-    environment:
-      # Adresy w sieci compose, niezaleznie od .env.
-      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL}
-      VALKEY_URL: redis://valkey:6379/0
-      API_BASE_URL: http://api:8000
-    extra_hosts:
-      # Linux: host.docker.internal nie istnieje domyslnie.
-      - "host.docker.internal:host-gateway"
-    healthcheck:
-      # Jak w Dockerfile; /health startuje w watku przed petla kolejki.
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8081/health', timeout=3)"]
-      interval: 30s
-      timeout: 5s
-      start_period: 20s
-      retries: 3
-    networks: [investwatch]
-
   # --- casedb: wspolna baza przypadkow (YT, FB, WWW + wyniki AI) ---------------
-  # Jednorazowy: stosuje migracje i konczy. Inne: docker compose run --rm casedb export --status new
-  # Pliki do ingestu: ../data/casedb (w kontenerze /data).
+  # Jednorazowy kontener: przy `docker compose up` stosuje migracje, laduje rejestr KNF
+  # (komenda `init`) i konczy prace z kodem 0. Pozostale uslugi czekaja na to zdarzenie.
+  # Inne komendy: docker compose run --rm casedb export --status new
+  # Pliki do ingestu wrzucaj do ../data/casedb (widoczne w kontenerze jako /data).
   casedb:
     build:
       context: ../services/casedb
+    command: ["init"]
     depends_on:
       postgres:
         condition: service_healthy
@@ -147,13 +114,113 @@ services:
     restart: "no"
     networks: [investwatch]
 
-  # --- api: FastAPI (/documents, /findings, /stats, /calibration, WS /ws/alerts) ---
+  # --- analyzer: worker analizy reklam (nasz obraz) ----------------------------
+  # OLLAMA NIE JEST SERWISEM - swiadoma decyzja architektoniczna.
+  # Ollama dziala NATYWNIE na hoscie (jedna komenda instalatora, sama obsluguje GPU),
+  # a kontener celuje w nia przez host.docker.internal:11434 (alternatywa: profil `ollama`, CPU).
+  # Bez Ollamy analyzer dziala:
+  # reguly LLM zwracaja not_applicable z powodem (brak danych nie jest naruszeniem).
+  # Kontekst budowania to services/ (obok analyzera potrzebny pakiet casedb).
+  analyzer:
+    build:
+      context: ../services
+      dockerfile: analyzer/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+      casedb:
+        condition: service_completed_successfully
+      api:
+        condition: service_healthy
+    # Wymaga wczesniejszego `cp .env.example .env` - bez tego pliku compose odmowi startu.
+    env_file: .env
+    environment:
+      # Nadpisania, zeby adresy w kontenerze byly poprawne niezaleznie od .env.
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL}
+      VALKEY_URL: redis://valkey:6379/0
+      API_BASE_URL: http://api:8000
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      ANALYZER_STORE: db
+    extra_hosts:
+      # Na Linuksie host.docker.internal nie istnieje domyslnie - mapujemy na bramke hosta.
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      # Worker uruchamia serwer /health w watku-demonie przed wejsciem w petle kolejki
+      # (worker.py::_start_health_server); zgodnosci portu pilnuje tests/test_spojnosc.py.
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8081/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+    restart: unless-stopped
+    networks: [investwatch]
+
+  # --- scraper-worker: Modul 1, kolejki q:ingest + q:render ---------------------
+  # Liczbe replik ustawia SCRAPER_WORKERS (domyslnie 2). Repliki dziela limiter i breaker
+  # w Valkey. Wynik zadan trafia do bazy (casedb), a analiza do q:gpu (analyzer).
+  scraper-worker: &scraper
+    build:
+      context: ../services
+      dockerfile: scraper/Dockerfile
+    image: investwatch-scraper:local
+    depends_on: &scraper-deps
+      postgres:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+      seaweedfs:
+        condition: service_healthy
+      casedb:
+        condition: service_completed_successfully
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      VALKEY_URL: redis://valkey:6379/0
+      S3_ENDPOINT: http://seaweedfs:8333
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+      # Korpus offline Facebooka (tryb FB_MODE=auto przechodzi na niego bez sieci).
+      FB_FIXTURES_DIR: /opt/iw/fixtures/demo-ads/facebook
+    volumes:
+      - ../fixtures/demo-ads:/opt/iw/fixtures/demo-ads:ro
+    shm_size: 1gb  # Chromium (/dev/shm); bez tego renderer potrafi sie wywracac
+    deploy:
+      replicas: ${SCRAPER_WORKERS:-2}
+    restart: unless-stopped
+    networks: [investwatch]
+
+  # --- scheduler: harmonogram Modulu 1 (rq-scheduler, services/scraper/schedule.yaml) --
+  # Ten sam obraz co worker. Jednorazowy przebieg (demo):
+  #   docker compose exec scheduler python -m scheduler --once
+  scheduler:
+    <<: *scraper
+    command: ["python", "-m", "scheduler"]
+    healthcheck:
+      test: ["CMD", "python", "worker.py", "--ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    deploy:
+      replicas: 1
+    depends_on:
+      <<: *scraper-deps
+      scraper-worker:
+        condition: service_started
+
+  # --- api (Osoba C) ------------------------------------------------------------
+  # FastAPI: POST/GET /documents, POST/GET /findings, PATCH status, /stats,
+  # /calibration, WS /ws/alerts. Tabele `documents`/`findings` tworzy migracja casedb
+  # (002_modul1.sql), wiec api czeka na zakonczenie kontenera casedb.
   api:
     build:
       context: ../services/api
     depends_on:
       postgres:
         condition: service_healthy
+      casedb:
+        condition: service_completed_successfully
     restart: unless-stopped
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
@@ -177,23 +244,6 @@ services:
     ports:
       - "127.0.0.1:${WEB_PORT}:8080"
     networks: [investwatch]
-
-  # --- scraper: workery kolejek i scheduler (wspolny obraz) --------------------
-  scraper-ingest:
-    <<: *scraper
-    command: ["python", "worker_main.py", "q:ingest"]
-    deploy:
-      replicas: ${SCRAPER_INGEST_WORKERS:-2}
-
-  scraper-render:
-    <<: *scraper
-    command: ["python", "worker_main.py", "q:render"]
-    deploy:
-      replicas: ${SCRAPER_RENDER_WORKERS:-1}
-
-  scheduler:
-    <<: *scraper
-    command: ["python", "scheduler_main.py"]
 
   # --- ollama (opcjonalnie, CPU): profil `ollama`, port nieopublikowany --------
   ollama:

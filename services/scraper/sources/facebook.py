@@ -8,8 +8,9 @@ Decyzje (Faza 1, zaakceptowane):
     w role="dialog" nad lista reklam strony; scope_root sondy to kontener
     kreacji wewnatrz tego dialogu.
   * Tekst z JSON-a (kompletny, bez ucinania „Zobacz wiecej"), geometria z DOM.
-  * Zero logowania, cookies sesyjnych, fingerprintingu, captcha i rotacji proxy
-    (design doc par. 2, Nie-cele). Jedno opcjonalne proxy z `.env` (par. 10).
+  * Zero logowania, cookies sesyjnych, fingerprintingu i captcha (design doc par. 2,
+    Nie-cele). User-Agent i proxy losowane NA KONTEKST przez `net.Rotator`
+    (`SCRAPER_USER_AGENTS`, `SCRAPER_PROXIES`), wspolnie z pozostalymi zrodlami.
 
 Tryby (`FB_MODE`):
   * `live`   — tylko siec,
@@ -24,7 +25,6 @@ import gzip
 import json
 import logging
 import os
-import random
 import re
 import time
 import uuid
@@ -35,6 +35,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 from contracts import AdDocument, MediaItem, Publisher, RenderProbe, ViewportProbe
+from net import Rotator
 from render.probe import (
     CHROMIUM_ARGS,
     MARK_CREATIVE_JS,
@@ -44,6 +45,9 @@ from render.probe import (
     neutralize_overlays,
     run_probe,
 )
+from state import CircuitBreaker, NodeCache, RateLimiter
+from storage import BlobStore, LocalBlobStore
+
 from sources.base import SourceBlocked, SourceError
 from sources.meta_json import (
     AD_LIBRARY_URL,
@@ -60,8 +64,6 @@ from sources.meta_json import (
     search_url,
     video_urls,
 )
-from state import CircuitBreaker, NodeCache, RateLimiter
-from storage import BlobStore, LocalBlobStore
 
 log = logging.getLogger("scraper.facebook")
 
@@ -223,8 +225,7 @@ class FacebookConfig:
     video_max_mb: int = 50
     fixtures_dir: Path = DEFAULT_FIXTURES
     record_dir: Path | None = None
-    user_agents: list[str] = field(default_factory=list)
-    proxy: str | None = None
+    rotator: Rotator = field(default_factory=Rotator)
     breaker_threshold: int = 2
     breaker_cooldown_s: int = 1800
 
@@ -235,7 +236,6 @@ class FacebookConfig:
         if mode not in ("auto", "live", "replay"):
             raise ValueError(f"FB_MODE musi byc auto|live|replay, jest {mode!r}")
         record = env.get("FB_RECORD_DIR")
-        uas = env.get("SCRAPER_USER_AGENTS", "")
         return cls(
             mode=mode,  # type: ignore[arg-type]
             country=env.get("FB_COUNTRY", "PL"),
@@ -248,8 +248,7 @@ class FacebookConfig:
             video_max_mb=int(env.get("FB_VIDEO_MAX_MB", 50)),
             fixtures_dir=Path(env.get("FB_FIXTURES_DIR", str(DEFAULT_FIXTURES))),
             record_dir=Path(record) if record else None,
-            user_agents=[u.strip() for u in uas.split("||") if u.strip()],
-            proxy=env.get("SCRAPER_PROXY") or None,
+            rotator=Rotator.from_env(env),
             breaker_threshold=int(env.get("FB_BREAKER_THRESHOLD", 2)),
             breaker_cooldown_s=int(env.get("FB_BREAKER_COOLDOWN_S", 1800)),
         )
@@ -488,8 +487,9 @@ class FacebookAdsSource:
         from playwright.sync_api import sync_playwright
 
         launch: dict[str, Any] = {"headless": True, "args": CHROMIUM_ARGS}
-        if self.config.proxy:
-            launch["proxy"] = {"server": self.config.proxy}
+        if self.config.rotator.has_proxies:
+            # Playwright wymaga proxy na poziomie launch, by moc je ustawic per kontekst
+            launch["proxy"] = {"server": "http://per-context"}  # compliance:allow (placeholder Playwrighta, nie adres)
         with sync_playwright() as pw:
             browser = pw.chromium.launch(**launch)
             try:
@@ -504,8 +504,10 @@ class FacebookAdsSource:
             "locale": "pl-PL",
             "timezone_id": "Europe/Warsaw",
         }
-        if self.config.user_agents:
-            kwargs["user_agent"] = random.choice(self.config.user_agents)
+        kwargs["user_agent"] = self.config.rotator.user_agent()
+        proxy = self.config.rotator.proxy()
+        if proxy:
+            kwargs["proxy"] = {"server": proxy}
         ctx = browser.new_context(**kwargs)
         if replay and ad_id:
             self._install_replay(ctx, ad_id, vp)
