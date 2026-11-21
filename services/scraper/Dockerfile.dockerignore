@@ -13,5 +13,6 @@ scraper/tests
 scraper/tools/*
 !scraper/tools/reresolve.py
 !scraper/tools/bench_render.py
+!scraper/tools/requalify.py
 scraper/record_fb_fixtures.py
 casedb/tests

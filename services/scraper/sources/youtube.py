@@ -190,6 +190,25 @@ def evidence(text: str, field: str, dictionary: list[dict], signals: list[str]) 
     return items[:MAX_EVIDENCE]
 
 
+NO_CAPTIONS_BASIS = "firm_mention_no_captions"
+
+
+def mentions(text: str, field: str, dictionary: list[dict]) -> list[dict]:
+    """Wzmianki o firmach z rejestru (bez wymogu sygnalu) - kwalifikacja filmu bez napisow."""
+    items, seen = [], set()
+    for begin, end in sentences(text):
+        sentence = text[begin:end]
+        for hit in find_targets(sentence, dictionary):
+            key = (hit["type"], hit["name"])
+            if key in seen:
+                continue
+            seen.add(key)
+            items.append({"field": field, "type": hit["type"], "target": hit["name"], "quote": sentence.strip()[:400],
+                          "signals": [], "basis": NO_CAPTIONS_BASIS,
+                          **({"url": hit["value"]} if hit["type"] == "domain" else {})})
+    return items[:MAX_EVIDENCE]
+
+
 def make_clips(segments: list[dict], dictionary: list[dict], signals: list[str], max_seconds: float, max_clips: int) -> list[dict]:
     """Nigdy nie lacz odleglych wzmianek i nie rozszerzaj klipu ponad twardy limit."""
     clips: list[dict] = []
@@ -478,6 +497,11 @@ class YouTubeSource:
         found = evidence(title, "title", self.dictionary, self.signals) + evidence(description, "description", self.dictionary, self.signals)
         for comment in author_comments:
             found.extend({**e, "comment_id": comment["comment_id"]} for e in evidence(comment["text"], "author_comment", self.dictionary, self.signals))
+        if not captions and not found:
+            # Napisow brak (IpBlocked, wylaczone): nie odrzucamy filmu tylko za to. Wystarczy
+            # wzmianka o firmie z rejestru w tytule/opisie (bez sygnalu promocji w tym samym
+            # zdaniu) - dowod slabszy, oznaczony `basis`, ocene robi analyzer.
+            found = mentions(title, "title", self.dictionary) + mentions(description, "description", self.dictionary)
         return bool(clips or found), found[:MAX_EVIDENCE], clips
 
 
