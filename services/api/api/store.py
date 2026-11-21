@@ -43,6 +43,8 @@ _REVIEW_COLS = (
     "assignee", "assigned_by", "assigned_at",
     "review_verdict", "review_label", "review_note", "reviewed_by", "reviewed_at",
 )
+# Podsumowanie AI (migracja casedb 015). Tez poza kontraktem Finding.
+_SUMMARY_COLS = ("summary", "summary_engine")
 UNSET: Any = object()  # "pole nie przyszlo w PATCH" (rozne od None = wyczysc)
 
 
@@ -242,12 +244,12 @@ class SqlStore:
         return (
             "SELECT f.id, f.document_id, f.primary_module, f.modules, f.routing, f.risk_score, "
             "f.risk_level, f.rule_results, f.entities, f.knn_score, f.status, f.created_at, "
-            + "".join(f"f.{c}, " for c in _REVIEW_COLS)
+            + "".join(f"f.{c}, " for c in _REVIEW_COLS + _SUMMARY_COLS)
             + f"{doc_cols} FROM findings f LEFT JOIN documents d ON d.id = f.document_id"
         )
 
     def _hydrate(self, row: dict[str, Any]) -> dict[str, Any]:
-        out = {k: v for k, v in row.items() if not k.startswith("doc_") and k not in _REVIEW_COLS}
+        out = {k: v for k, v in row.items() if not k.startswith("doc_") and k not in _REVIEW_COLS + _SUMMARY_COLS}
         rv = {k: row.get(k) for k in _REVIEW_COLS}
         for k in ("assigned_at", "reviewed_at"):
             if isinstance(rv[k], datetime):
@@ -272,6 +274,8 @@ class SqlStore:
                 "text_excerpt": text[:400],
             }
         finding["document"] = doc
+        finding["summary"] = row.get("summary")
+        finding["summary_engine"] = row.get("summary_engine")
         finding["assignee"] = rv["assignee"]
         finding["assigned_by"] = rv["assigned_by"]
         finding["assigned_at"] = rv["assigned_at"]
@@ -330,6 +334,15 @@ class SqlStore:
             return None
         rows = self._execute(f"{self._finding_select()} WHERE f.id = {self.ph}", [finding_id])
         return self._hydrate(rows[0]) if rows else None
+
+    def new_high_findings(self, since: datetime) -> list[dict[str, Any]]:
+        """Findingi `high` utworzone po `since` (od najstarszego) - zrodlo alertow z bazy."""
+        rows = self._execute(
+            f"{self._finding_select()} WHERE f.risk_level = 'high' AND f.created_at > {self.ph}"
+            " ORDER BY f.created_at, f.id",
+            [since if self.dialect == "postgresql" else _iso(since)],
+        )
+        return [self._hydrate(r) for r in rows]
 
     def update_status(self, finding_id: str, status: str) -> bool:
         if not self.valid_id(finding_id):
@@ -439,7 +452,8 @@ CREATE TABLE IF NOT EXISTS findings (
     risk_score REAL NOT NULL, risk_level TEXT NOT NULL, rule_results TEXT NOT NULL DEFAULT '[]',
     entities TEXT NOT NULL DEFAULT '{}', knn_score REAL, status TEXT NOT NULL DEFAULT 'new',
     created_at TEXT NOT NULL, assignee TEXT, assigned_by TEXT, assigned_at TEXT,
-    review_verdict TEXT, review_label TEXT, review_note TEXT, reviewed_by TEXT, reviewed_at TEXT
+    review_verdict TEXT, review_label TEXT, review_note TEXT, reviewed_by TEXT, reviewed_at TEXT,
+    summary TEXT, summary_engine TEXT
 );
 CREATE TABLE IF NOT EXISTS finding_events (
     id INTEGER PRIMARY KEY AUTOINCREMENT, finding_id TEXT NOT NULL, at TEXT NOT NULL,
@@ -460,7 +474,7 @@ class SqliteStore(SqlStore):
         self._conn.executescript(_SQLITE_SCHEMA)
         # Stary plik dev (sprzed 011_review): dopisz brakujace kolumny.
         have = {r[1] for r in self._conn.execute("PRAGMA table_info(findings)")}
-        for col in _REVIEW_COLS:
+        for col in _REVIEW_COLS + _SUMMARY_COLS:
             if col not in have:
                 self._conn.execute(f"ALTER TABLE findings ADD COLUMN {col} TEXT")
         self._conn.commit()
