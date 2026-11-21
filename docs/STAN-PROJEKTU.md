@@ -15,13 +15,13 @@ jest niezweryfikowane, jest to napisane wprost.
 |---|---|
 | `FacebookAdsSource` z trybem replay | ✅ |
 | `RenderProbe` (geometria renderu, 3 viewporty) | ✅ |
-| Reguły DET 4–8, z nadpisaniami typografii Meta | ✅ |
+| Reguły DET 4–8, z nadpisaniami typografii Meta | ✅ **tylko dla FB**; brak `rules_det/` dla innych źródeł |
 | Korpus 8 reklam z Meta Ad Library (`page.html` + `node.json.gz`) | ✅ |
 | Złoty `AdDocument` + `RuleResult` jako przykłady kontraktowe | ✅ |
 
 ### Osoba B — `services/analyzer` (gałąź `worktree-investwatch-plan`)
 
-**414 testów przechodzi**, kontrola zgodności czysta, zweryfikowane na żywym Bieliku.
+**527 testów przechodzi**, kontrola zgodności czysta, zweryfikowane na żywym Bieliku.
 
 | Element | Stan |
 |---|---|
@@ -31,6 +31,10 @@ jest niezweryfikowane, jest to napisane wprost.
 | 12 reguł LLM w 4 wsadach wsadowych | ✅ |
 | Reguła 3 (hybrydowa: geometria / czas / tekst) | ✅ |
 | Reguła 10 (hybrydowa: spójność językowa) | ✅ |
+| Reguła 13 (hybrydowa: dominacja wyników historycznych, `font_px`/`bbox` z RenderProbe) | ✅ — Moduł 2 ma komplet 18 reguł |
+| Reguła 3: dowód proporcjonalności (czcionka ostrzeżenia / czcionka obietnicy zysku) w `evidence.measured` | ✅ |
+| Reguły DET 4–8 bez wyniku scrapera → `not_applicable` z powodem (nie znikają, `coverage` nie jest zawyżone) | ✅ |
+| Worker przyjmuje payload scrapera z pełnym `AdDocument`; `FINDINGS_OUT_DIR` zapisuje Finding do pliku, gdy API nie ma | ✅ |
 | Moduł 3 — shadow advisory | ✅ |
 | Scoring + eskalacja po najcięższym naruszeniu | ✅ |
 | Embeddingi bge-m3 (1024) + simhash + dedup kampanii | ✅ |
@@ -114,8 +118,7 @@ aktualizacji**. Projekt: `docs/superpowers/specs/2026-11-22-harmonogram-design.m
    przetranskrybować u siebie i wstawić gotowy `transcript` do `AdDocument`.
    Podniesie pokrycie dwukrotnie i odblokuje osie czasowe reguł 3 i 10.
 2. `RenderProbe` dla pozostałych 7 reklam korpusu — odblokuje reguły DET 4–8.
-3. Reguła 13 (dominacja wyników historycznych) — hybrydowa, wymaga porównania
-   rozmiaru czcionki z największą na stronie.
+3. ~~Reguła 13~~ — zrobiona po stronie analyzera (B), korzysta z RenderProbe.
 
 ### Osoba C
 1. `services/api` — FastAPI, `POST /findings`, `GET /findings` z filtrami, WebSocket.
@@ -149,6 +152,9 @@ aktualizacji**. Projekt: `docs/superpowers/specs/2026-11-22-harmonogram-design.m
 
 ## 7. Znane ograniczenia — mówimy je wprost
 
+- **`infra/.env.example` ma `OLLAMA_TEMPERATURE=0.1` i nie ma `OLLAMA_SEED`.** Kod domyślnie używa `0` + seed 42 (patrz §4); compose z tym plikiem nadpisze to na 0,1 i werdykty przestaną być powtarzalne. Poprawka: `OLLAMA_TEMPERATURE=0`, `OLLAMA_SEED=42`.
+- **Coverage na korpusie (przeliczone 21.11 wieczór, mianownik 19 reguł): 0,00–0,42.** Wcześniej reguły DET bez wyniku znikały z mianownika.
+
 - **Docker nie był uruchomiony.** Dockerfile analyzera i cały `infra/` są napisane,
   ale nigdy nie zbudowane ani nie wystartowane. Brak Dockera na maszynie dewelopera.
 - **Testy scrapera nie były u nas uruchamiane** — brak jego venva (Playwright).
@@ -169,5 +175,5 @@ aktualizacji**. Projekt: `docs/superpowers/specs/2026-11-22-harmonogram-design.m
 | 3 | HYBRID (geometria / czas / tekst) | B | ✅ |
 | 10 | HYBRID (język) | B | ✅ |
 | 4, 5, 6, 7, 8 | DET (geometria renderu) | A | ✅ |
-| 13 | HYBRID (dominacja wyników hist.) | A | ⬜ |
+| 13 | HYBRID (dominacja wyników hist.) | B (RenderProbe od A) | ✅ |
 | M3 | LLM + rejestr | B | ✅ |
