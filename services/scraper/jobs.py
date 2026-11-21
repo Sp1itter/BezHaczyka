@@ -1,4 +1,4 @@
-"""Zadania RQ Modulu 1 dla wszystkich zrodel (facebook, youtube, www).
+"""Zadania RQ Modulu 1 dla wszystkich zrodel (facebook, youtube, www, tiktok).
 
 Podzial na kolejki:
   q:ingest  discover_job(source, query)   lekkie: wyszukanie URL-i + dedup (Valkey SET `<source>:seen`)
@@ -39,7 +39,7 @@ INGEST_QUEUE = "q:ingest"
 RENDER_QUEUE = "q:render"
 DEFAULT_OUTPUT_QUEUE = "q:gpu"
 DEFAULT_OUTPUT_FUNC = "analyzer.worker.analyze_document"
-SOURCES = ("facebook", "youtube", "www")
+SOURCES = ("facebook", "youtube", "www", "tiktok")
 FETCH_TIMEOUT_S = 600
 _EVIDENCE_KEYS = ("field", "type", "target", "signals", "comment_id")
 
@@ -79,13 +79,17 @@ def build_source(name: str, redis: Any = None, registry: Registry | list[dict] |
     if name == "youtube":
         from sources.youtube import YouTubeSource, dictionary_from_registry
 
-        limiter = RateLimiter(float(os.getenv("YT_MIN_INTERVAL_S", "3")), redis=redis, key="yt:ratelimit")
+        limiter = RateLimiter(float(os.getenv("YT_MIN_INTERVAL_S", "8")), redis=redis, key="yt:ratelimit")
         curated = [r for r in _rows(registry) if r.get("source", "curated") == "curated"]
         return YouTubeSource(dictionary_from_registry(curated), limiter=limiter)
     if name == "www":
         from sources.www import WebPageSource
 
         return WebPageSource(store=blob_store_from_env())
+    if name == "tiktok":
+        from sources.tiktok import TikTokSource
+
+        return TikTokSource.from_env()
     raise ValueError(f"nieznane zrodlo: {name!r} (dozwolone: {', '.join(SOURCES)})")
 
 
@@ -137,7 +141,8 @@ def fetch_job(source: str, url: str, recheck: bool = False) -> dict:
     with db.connect() as conn:
         registry = Registry.from_db(conn)
         try:
-            doc, qualified, extra = _fetch(build_source(source, redis, registry), source, url)
+            src = build_source(source, redis, registry)
+            doc, qualified, extra = _fetch(src, source, url)
         except SourceGone:
             case_id = store.case_id_for(url)
             store.mark_gone(conn, case_id)
@@ -149,6 +154,7 @@ def fetch_job(source: str, url: str, recheck: bool = False) -> dict:
         case_id, outcome = store.record_document(
             conn, doc.model_dump(mode="json"), entity_resolution=resolution,
             extra_content=extra, qualified=qualified,
+            meta=getattr(src, "last_meta", None) or None,
         )
         conn.commit()
     log.info("%s %s -> %s%s", source, url, outcome, " (recheck)" if recheck else "")

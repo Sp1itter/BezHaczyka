@@ -20,7 +20,7 @@ from contracts import AdDocument, Publisher
 from net import Rotator
 from storage import BlobStore
 
-from sources.base import SourceError, SourceGone
+from sources.base import SourceBlocked, SourceError, SourceGone
 
 TIMEOUT_S = 20.0
 MAX_BYTES = 2 * 1024 * 1024
@@ -122,6 +122,8 @@ class WebPageSource:
             raise SourceError(f"blad pobierania {url}: {exc}") from exc
         if response.status_code in (404, 410):
             raise SourceGone(f"{response.status_code}: {url}")
+        if response.status_code in (403, 429):
+            raise SourceBlocked(f"{response.status_code} (blokada/limit): {url}")
         if response.status_code >= 400:
             raise SourceError(f"HTTP {response.status_code}: {url}")
         if len(response.content) > MAX_BYTES:

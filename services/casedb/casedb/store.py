@@ -261,11 +261,19 @@ def normalize_name(name: str) -> str:
 def record_document(
     conn: psycopg.Connection, doc: dict, *, entity_resolution: dict | None = None,
     extra_content: list[Content] | None = None, qualified: bool = True,
+    meta: dict | None = None,
 ) -> tuple[str, str]:
-    """Zapisuje AdDocument; zwraca (case_id, 'new' | 'changed' | 'unchanged')."""
+    """Zapisuje AdDocument; zwraca (case_id, 'new' | 'changed' | 'unchanged').
+
+    `meta` - metadane zrodla spoza kontraktu AdDocument (np. FB: publisher_platforms),
+    trafiaja do cases.extra.meta, takze przy 'unchanged' (uzupelnia stare rekordy).
+    """
     from casedb.ingest import from_ad_document
 
     case = from_ad_document(doc)
+    if meta:
+        case.extra["meta"] = meta
+    extra_patch = Jsonb({"meta": meta} if meta else {})
     case.content.extend(extra_content or [])
     case_id = case.case_id or case_id_for(case.url)
     digest = content_hash(doc)
@@ -278,9 +286,10 @@ def record_document(
         if row and row["content_hash"] == digest:
             conn.execute(
                 "UPDATE cases SET last_seen_at = now(), seen_count = seen_count + 1,"
-                " gone_at = NULL, entity_resolution = COALESCE(%s, entity_resolution)"
+                " gone_at = NULL, entity_resolution = COALESCE(%s, entity_resolution),"
+                " extra = extra || %s"
                 " WHERE case_id = %s",
-                (er, case_id),
+                (er, extra_patch, case_id),
             )
             return case_id, "unchanged"
         save_case(conn, case)

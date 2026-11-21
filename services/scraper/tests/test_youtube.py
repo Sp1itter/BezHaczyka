@@ -242,3 +242,18 @@ def test_dictionary_from_registry_and_queries():
     # laczenie z domena przez group: obca domena w linii odrzuca trafienie firmy
     assert proximate("XTB link partnerski https://obca.pl/x", d, SIGNALS) == []
     assert proximate("XTB link partnerski https://xtb.pl/x", d, SIGNALS)
+
+
+def test_no_captions_qualifies_on_firm_mention_in_title_or_description(monkeypatch):
+    """Brak napisow (np. IpBlocked) nie odrzuca filmu: wystarczy firma z rejestru w opisie."""
+    src = patched(monkeypatch, make(), info(PL * 2 + " Dzisiaj o tym, co robi Firma Przykład."))
+    doc, meta = src.fetch_with_evidence(f"{yt.WATCH}{VID}")
+    assert doc.transcript is None and meta["qualified"]
+    assert meta["evidence"][0]["target"] == "Firma Przykład"
+    assert meta["evidence"][0]["basis"] == yt.NO_CAPTIONS_BASIS and meta["evidence"][0]["signals"] == []
+
+
+def test_firm_mention_without_signal_needs_missing_captions(monkeypatch):
+    """Z napisami zostaje dotychczasowa, scisla kwalifikacja (cel + sygnal w jednym zdaniu)."""
+    src = patched(monkeypatch, make(), info(PL * 2 + " Dzisiaj o tym, co robi Firma Przykład."), segs(PL, PL))
+    assert not src.fetch_with_evidence(f"{yt.WATCH}{VID}")[1]["qualified"]

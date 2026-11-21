@@ -155,6 +155,64 @@ def test_login_redirect_blocked_and_overlays_removed_without_clicks(source, capl
     source.fetch(canonical_ad_url(AD_ID))
     lines = [r.getMessage() for r in caplog.records if "nakladki=" in r.getMessage()]
     assert len(lines) == 3  # kazdy viewport
+    # Jedno zaladowanie strony na reklame: nakladki usuwa pierwszy viewport,
+    # po zmianie rozmiaru nie wracaja (neutralizacja i tak biegnie dla kazdego).
+    assert "'login'" in lines[0] and "'cookie'" in lines[0]
+    assert all("nakladki=[]" in line for line in lines[1:])
     for line in lines:
-        assert "'login'" in line and "'cookie'" in line
         assert "zablokowane nawigacje=1" in line  # skrypt /login/ nie opuscil strony
+
+
+def test_one_page_load_per_ad_for_all_viewports(source, monkeypatch):
+    """Przepustowosc: jeden kontekst i jedno goto (= jedno zapytanie do Meta) na reklame."""
+    from playwright.sync_api import Page
+
+    calls = {"ctx": 0, "goto": 0}
+    new_context, goto = source._new_context, Page.goto
+
+    def counting_context(*a, **kw):
+        calls["ctx"] += 1
+        return new_context(*a, **kw)
+
+    def counting_goto(self, *a, **kw):
+        calls["goto"] += 1
+        return goto(self, *a, **kw)
+
+    monkeypatch.setattr(source, "_new_context", counting_context)
+    monkeypatch.setattr(Page, "goto", counting_goto)
+    doc = source.fetch(canonical_ad_url(AD_ID))
+    assert calls == {"ctx": 1, "goto": 1}
+    probes = doc.render_probe.viewports
+    assert set(probes) == {"desktop", "tablet", "mobile"}
+    # sonda mobilna widzi inny uklad niz desktop (viewport naprawde zmieniony)
+    assert probes["mobile"].model_dump() != probes["desktop"].model_dump()
+
+
+def test_fetch_records_meta_platforms(source):
+    source.fetch(canonical_ad_url(AD_ID))
+    assert source.last_meta == {"publisher_platforms": ["FACEBOOK", "INSTAGRAM"]}
+
+
+def test_missing_creative_with_json_node_saves_text_without_render(tmp_path, chromium_available):
+    """Brak kreacji w DOM, ale wezel JSON z discover jest: dokument bez sondy i zrzutow."""
+    ad_id = "3456789012345678"
+    (tmp_path / "fx" / ad_id).mkdir(parents=True)
+    (tmp_path / "fx" / ad_id / "page.html").write_text("<html><body><p>pusto</p></body></html>", encoding="utf-8")
+    node = {"ad_archive_id": ad_id, "publisher_platform": ["FACEBOOK"],
+            "snapshot": {"page_name": "Strona", "body": {"text": "Tresc reklamy z JSON-a Ad Library."}}}
+    config = FacebookConfig(mode="replay", fixtures_dir=tmp_path / "fx", min_interval_s=0, card_timeout_s=1)
+    src = FacebookAdsSource(config=config, store=LocalBlobStore(tmp_path / "blobs"), node_cache={ad_id: node})
+    doc = src.fetch(canonical_ad_url(ad_id))
+    assert doc.render_probe is None and doc.screenshots == {}
+    assert "Tresc reklamy z JSON-a" in doc.text
+    assert src.last_meta["render"] == "missing"
+
+
+def test_missing_creative_without_json_node_still_fails(tmp_path, chromium_available):
+    ad_id = "3456789012345678"
+    (tmp_path / ad_id).mkdir()
+    (tmp_path / ad_id / "page.html").write_text("<html><body><p>pusto</p></body></html>", encoding="utf-8")
+    config = FacebookConfig(mode="replay", fixtures_dir=tmp_path, min_interval_s=0, card_timeout_s=1)
+    src = FacebookAdsSource(config=config, store=LocalBlobStore(tmp_path / "blobs"), node_cache={})
+    with pytest.raises(SourceError, match="brak kreacji"):
+        src.fetch(canonical_ad_url(ad_id))

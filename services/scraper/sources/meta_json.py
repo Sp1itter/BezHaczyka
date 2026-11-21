@@ -295,6 +295,30 @@ def has_video(node: dict) -> bool:
     return bool(video_urls(node)) or snap.get("display_format") == "VIDEO"
 
 
+def publisher_platforms(node: dict | None) -> list[str]:
+    """Platformy Meta, na ktorych wyswietlano reklame (`publisher_platform`).
+
+    Ad Library obejmuje cala Mete: FACEBOOK, INSTAGRAM, AUDIENCE_NETWORK,
+    MESSENGER, THREADS. Zwraca wielkie litery, bez duplikatow, w kolejnosci Meta.
+    """
+    if not isinstance(node, dict):
+        return []
+    raw = node.get("publisher_platform")
+    if raw is None:
+        raw = _snapshot(node).get("publisher_platform")
+    if isinstance(raw, str):
+        raw = [raw]
+    if not isinstance(raw, list):
+        return []
+    out: list[str] = []
+    for item in raw:
+        if isinstance(item, str) and item.strip():
+            name = item.strip().upper()
+            if name not in out:
+                out.append(name)
+    return out
+
+
 def publisher_from(node: dict) -> Publisher:
     """`Publisher` z danych strony reklamodawcy.
 

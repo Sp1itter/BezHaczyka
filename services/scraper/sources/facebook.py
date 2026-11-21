@@ -58,6 +58,7 @@ from sources.meta_json import (
     merge_nodes,
     primary_body,
     publisher_from,
+    publisher_platforms,
     search_url,
     video_urls,
 )
@@ -84,6 +85,7 @@ _BLOCK_TEXT_MARKERS = (
     "zaloguj się, aby kontynuować",
     "log in to continue",
     "you must log in",
+    "captcha",
 )
 
 DEFAULT_FIXTURES = Path(__file__).resolve().parents[3] / "fixtures" / "demo-ads" / "facebook"
@@ -221,6 +223,7 @@ class FacebookConfig:
     nav_timeout_s: float = 30.0
     card_timeout_s: float = 20.0
     settle_ms: int = 1500
+    resize_settle_ms: int = 400
     video_max_mb: int = 50
     fixtures_dir: Path = DEFAULT_FIXTURES
     record_dir: Path | None = None
@@ -244,6 +247,7 @@ class FacebookConfig:
             nav_timeout_s=float(env.get("FB_NAV_TIMEOUT_S", 30)),
             card_timeout_s=float(env.get("FB_CARD_TIMEOUT_S", 20)),
             settle_ms=int(env.get("FB_SETTLE_MS", 1500)),
+            resize_settle_ms=int(env.get("FB_RESIZE_SETTLE_MS", 400)),
             video_max_mb=int(env.get("FB_VIDEO_MAX_MB", 50)),
             fixtures_dir=Path(env.get("FB_FIXTURES_DIR", str(DEFAULT_FIXTURES))),
             record_dir=Path(record) if record else None,
@@ -270,6 +274,8 @@ class FacebookAdsSource:
         node_cache: MutableMapping[str, dict] | None = None,
     ) -> None:
         self.config = config or FacebookConfig.from_env()
+        # Metadane ostatniego fetch spoza kontraktu AdDocument (zamrozony) -> cases.extra.meta
+        self.last_meta: dict[str, Any] = {}
         self.store = store or LocalBlobStore("data/blobs")
         self.limiter = limiter or RateLimiter(self.config.min_interval_s)
         self.breaker = breaker or CircuitBreaker(
@@ -405,48 +411,79 @@ class FacebookAdsSource:
 
         canonical = canonical_ad_url(ad_id)
         doc_id = str(uuid.uuid5(uuid.NAMESPACE_URL, canonical))
+        self.last_meta = {}
         node = self._known_node(ad_id, replay)
         probes: dict[str, ViewportProbe] = {}
         shots: dict[str, str] = {}
         html_path: str | None = None
         media: list[MediaItem] = []
         dom_has_video = False
+        missing: SourceError | None = None
 
+        # JEDNO zaladowanie strony reklamy (= jedno zapytanie do Meta przez limiter), potem
+        # trzy viewporty przez page.set_viewport_size na tej samej stronie. Wczesniej: swiezy
+        # kontekst + goto na kazdy viewport = 3 zapytania i ~15 s na reklame przy FB_MIN_INTERVAL_S=5.
+        # Izolacja z par. 6.2.1 zostaje: osobny kontekst (bez cookies) na kazda reklame, guard
+        # zablokowany na czas sond wszystkich viewportow, nakladki usuwane po kazdej zmianie rozmiaru.
         with self._browser() as browser:
-            for vp in VIEWPORTS:  # swiezy kontekst i page na kazdy viewport (par. 6.2.1)
-                ctx = self._new_context(browser, vp, replay=replay, ad_id=ad_id)
+            first = next(iter(VIEWPORTS))
+            ctx = self._new_context(browser, first, replay=replay, ad_id=ad_id)
+            try:
+                page = ctx.new_page()
+                guard = NavigationGuard(AD_LIBRARY_URL).install(page)
+                gql: dict[str, dict] = {}
+                page.on("response", lambda r, sink=gql: self._collect_graphql(r, sink))
+                if not replay:
+                    self.limiter.acquire()
                 try:
-                    page = ctx.new_page()
-                    guard = NavigationGuard(AD_LIBRARY_URL).install(page)
-                    gql: dict[str, dict] = {}
-                    page.on("response", lambda r, sink=gql: self._collect_graphql(r, sink))
-                    if not replay:
-                        self.limiter.acquire()
-                    try:
-                        page.goto(canonical, wait_until="domcontentloaded",
-                                  timeout=self.config.nav_timeout_s * 1000)
-                    except PlaywrightTimeout:
-                        # Przekierowanie zablokowane w trakcie ladowania potrafi
-                        # „zawiesic" goto, choc dokument jest juz wyrenderowany.
-                        # O sukcesie decyduje obecnosc kreacji ponizej, nie goto.
-                        log.info("facebook %s [%s]: goto timeout — sprawdzam karte", ad_id, vp)
-                    try:
-                        page.wait_for_function(
-                            MARK_CREATIVE_JS, arg=ad_id, timeout=self.config.card_timeout_s * 1000, polling=500
-                        )
-                    except PlaywrightTimeout as exc:
-                        self._raise_if_blocked(page, deep=True)
-                        raise SourceError(
-                            f"brak kreacji reklamy {ad_id} w widoku ?id= (zmiana DOM Meta?)"
-                        ) from exc
+                    page.goto(canonical, wait_until="domcontentloaded",
+                              timeout=self.config.nav_timeout_s * 1000)
+                except PlaywrightTimeout:
+                    # Przekierowanie zablokowane w trakcie ladowania potrafi
+                    # „zawiesic" goto, choc dokument jest juz wyrenderowany.
+                    # O sukcesie decyduje obecnosc kreacji ponizej, nie goto.
+                    log.info("facebook %s: goto timeout — sprawdzam karte", ad_id)
+                missing = None
+                try:
+                    self._wait_for_creative(page, ad_id, self.config.card_timeout_s)
+                except SourceBlocked:
+                    raise
+                except SourceError as exc:
+                    # Kreacji nie ma w DOM (zmiana DOM Meta / inny uklad dialogu), ale tekst
+                    # i metadane reklamy mamy z JSON-a Ad Library (discover albo ta strona).
+                    # Zapisujemy dokument BEZ RenderProbe i zrzutow (extra.meta.render=missing),
+                    # zeby analiza tekstu dostala reklame zamiast failed joba w q:render.
+                    missing = exc
+                else:
                     self._wait_for_images(page)
-                    html = page.content()
+                html = page.content()
+                node = node or ads_from_html(html).get(ad_id) or gql.get(ad_id)
+                if missing is not None:
                     if node is None:
-                        node = ads_from_html(html).get(ad_id) or gql.get(ad_id)
-                    if vp == "desktop" and self.config.record_dir and not replay:
-                        # PRZED neutralizacja: replay ma cwiczyc te same pulapki co zywa strona.
-                        self._record_snapshot(page, ctx, ad_id)
+                        raise missing  # bez kreacji i bez JSON-a nie ma czego analizowac
+                    log.warning("facebook %s: brak kreacji w DOM — zapis bez renderu (tekst z JSON)", ad_id)
+                if self.config.record_dir and not replay and missing is None:
+                    # PRZED neutralizacja: replay ma cwiczyc te same pulapki co zywa strona.
+                    self._record_snapshot(page, ctx, ad_id)
+                html_path = self.store.put("raw", f"{doc_id}.html", html.encode("utf-8"),
+                                           "text/html; charset=utf-8")
+                if node is not None and not replay:
+                    media = self._download_direct(ctx, node, doc_id)
 
+                for vp, (width, height) in VIEWPORTS.items() if missing is None else ():
+                    if vp != first:
+                        page.set_viewport_size({"width": width, "height": height})
+                        page.wait_for_timeout(self.config.resize_settle_ms)
+                        # React Meta potrafi przebudowac dialog po zmianie breakpointu —
+                        # creative.js jest idempotentny i oznacza kreacje ponownie.
+                        try:
+                            self._wait_for_creative(page, ad_id, self.config.card_timeout_s / 2)
+                        except SourceBlocked:
+                            raise
+                        except SourceError:
+                            log.warning("facebook %s [%s]: kreacja zniknela po zmianie rozmiaru — pomijam", ad_id, vp)
+                            continue
+                        self._wait_for_images(page)
                     removed = neutralize_overlays(page, SCOPE_SELECTOR)
                     guard.lock()  # od teraz zadna nawigacja nie przejdzie
                     probe = run_probe(page, SCOPE_SELECTOR)
@@ -455,18 +492,13 @@ class FacebookAdsSource:
                     if removed or guard.blocked:
                         log.info("facebook %s [%s]: nakladki=%s, zablokowane nawigacje=%d",
                                  ad_id, vp, removed, len(guard.blocked))
-
-                    if vp == "desktop":
-                        html_path = self.store.put("raw", f"{doc_id}.html", html.encode("utf-8"),
-                                                   "text/html; charset=utf-8")
+                    if vp == first:
                         dom_has_video = page.locator(f"{SCOPE_SELECTOR} video").count() > 0
-                        if node is not None and not replay:
-                            media = self._download_direct(ctx, node, doc_id)
                     if vp in SCREENSHOT_VIEWPORTS:
                         key = f"{doc_id}-{SCREENSHOT_VIEWPORTS[vp]}.png"
                         shots[vp] = self.store.put("shots", key, self._screenshot(page), "image/png")
-                finally:
-                    ctx.close()
+            finally:
+                ctx.close()
 
         if not media and not replay and (dom_has_video or (node is not None and has_video(node))):
             media = self._download_ytdlp(canonical, doc_id)
@@ -484,6 +516,9 @@ class FacebookAdsSource:
             text = "\n".join(n.text for n in desktop.nodes if n.visible) if desktop else ""
             title, publisher = None, Publisher()
 
+        self.last_meta = {"publisher_platforms": publisher_platforms(node)}
+        if missing is not None:
+            self.last_meta["render"] = "missing"
         return AdDocument(
             id=doc_id,
             source=self.name,
@@ -640,6 +675,16 @@ class FacebookAdsSource:
         for marker in _BLOCK_TEXT_MARKERS:
             if marker in head:
                 raise SourceBlocked(f"Meta: {marker!r}")
+
+    def _wait_for_creative(self, page: Any, ad_id: str, timeout_s: float) -> None:
+        """Czeka na kreacje reklamy (creative.js ja oznacza); brak = blokada albo zmiana DOM."""
+        from playwright.sync_api import TimeoutError as PlaywrightTimeout
+
+        try:
+            page.wait_for_function(MARK_CREATIVE_JS, arg=ad_id, timeout=timeout_s * 1000, polling=500)
+        except PlaywrightTimeout as exc:
+            self._raise_if_blocked(page, deep=True)
+            raise SourceError(f"brak kreacji reklamy {ad_id} w widoku ?id= (zmiana DOM Meta?)") from exc
 
     @staticmethod
     def _wait_for_images(page: Any) -> None:
