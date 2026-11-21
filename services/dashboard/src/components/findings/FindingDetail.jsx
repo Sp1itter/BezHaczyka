@@ -1,12 +1,13 @@
 import { RiskBadge } from "../common/Badge.jsx";
 import StatusSelect from "./StatusSelect.jsx";
 import { AssigneeSelect } from "./Assignee.jsx";
+import Timeline from "./Timeline.jsx";
 import ReviewActions, { AiSuggestion } from "./ReviewActions.jsx";
 import { MODULE, fmtDate, publisherName, sourceLabel } from "../../lib/labels.js";
 
 const VERDICT = { fail: "naruszenie", pass: "OK", not_applicable: "n/d", uncertain: "niepewne" };
 
-export default function FindingDetail({ finding: f, onUpdate, onReview, onAssign, currentUser }) {
+export default function FindingDetail({ finding: f, labels, onUpdate, onReview, onAssign, currentUser }) {
   if (!f) return <div className="empty">Ładowanie…</div>;
   const firm = f.entities?.investment_firm;
   return (
@@ -14,11 +15,11 @@ export default function FindingDetail({ finding: f, onUpdate, onReview, onAssign
       <div className="detail-row">
         <RiskBadge level={f.risk_level} score={f.risk_score} />
         <StatusSelect value={f.status} onChange={(s) => onUpdate(f.id, { status: s })} />
-        <AssigneeSelect finding={f} onAssign={onAssign} />
+        <AssigneeSelect finding={f} currentUser={currentUser} onAssign={onAssign} />
       </div>
       <div className="decision">
         <h4>Decyzja człowieka <AiSuggestion suggestion={f.ai_suggestion} /></h4>
-        <ReviewActions finding={f} currentUser={currentUser} onReview={onReview} />
+        <ReviewActions finding={f} labels={labels} currentUser={currentUser} onReview={onReview} />
       </div>
       <dl className="kv">
         <dt>Tytuł</dt><dd>{f.document?.title}</dd>
@@ -46,12 +47,7 @@ export default function FindingDetail({ finding: f, onUpdate, onReview, onAssign
         </tbody>
       </table>
       <h4>Oś zdarzeń</h4>
-      <ul className="timeline">
-        <li><span className="muted">{fmtDate(f.created_at)}</span> Wykrycie przez analyzer</li>
-        {f.assignee && <li>Przypisano: {f.assignee} ({f.assigned_by === "ai" ? "sugestia AI" : "człowiek"})</li>}
-        {f.review && <li><span className="muted">{fmtDate(f.review.at)}</span> Decyzja: {f.review.decision === "confirmed" ? "potwierdzone" : "fałszywy alarm"} ({f.review.by})</li>}
-        <li className="muted">Pełna historia zmian: do podpięcia z bazy (tabela change_events)</li>
-      </ul>
+      <Timeline finding={f} />
     </div>
   );
 }

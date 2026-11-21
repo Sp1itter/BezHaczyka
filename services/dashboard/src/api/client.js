@@ -34,15 +34,12 @@ export const api = {
   },
   finding: (id) => http(`/findings/${id}`), // [DB-2]
   updateFinding: (id, body) => patch(id, body), // [DB-3]
-  // [DB-3] Decyzja czlowieka. services/api zapisuje dzis tylko `status`;
-  // `review` i `actor` (kto, kiedy, notatka) czekaja na kolumny reviewed_by/reviewed_at/review_note.
-  review: (id, decision, note, actor) => patch(id, { status: decision, review: { decision, note }, actor }),
-  // [DB-3] Przypisanie. services/api nie ma jeszcze kolumn assignee/assigned_by (mock je ma).
-  // services/api wymaga pola status w PATCH, wiec odsylamy biezacy.
-  assign: async (id, assignee, actor) => {
-    const f = await http(`/findings/${id}`);
-    return patch(id, { status: f.status, assignee, actor });
-  },
+  // [DB-3] Ocena czlowieka z etykieta feedbacku (TP/FP/...); status wynika z etykiety po stronie API.
+  review: (id, label, note, actor) => patch(id, { review: { label, note: note || null }, actor }),
+  // [DB-3] Przypisanie / przejecie alertu; null zwalnia.
+  assign: (id, assignee, actor) => patch(id, { assignee, actor }),
+  events: (id) => http(`/findings/${id}/events`), // [DB-8] historia pracy (finding_events)
+  reviewLabels: () => http(`/review-labels`), // [DB-9] slownik etykiet feedbacku
   stats: async (filters) => stats(applyFilters(await allFindings(), filters)), // [DB-4]
   trend: async (filters) => ({ items: trend(applyFilters(await allFindings(), filters)) }), // [DB-5]
   calibration: () => http(`/calibration`), // [DB-6]

@@ -42,6 +42,8 @@ export default function App() {
   const [reloadKey, setReloadKey] = useState(0);
   const [threshold, setThreshold] = useState(65);
   const [currentUser, setCurrentUser] = useState(DEFAULT_USER);
+  const [labels, setLabels] = useState([]);
+  useEffect(() => { api.reviewLabels().then((r) => setLabels(r.items)).catch(() => setLabels([])); }, []);
   const [selected, setSelected] = useState(null);
   const [live, setLive] = useState(false);
   const [feed, setFeed] = useState([]);
@@ -70,7 +72,7 @@ export default function App() {
   // Po zapisie odswiezamy szczegoly z serwera (mock zwraca caly rekord).
   const refreshSelected = (id) => selected?.id === id && api.finding(id).then(setSelected);
   const update = async (id, patch) => { await api.updateFinding(id, patch); refreshSelected(id); reload(); };
-  const review = async (id, decision, note) => { await api.review(id, decision, note, currentUser); refreshSelected(id); reload(); };
+  const review = async (id, label, note) => { await api.review(id, label, note, currentUser); refreshSelected(id); reload(); };
   const assign = async (id, assignee) => { await api.assign(id, assignee, currentUser); refreshSelected(id); reload(); };
 
   const nav = NAV.map((n) => (n.id === "alerts" ? { ...n, badge: feed.length || null } : n));
@@ -98,13 +100,13 @@ export default function App() {
           <ErrorBoundary resetKey={view + reloadKey}>
           <View query={query} reloadKey={reloadKey} onOpen={open} onUpdate={update}
             live={live} feed={feed} threshold={threshold} onThreshold={setThreshold}
-            currentUser={currentUser} onReview={review} onAssign={assign} onGoCalibration={() => setView("calibration")} />
+            currentUser={currentUser} labels={labels} onReview={review} onAssign={assign} onGoCalibration={() => setView("calibration")} />
           </ErrorBoundary>
         </div>
       </main>
       <Flyout open={!!selected} title="Szczegóły rekordu" onClose={() => setSelected(null)}>
         <ErrorBoundary resetKey={selected?.id}>
-          <FindingDetail finding={selected} onUpdate={update} onReview={review} onAssign={assign} currentUser={currentUser} />
+          <FindingDetail finding={selected} labels={labels} onUpdate={update} onReview={review} onAssign={assign} currentUser={currentUser} />
         </ErrorBoundary>
       </Flyout>
       <Toasts items={toasts} onOpen={(id) => { open(id); setToasts((t) => t.filter((x) => x.finding_id !== id)); }}
