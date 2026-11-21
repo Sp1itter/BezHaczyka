@@ -1,0 +1,15 @@
+# Zapytania collectora (Meta Ad Library, kraj z FB_COUNTRY, tylko aktywne reklamy).
+# type: keyword_exact_phrase (fraza dokladna) albo keyword_unordered (wszystkie slowa).
+# tag trafia do url_store.query_tag — po nim widac, ktore zapytania daja trafienia.
+# Edycja bez restartu: collector bierze nowa liste przy kolejnym zapytaniu.
+facebook:
+  - {q: "gwarantowany zysk", type: keyword_exact_phrase, tag: scam}
+  - {q: "dochód pasywny", type: keyword_exact_phrase, tag: scam}
+  - {q: "platforma inwestycyjna", type: keyword_exact_phrase, tag: scam}
+  - {q: "zarabiaj na giełdzie", type: keyword_unordered, tag: scam}
+  - {q: "sygnały forex", type: keyword_unordered, tag: finfluencer}
+  - {q: "copy trading", type: keyword_exact_phrase, tag: finfluencer}
+  - {q: "kurs tradingu", type: keyword_unordered, tag: finfluencer}
+  - {q: "kontrakty CFD", type: keyword_unordered, tag: instrument}
+  - {q: "inwestowanie w ETF", type: keyword_unordered, tag: instrument}
+  - {q: "dom maklerski", type: keyword_exact_phrase, tag: instrument}

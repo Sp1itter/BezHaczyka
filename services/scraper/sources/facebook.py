@@ -8,8 +8,10 @@ Decyzje (Faza 1, zaakceptowane):
     w role="dialog" nad lista reklam strony; scope_root sondy to kontener
     kreacji wewnatrz tego dialogu.
   * Tekst z JSON-a (kompletny, bez ucinania „Zobacz wiecej"), geometria z DOM.
-  * Zero logowania, cookies sesyjnych, fingerprintingu, captcha i rotacji proxy
-    (design doc par. 2, Nie-cele). Jedno opcjonalne proxy z `.env` (par. 10).
+  * Zero logowania, cookies sesyjnych, fingerprintingu i captcha (design doc
+    par. 2, Nie-cele). Rotacja User-Agent i opcjonalna lista proxy z `.env`
+    (USER_AGENTS, PROXY_URLS; wymog specyfikacji, par. 10) — nigdy do obchodzenia
+    blokady: SourceBlocked otwiera breaker i pauzuje zrodlo.
 
 Tryby (`FB_MODE`):
   * `live`   — tylko siec,
@@ -224,7 +226,7 @@ class FacebookConfig:
     fixtures_dir: Path = DEFAULT_FIXTURES
     record_dir: Path | None = None
     user_agents: list[str] = field(default_factory=list)
-    proxy: str | None = None
+    proxies: list[str] = field(default_factory=list)
     breaker_threshold: int = 2
     breaker_cooldown_s: int = 1800
 
@@ -235,7 +237,8 @@ class FacebookConfig:
         if mode not in ("auto", "live", "replay"):
             raise ValueError(f"FB_MODE musi byc auto|live|replay, jest {mode!r}")
         record = env.get("FB_RECORD_DIR")
-        uas = env.get("SCRAPER_USER_AGENTS", "")
+        uas = env.get("USER_AGENTS") or env.get("SCRAPER_USER_AGENTS", "")
+        proxies = env.get("PROXY_URLS") or env.get("SCRAPER_PROXY", "")
         return cls(
             mode=mode,  # type: ignore[arg-type]
             country=env.get("FB_COUNTRY", "PL"),
@@ -249,7 +252,7 @@ class FacebookConfig:
             fixtures_dir=Path(env.get("FB_FIXTURES_DIR", str(DEFAULT_FIXTURES))),
             record_dir=Path(record) if record else None,
             user_agents=[u.strip() for u in uas.split("||") if u.strip()],
-            proxy=env.get("SCRAPER_PROXY") or None,
+            proxies=[p.strip() for p in re.split(r"[,;\s]+", proxies) if p.strip()],
             breaker_threshold=int(env.get("FB_BREAKER_THRESHOLD", 2)),
             breaker_cooldown_s=int(env.get("FB_BREAKER_COOLDOWN_S", 1800)),
         )
@@ -314,7 +317,33 @@ class FacebookAdsSource:
         ids = sorted(p.name for p in root.iterdir() if p.is_dir() and p.name.isdigit())
         return [canonical_ad_url(i) for i in ids[: self.config.max_ads_per_run]]
 
+    def discover_nodes(self, query: str, search_type: str = "keyword_unordered") -> dict[str, dict]:
+        """Weze reklam (ad_archive_id -> wezel JSON Meta) dla frazy — dla collectora.
+
+        Zawsze na zywo: przy blokadzie podnosi SourceBlocked i otwiera breaker,
+        NIGDY nie wraca do korpusu offline (collector nie moze wstawic fixtures
+        do magazynu URL-i jako swiezych trafien).
+        """
+        if self.breaker.is_open():
+            raise SourceBlocked("circuit breaker otwarty — zrodlo facebook wstrzymane")
+        try:
+            nodes = self._discover_nodes_live(query, search_type)
+        except SourceBlocked:
+            self.breaker.record_failure()
+            raise
+        except Exception as exc:
+            raise SourceError(f"discover nieudany: {exc}") from exc
+        self.breaker.record_success()
+        return nodes
+
     def _discover_live(self, query: str) -> list[str]:
+        nodes = self._discover_nodes_live(query)
+        for ad_id, node in nodes.items():
+            self.node_cache[ad_id] = node
+        log.info("facebook: discover(%r) -> %d reklam", query, len(nodes))
+        return [canonical_ad_url(i) for i in nodes]
+
+    def _discover_nodes_live(self, query: str, search_type: str = "keyword_unordered") -> dict[str, dict]:
         collected: dict[str, dict] = {}
         with self._browser() as browser:
             ctx = self._new_context(browser, "desktop")
@@ -324,7 +353,7 @@ class FacebookAdsSource:
                 page.on("response", lambda r: self._collect_graphql(r, collected))
                 self.limiter.acquire()
                 page.goto(
-                    search_url(query, self.config.country),
+                    search_url(query, self.config.country, search_type),
                     wait_until="domcontentloaded",
                     timeout=self.config.nav_timeout_s * 1000,
                 )
@@ -345,10 +374,7 @@ class FacebookAdsSource:
                 ctx.close()
 
         ids = list(collected)[: self.config.max_ads_per_run]
-        for ad_id in ids:
-            self.node_cache[ad_id] = collected[ad_id]
-        log.info("facebook: discover(%r) -> %d reklam", query, len(ids))
-        return [canonical_ad_url(i) for i in ids]
+        return {ad_id: collected[ad_id] for ad_id in ids}
 
     # --------------------------------------------------------------- fetch --
 
@@ -488,8 +514,9 @@ class FacebookAdsSource:
         from playwright.sync_api import sync_playwright
 
         launch: dict[str, Any] = {"headless": True, "args": CHROMIUM_ARGS}
-        if self.config.proxy:
-            launch["proxy"] = {"server": self.config.proxy}
+        if self.config.proxies:
+            # Chromium: proxy per kontekst wymaga placeholdera na poziomie przegladarki.
+            launch["proxy"] = {"server": "per-context"}
         with sync_playwright() as pw:
             browser = pw.chromium.launch(**launch)
             try:
@@ -506,10 +533,20 @@ class FacebookAdsSource:
         }
         if self.config.user_agents:
             kwargs["user_agent"] = random.choice(self.config.user_agents)
+        if self.config.proxies and not replay:
+            kwargs["proxy"] = {"server": self.next_proxy()}
         ctx = browser.new_context(**kwargs)
         if replay and ad_id:
             self._install_replay(ctx, ad_id, vp)
         return ctx
+
+    def next_proxy(self) -> str:
+        """Kolejne proxy z PROXY_URLS (round-robin). Rotacja to konfiguracja wymagana
+        w specyfikacji, NIE sposob na ominiecie blokady: po SourceBlocked breaker
+        pauzuje zrodlo niezaleznie od proxy."""
+        idx = getattr(self, "_proxy_idx", 0)
+        self._proxy_idx = idx + 1
+        return self.config.proxies[idx % len(self.config.proxies)]
 
     def _fixture_dir(self, ad_id: str) -> Path:
         return self.config.fixtures_dir / ad_id
