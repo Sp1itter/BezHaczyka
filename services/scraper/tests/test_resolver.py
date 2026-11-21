@@ -104,6 +104,7 @@ def test_registry_cache(monkeypatch):
     from casedb import store
     calls = []
     monkeypatch.setattr(store, "registry_entries", lambda conn: calls.append(1) or ROWS)
+    monkeypatch.setattr(store, "knf_agent_keys", lambda conn: set())
     Registry.clear_cache()
     a, b = Registry.from_db(object()), Registry.from_db(object())
     assert a is b and len(calls) == 1
@@ -128,3 +129,170 @@ def test_official_channel_without_name_in_text_is_official():
     assert r["publisher_relation"] == "official"
     assert r["publisher_is_authorized"] and r["registry_knf_id"] == "DM-XTB"
     assert r["firm_name_in_ad"] is None
+
+
+# ---- pelny rejestr KNF: wpisy source='knf' -----------------------------------
+KNF_ROWS = [
+    {"knf_id": "KNF-zfi_bez_oddzialu-aaaaaaaaaa", "name": "Zagraniczny Broker Capital Markets", "aliases": [],
+     "domains": [], "handles": [], "source": "knf", "active": True},
+    {"knf_id": "KNF-cofniete_zezwolenia-bbbbbbbbbb", "name": "Upadly Dom Inwestycyjny", "aliases": [],
+     "domains": [], "handles": [], "source": "knf", "active": False},
+    {"knf_id": "KNF-zfi_oddzialy-cccccccccc", "name": "Ab Xy", "aliases": [], "domains": [], "handles": [],
+     "source": "knf", "active": True},
+    {"knf_id": "KNF-zfi_oddzialy-dddddddddd", "name": "Zeta", "aliases": [], "domains": [], "handles": [],
+     "source": "knf", "active": True},
+]
+
+
+def test_knf_exact_only_no_fuzzy():
+    reg = Registry.from_rows(KNF_ROWS)
+    exact = resolve(doc("Polecam Zagraniczny Broker Capital Markets dla kazdego."), reg)
+    assert exact["registry_knf_id"] == "KNF-zfi_bez_oddzialu-aaaaaaaaaa" and exact["firm_is_authorized"]
+    typo = resolve(doc("Polecam Zagraniczny Broker Capitall Markets dla kazdego."), reg)
+    assert typo["registry_knf_id"] is None
+
+
+def test_knf_short_name_skipped():
+    reg = Registry.from_rows(KNF_ROWS)
+    assert {f.name for f in reg.firms} == {"Zagraniczny Broker Capital Markets", "Upadly Dom Inwestycyjny"}
+    r = resolve(doc("Zeta to grecka litera."), reg)
+    assert r["registry_knf_id"] is None
+
+
+def test_knf_generic_names_skipped():
+    names = ["Go Markets", "Man Europe", "Mind Money", "IG Europe", "CFI Markets", "Trading 212 Markets",
+             "Lightyear Europe", "Revolut Securities Europe"]
+    rows = [{"knf_id": f"KNF-x-{i}", "name": n, "aliases": [], "domains": [], "handles": [], "source": "knf",
+             "active": True} for i, n in enumerate(names)]
+    reg = Registry.from_rows(rows)
+    assert {f.name for f in reg.firms} == {"Lightyear Europe", "Revolut Securities Europe"}
+    assert resolve(doc("Go markets and man europe in mind money."), reg)["registry_knf_id"] is None
+    assert resolve(doc("Konto w Lightyear Europe."), reg)["registry_knf_id"] == "KNF-x-6"
+
+
+def test_inactive_firm_is_not_authorized():
+    reg = Registry.from_rows(KNF_ROWS)
+    r = resolve(doc("Upadly Dom Inwestycyjny obiecuje zyski."), reg)
+    assert r["mentions_authorized_firm"] and r["firm_license_active"] is False
+    assert r["firm_is_authorized"] is False
+    assert resolve(doc("Nic o firmach."), reg)["firm_license_active"] is None
+
+
+def test_agent_publisher_is_authorized():
+    reg = Registry.from_rows(ROWS, agent_keys={"jan agent"})
+    r = resolve(doc("Zaloz konto w XTB.", handle="jan", display_name="Jan Agent"), reg)
+    assert r["publisher_relation"] == "third_party" and r["publisher_is_authorized"]
+    other = resolve(doc("Zaloz konto w XTB.", handle="x", display_name="Ktos Inny"), reg)
+    assert not other["publisher_is_authorized"]
+
+
+# ---- relacja: nazwa wyswietlana zaczyna sie od aliasu firmy; ujawnienia; afiliacja ----
+
+
+def test_display_name_prefix_is_official(reg):
+    r = resolve(doc("Nowa oferta XTB.", handle="@kanal", display_name="XTB Online Investing"), reg)
+    assert r["publisher_relation"] == "official" and r["registry_knf_id"] == "DM-XTB"
+
+
+def test_finfluencer_with_firm_inside_name_is_third_party(reg):
+    r = resolve(doc("Zaloz konto w XTB.", handle="@kanal", display_name="Inwestuj z XTB"), reg)
+    assert r["publisher_relation"] == "third_party" and not r["publisher_is_authorized"]
+
+
+def test_display_prefix_needs_whole_word_and_curated_only():
+    reg2 = Registry.from_rows(ROWS + [{"knf_id": "KNF-1", "name": "Kowalski Investments", "aliases": [],
+                                       "domains": [], "handles": [], "source": "knf"}])
+    assert reg2.match_publisher(Publisher(handle="@a", display_name="XTBX Fans")) is None
+    assert reg2.match_publisher(Publisher(handle="@a", display_name="Kowalski Investments Blog")) is None
+    assert reg2.match_publisher(Publisher(handle="@a", display_name="XTB Polska")).knf_id == "DM-XTB"
+
+
+def test_display_prefix_longest_alias_wins():
+    rows = [{"knf_id": "A", "name": "Alfa", "aliases": [], "domains": [], "handles": []},
+            {"knf_id": "AB", "name": "Alfa Beta", "aliases": [], "domains": [], "handles": []}]
+    reg2 = Registry.from_rows(rows)
+    assert reg2.match_publisher(Publisher(handle="@a", display_name="Alfa Beta Gamma")).knf_id == "AB"
+
+
+@pytest.mark.parametrize("text", [
+    "Link afiliacyjny w opisie", "Moje linki partnerskie", "z mojego linku partnerskiego", "linków afiliacyjnych",
+    "kod rabatowy XYZ", "kodem polecającym ABC", "kodów promocyjnych", "Płatna współpraca z XTB",
+    "we współpracy reklamowej z XTB", "współpracy reklamowej", "odpłatnej współpracy", "płatnym partnerstwem",
+    "Odcinek powstał we współpracy z XTB", "Sponsorem odcinka jest XTB", "sponsorów materiału",
+    "Partnerem materiału jest XTB", "Materiał reklamowy", "materiałem sponsorowanym", "lokowaniem produktu",
+    "postem sponsorowanym", "Affiliate Disclosure", "Sponsored link", "paid partnership with XTB",
+    "Paid promotion", "partner links below", "referral code ABC", "This video is sponsored by XTB",
+    "includes paid promotion", "I earn commission if you buy", "fizetett reklám", "#hirdetés",
+    "#wspolpracareklamowa", "#partner", "#sponsorowane", "#reklamaxtb", "#sponsored", "#ad",
+    "Reklama\nzaloz konto", "Reklama: XTB", "Reklama - XTB", "Reklama | XTB", "Tresc [reklama] tresc",
+    "tresc (Reklama) tresc",
+])
+def test_new_disclosure_phrases(text):
+    assert has_disclosure(text)
+
+
+@pytest.mark.parametrize("text", [
+    "Zlozylem reklamacje", "reklamacja u brokera", "Partnerstwo roku", "#partnerzy", "#sponsoring",
+    "Pierwsza linia\nreklama w drugiej linii", "Reklama XTB - czy warto?", "partner biznesowy", "linkedin",
+    "kodowanie w Pythonie", "wspolpraca z klientem", "nie ma tu nic", "#add",
+])
+def test_non_disclosures(text):
+    assert not has_disclosure(text)
+
+
+@pytest.mark.parametrize("name", ["XTB Fan Club", "XTB Fans", "XTB Community", "XTB Opinie", "XTB tips",
+                                  "XTB Nieoficjalny", "XTB Polska Community", "XTB Klub Inwestora"])
+def test_fan_pages_are_not_official(reg, name):
+    r = resolve(doc("Nowa oferta XTB.", handle="@kanal", display_name=name), reg)
+    assert r["publisher_relation"] == "third_party" and r["publisher_relation_basis"] == "none"
+
+
+def test_relation_basis(reg):
+    def basis(**pub):
+        return resolve(doc("XTB", **pub), reg)["publisher_relation_basis"]
+    assert basis(handle="@kanal", display_name="XTB Online Investing") == "name_prefix"
+    assert basis(handle="@kanal", display_name="XTB S.A.") == "name_exact"
+    assert basis(handle="@xtb_official", display_name="Cokolwiek") == "handle"
+    assert basis(handle="xtb.com", display_name="Cokolwiek") == "domain"
+    assert basis(handle="@kanal", display_name="Blog") == "none"
+
+
+def test_affiliate_without_disclosure(reg):
+    text = "Zaloz konto w XTB: https://www.xtb.com/pl?ref=abc"
+    r = resolve(doc(text, handle="blog.example", display_name="Blog"), reg)
+    assert r["affiliate_link"] and r["affiliate_without_disclosure"] is True
+    r2 = resolve(doc(text + " #reklama", handle="blog.example", display_name="Blog"), reg)
+    assert r2["disclosure_found"] and r2["affiliate_without_disclosure"] is False
+    r3 = resolve(doc("Zaloz konto w XTB.", handle="blog.example", display_name="Blog"), reg)
+    assert r3["affiliate_without_disclosure"] is False
+
+
+def _firm(kid, name, register, active):
+    return {"knf_id": kid, "name": name, "aliases": [], "domains": [], "handles": [], "source": "knf",
+            "active": active, "register": register}
+
+
+def test_active_firm_beats_historical_duplicate_and_inactive_reason():
+    reg = Registry.from_rows([
+        _firm("KNF-dane_historyczne-aaa", "Conotoxia Trading Ltd", "dane_historyczne", False),
+        _firm("KNF-zfi_bez_oddzialu-zzz", "Conotoxia Trading Ltd", "zfi_bez_oddzialu", True),
+        _firm("KNF-cofniete_zezwolenia-bbb", "Upadly Dom Maklerski", "cofniete_zezwolenia", False),
+        _firm("KNF-dane_historyczne-ccc", "Zamkniety Broker Capital", "dane_historyczne", False),
+    ])
+    r = resolve(doc("Konto w Conotoxia Trading Ltd polecam."), reg)
+    assert r["registry_knf_id"] == "KNF-zfi_bez_oddzialu-zzz"
+    assert r["firm_license_active"] is True and r["inactive_reason"] is None
+    r = resolve(doc("Upadly Dom Maklerski obiecuje."), reg)
+    assert r["inactive_reason"] == "cofniete_zezwolenie"
+    r = resolve(doc("Zamkniety Broker Capital obiecuje."), reg)
+    assert r["inactive_reason"] == "zakonczona_dzialalnosc"
+
+
+def test_disclosure_negation():
+    from resolver import has_disclosure
+
+    assert not has_disclosure("this video is in no way sponsored by eToro")
+    assert not has_disclosure("This is not sponsored by anyone")
+    assert not has_disclosure("To nie jest paid promotion")
+    assert has_disclosure("sponsored by eToro")
+    assert has_disclosure("Includes paid promotion. Not financial advice.")
