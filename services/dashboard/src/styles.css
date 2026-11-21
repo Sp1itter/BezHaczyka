@@ -102,3 +102,12 @@ h4 { margin: 16px 0 8px; font-size: 13px; }
 .badge.verdict-confirmed { background: #e7664c; } .badge.verdict-dismissed { background: #8b93a3; }
 .btn.take { background: #36a2ef22; border-color: var(--accent); color: var(--accent); margin: 0 6px 0 0; }
 .btn:disabled { opacity: .5; cursor: not-allowed; }
+
+/* Sortowanie, podsumowanie i raport pozycji */
+.sort-btn { background: none; border: 0; color: inherit; font: inherit; cursor: pointer; padding: 0; }
+.sort-btn:hover { color: var(--text); }
+.summary { background: var(--panel-2); border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; margin-bottom: 14px; }
+.summary h4 { margin: 0 0 4px; } .summary p { margin: 0; }
+.evidence q { display: block; font-style: italic; }
+.all-rules { margin-top: 14px; } .all-rules summary { cursor: pointer; font-weight: 600; }
+.all-rules h5 { margin: 12px 0 4px; color: var(--muted); }

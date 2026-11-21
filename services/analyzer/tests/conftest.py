@@ -13,6 +13,8 @@ def _offline_default_config(request, monkeypatch):
     W testach podmieniamy go na pusty AnalyzerConfig, chyba ze test jest
     oznaczony `real_default_config` (test samej fabryki).
     """
+    # Podsumowanie findingu tez nie wola Ollamy (szablon); testy summary podstawiaja atrape.
+    monkeypatch.setenv("SUMMARY_LLM", "0")
     if request.node.get_closest_marker("real_default_config"):
         yield
         return
