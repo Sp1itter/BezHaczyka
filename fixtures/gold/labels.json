@@ -1,0 +1,75 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "id": "demo-001",
+      "source": "fixtures/demo-ads/demo-001.html",
+      "is_violation": true,
+      "note": "ostrzezenie o ryzyku 7 px przy tresci 16 px, ukryte w sekcji details",
+      "rule_labels": {"4": "fail", "7": "fail", "2": "pass"}
+    },
+    {
+      "id": "demo-002",
+      "source": "fixtures/demo-ads/demo-002.html",
+      "is_violation": true,
+      "note": "ostrzezenie o ryzyku w stopce, ciemnoszary tekst na ciemnym tle",
+      "rule_labels": {"5": "fail", "6": "fail"}
+    },
+    {
+      "id": "demo-003",
+      "source": "fixtures/demo-ads/demo-003.html",
+      "is_violation": true,
+      "note": "nadzor KNF przedstawiony jako argument bezpieczenstwa inwestycji",
+      "rule_labels": {"18": "fail", "2": "pass"}
+    },
+    {
+      "id": "demo-004",
+      "source": "fixtures/demo-ads/demo-004.html",
+      "is_violation": true,
+      "note": "prognoza zysku 15 proc. rocznie bez zadnego ostrzezenia",
+      "rule_labels": {"15": "fail"}
+    },
+    {
+      "id": "demo-005",
+      "source": "fixtures/demo-ads/demo-005.html",
+      "is_violation": true,
+      "note": "wyniki historyczne eksponowane bez zastrzezenia, ze nie sa wiarygodnym wskaznikiem",
+      "rule_labels": {"14": "fail", "13": "fail"}
+    },
+    {
+      "id": "demo-006",
+      "source": "fixtures/demo-ads/demo-006.html",
+      "is_violation": true,
+      "note": "brak oznaczenia reklamy przy wspolpracy z podmiotem trzecim",
+      "rule_labels": {"2": "fail"}
+    },
+    {
+      "id": "demo-007",
+      "source": "fixtures/demo-ads/demo-007.html",
+      "is_violation": true,
+      "note": "ostrzezenie widoczne dopiero po rozwinieciu akordeonu",
+      "rule_labels": {"7": "fail", "3": "fail"}
+    },
+    {
+      "id": "demo-008",
+      "source": "fixtures/demo-ads/demo-008.html",
+      "is_violation": false,
+      "note": "material czysty: oznaczenie reklamy, ostrzezenie 12 px, brak naruszen",
+      "rule_labels": {"2": "pass", "4": "pass", "5": "pass", "6": "pass", "7": "pass", "18": "pass"}
+    },
+    {
+      "id": "demo-009",
+      "source": "fixtures/demo-ads/demo-009.html",
+      "is_violation": false,
+      "note": "material czysty z zastrzezeniem o indywidualnej sytuacji podatkowej klienta",
+      "rule_labels": {"16": "pass", "2": "pass", "4": "pass"}
+    },
+    {
+      "id": "demo-010",
+      "source": "fixtures/demo-ads/demo-010.html",
+      "is_violation": true,
+      "note": "kontrast ostrzezenia ponizej 4.5 wedlug WCAG, tlo graficzne zmierzone",
+      "rule_labels": {"5": "fail", "4": "pass"}
+    }
+  ]
+}

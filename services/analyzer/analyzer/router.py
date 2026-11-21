@@ -42,7 +42,57 @@ ADVISORY_BUSINESS_SIGNALS = {
 }
 
 
-def _normalize(text: str) -> str:
+# Wzorce uzupelniajace slowniki literalne powyzej. Polski jest fleksyjny, a
+# dopasowanie literalne przeoczalo odmiane: "rekomendacja" nie jest podciagiem
+# "rekomendacji" ani "rekomendacje". Literaly zostaja (Modul 3 dopasowuje je
+# literalnie), wzorce sa DODATKIEM, nie zamiennikiem.
+RECOMMENDATION_PATTERNS: tuple[str, ...] = (
+    r"\brekomend\w*",
+    r"\bpolec\w*\s+(akcj|obligacj|fundusz|etf|cfd|spolk)\w*",
+    r"\bnasz\w*\s+portfel\w*",
+    r"\bsygnal\w*\s+(kupna|sprzedazy|inwestycyjn\w*)",
+    r"\b(powiem|powiemy)\s+co\s+kupic",
+    r"\bco\s+kupic\s+teraz",
+    r"\btyp\w*\s+na\s+gield\w*",
+    r"\bdoradztw\w*\s+inwestycyjn\w*",
+    r"\bdoradza\w*\s+w\s+inwestycj\w*",
+    r"\bzarzadza\w*\s+portfel\w*",
+    r"\bwskaz\w*\s+instrument\w*",
+    r"\bwybierz\w*\s+spolk\w*",
+)
+
+PROFIT_CLAIM_PATTERNS: tuple[str, ...] = (
+    r"\bzysk\w*",
+    r"\bzarabia\w*",
+    r"\bzarob\w*",
+    r"\bstop\w*\s+zwrotu",
+    r"\brentown\w*",
+    r"\bpodwoj\w*",
+    r"\bpomnoz\w*",
+    r"\b(pewny|gwarantowany)\w*\s+zwrot\w*",
+    r"\bzwrot\w*\s+rocznie",
+    # Dowolny procent. W reklamie inwestycyjnej liczba z procentem to praktycznie
+    # zawsze obietnica stopy zwrotu. Zastapilo to goly literal "%", ktory lapal
+    # kazdy znak procenta, i bezsensowny literal "do 1".
+    r"\d+[.,]?\d*\s*%",
+)
+
+ADVISORY_BUSINESS_PATTERNS: tuple[str, ...] = (
+    r"wealth\s+management",
+    r"investment\s+consulting",
+    r"family\s+office",
+    r"zarzadzani\w*\s+majatk\w*",
+    r"\bdoradztw\w*\s+finansow\w*",
+    r"butik\w*\s+inwestycyjn\w*",
+)
+
+
+def normalize(text: str) -> str:
+    """Male litery, bez ogonkow, zwiniete biale znaki.
+
+    Publiczna — korzysta z niej takze Modul 3, zeby dopasowywac sygnaly
+    dokladnie tak samo jak router.
+    """
     lowered = text.lower()
     decomposed = unicodedata.normalize("NFKD", lowered)
     stripped = "".join(c for c in decomposed if not unicodedata.combining(c))
@@ -50,8 +100,16 @@ def _normalize(text: str) -> str:
     return re.sub(r"\s+", " ", stripped)
 
 
+# Alias zgodnosciowy — nie usuwac, importuja go inne moduly.
+_normalize = normalize
+
+
 def _has_any(haystack: str, needles: set[str]) -> bool:
     return any(n in haystack for n in needles)
+
+
+def _matches_any(haystack: str, patterns: tuple[str, ...]) -> bool:
+    return any(re.search(p, haystack) for p in patterns)
 
 
 def has_profit_claims(text: str) -> bool:
@@ -61,7 +119,10 @@ def has_profit_claims(text: str) -> bool:
     nalezy do Modulu 1 albo 3 — bo obietnica zysku uruchamia wymog
     informacji o ryzyku (art. 44 ust. 2 lit. b rozp. 2017/565).
     """
-    return _has_any(_normalize(text), PROFIT_CLAIM_SIGNALS)
+    norm = normalize(text)
+    return _has_any(norm, PROFIT_CLAIM_SIGNALS) or _matches_any(
+        norm, PROFIT_CLAIM_PATTERNS
+    )
 
 
 def has_investment_recommendation(text: str) -> bool:
@@ -71,12 +132,17 @@ def has_investment_recommendation(text: str) -> bool:
     rekomendacji nie jest jeszcze doradztwem inwestycyjnym w rozumieniu
     art. 76 ustawy o obrocie.
     """
-    norm = _normalize(text)
-    return _has_any(norm, RECOMMENDATION_SIGNALS)
+    norm = normalize(text)
+    return _has_any(norm, RECOMMENDATION_SIGNALS) or _matches_any(
+        norm, RECOMMENDATION_PATTERNS
+    )
 
 
 def looks_like_advisory_business(text: str) -> bool:
-    return _has_any(_normalize(text), ADVISORY_BUSINESS_SIGNALS)
+    norm = normalize(text)
+    return _has_any(norm, ADVISORY_BUSINESS_SIGNALS) or _matches_any(
+        norm, ADVISORY_BUSINESS_PATTERNS
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -197,16 +263,31 @@ def route(inp: RoutingInput) -> RoutingDecision:
             ),
         )
 
-    # --- R4: triage -------------------------------------------------------- #
+    # --- R4: podmiot nieustalony, ale material OCENIAMY -------------------- #
+    #
+    # Wazna poprawka wzgledem pierwotnego designu. Wczesniej R4 dawalo
+    # `modules=[]`, czyli ZERO ocenionych regul. Na realnym dokumencie ze
+    # scrapera (reklama z Meta Ad Library, bez jeszcze dopasowanego rejestru
+    # KNF) oznaczalo to, ze material nie byl oceniany w ogole — a razem z nim
+    # przepadaly wyniki regul DET, ktore scraper juz policzyl.
+    #
+    # Wymogi informacji o ryzyku z art. 44 rozporzadzenia del. 2017/565 dotycza
+    # MATERIALU, nie statusu publikujacego. To, czy podmiot ma zezwolenie,
+    # rozstrzyga o PRZYPISANIU do Modulu 1 albo 3 — nie o tym, czy ostrzezenie
+    # o ryzyku musi byc czytelne. Dlatego Modul 2 jest ocena bazowa kazdego
+    # materialu w zakresie, a `status: triage` nadal sygnalizuje, ze podmiot
+    # wymaga ustalenia przez czlowieka.
     return RoutingDecision(
-        modules=[],
-        primary_module=None,
+        modules=[2],
+        primary_module=2,
         routing=Routing(
             rule="R4",
             reason=(
-                "Nie udalo sie przypisac modulu: brak dopasowania publikujacego "
-                "do rejestru i brak wzmianki o autoryzowanej firmie. Do przegladu "
-                "recznego; zasila liste brakow w rejestrze."
+                "Nie ustalono podmiotu: brak dopasowania publikujacego do "
+                "rejestru KNF i brak wzmianki o autoryzowanej firmie. Material "
+                "jest jednak w zakresie, wiec oceniono informacje o ryzyku "
+                "(Modul 2). Przypisanie podmiotu wymaga przegladu recznego "
+                "i zasila liste brakow w rejestrze."
             ),
             scope_gate=inp.scope_status,
         ),

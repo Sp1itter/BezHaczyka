@@ -38,6 +38,9 @@ volumes/
 *.sqlite3
 *.db
 
+# --- Logi przebiegow (smoke testy, workery) ---
+*.log
+
 # --- Media pobrane przez scraper (ida do object storage, nie do repo) ---
 fixtures/downloads/
 fixtures/media/
@@ -52,3 +55,6 @@ models/
 # --- System ---
 .DS_Store
 Thumbs.db
+
+# --- Pliki blokady Worda/Excela (powstaja, gdy dokument jest otwarty) ---
+~$*
