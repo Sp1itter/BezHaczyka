@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { getModule1Report } from "../lib/api.js";
-import { FLAGS, flagLabel, csvUrl, clip, screenshotInfo, summarize } from "../lib/module1.js";
+import { FLAGS, safeHref, flagLabel, csvUrl, clip, screenshotInfo, summarize } from "../lib/module1.js";
 import { RELATION, fmtDate } from "../lib/labels.js";
 
 const EMPTY = { source: "", relation: "", flag: "" };
@@ -13,17 +13,25 @@ export default function Module1() {
   const [sources, setSources] = useState([]);
 
   useEffect(() => {
+    let ignore = false; // odrzuc spozniona odpowiedz po zmianie filtrow
     getModule1Report(filters)
       .then((d) => {
+        if (ignore) return;
         setData(d);
         setError(null);
         setSources((s) => [...new Set([...s, ...d.items.map((r) => r.source).filter(Boolean)])]);
       })
       .catch((e) => {
+        if (ignore) return;
         setData({ items: [], total: 0 });
         setError(e.message);
       })
-      .finally(() => setLoaded(true));
+      .finally(() => {
+        if (!ignore) setLoaded(true);
+      });
+    return () => {
+      ignore = true;
+    };
   }, [filters]);
 
   const set = (k) => (e) => setFilters((f) => ({ ...f, [k]: e.target.value }));
@@ -90,8 +98,8 @@ export default function Module1() {
                     {r.firm_country && <span className="muted"> ({r.firm_country})</span>}
                   </td>
                   <td>
-                    {r.advertiser_url
-                      ? <a href={r.advertiser_url} target="_blank" rel="noreferrer">{who}</a>
+                    {safeHref(r.advertiser_url)
+                      ? <a href={safeHref(r.advertiser_url)} target="_blank" rel="noreferrer">{who}</a>
                       : who}
                   </td>
                   <td>{RELATION[r.relation] || r.relation}</td>
@@ -100,7 +108,9 @@ export default function Module1() {
                     {!(r.m1_flags || []).length && <span className="muted">—</span>}
                   </td>
                   <td className="clip" title={r.tresc || ""}>{clip(r.tresc)}</td>
-                  <td>{r.url ? <a href={r.url} target="_blank" rel="noreferrer">otwórz</a> : "—"}</td>
+                  <td>{safeHref(r.url)
+                    ? <a href={safeHref(r.url)} target="_blank" rel="noreferrer">otwórz</a>
+                    : <span title={r.url || ""}>{r.url ? clip(r.url, 30) : "—"}</span>}</td>
                   <td>
                     {!shot ? "—" : shot.href
                       ? <a href={shot.href} target="_blank" rel="noreferrer">zrzut</a>
