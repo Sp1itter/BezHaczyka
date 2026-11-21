@@ -1,24 +1,24 @@
 {
  "synthetic": true,
  "offline": false,
- "elapsed_s": 544.2,
+ "elapsed_s": 515.2,
  "per_rule": {
   "1": {
+   "n": 4,
+   "tp": 0,
+   "fp": 0,
+   "fn": 1,
+   "tn": 3,
+   "accuracy": 0.75,
+   "pending": 0
+  },
+  "2": {
    "n": 4,
    "tp": 1,
    "fp": 0,
    "fn": 0,
    "tn": 3,
    "accuracy": 1.0,
-   "pending": 0
-  },
-  "2": {
-   "n": 4,
-   "tp": 1,
-   "fp": 1,
-   "fn": 0,
-   "tn": 2,
-   "accuracy": 0.75,
    "pending": 0
   },
   "3": {
@@ -33,10 +33,10 @@
   "4": {
    "n": 3,
    "tp": 1,
-   "fp": 2,
+   "fp": 0,
    "fn": 0,
-   "tn": 0,
-   "accuracy": 0.3333333333333333,
+   "tn": 2,
+   "accuracy": 1.0,
    "pending": 0
   },
   "5": {
@@ -50,11 +50,11 @@
   },
   "6": {
    "n": 2,
-   "tp": 0,
+   "tp": 1,
    "fp": 0,
-   "fn": 1,
+   "fn": 0,
    "tn": 1,
-   "accuracy": 0.5,
+   "accuracy": 1.0,
    "pending": 0
   },
   "7": {
@@ -68,11 +68,11 @@
   },
   "8": {
    "n": 2,
-   "tp": 0,
+   "tp": 1,
    "fp": 0,
-   "fn": 1,
+   "fn": 0,
    "tn": 1,
-   "accuracy": 0.5,
+   "accuracy": 1.0,
    "pending": 0
   },
   "9": {
@@ -90,7 +90,7 @@
    "fp": 0,
    "fn": 0,
    "tn": 4,
-   "accuracy": 0.8,
+   "accuracy": 1.0,
    "pending": 0
   },
   "11": {
@@ -99,25 +99,25 @@
    "fp": 0,
    "fn": 0,
    "tn": 2,
-   "accuracy": 0.6666666666666666,
+   "accuracy": 1.0,
    "pending": 0
   },
   "12a": {
    "n": 5,
-   "tp": 0,
-   "fp": 0,
-   "fn": 1,
-   "tn": 4,
-   "accuracy": 0.6,
+   "tp": 1,
+   "fp": 1,
+   "fn": 0,
+   "tn": 3,
+   "accuracy": 0.8,
    "pending": 0
   },
   "12b": {
    "n": 5,
-   "tp": 0,
+   "tp": 1,
    "fp": 0,
-   "fn": 1,
+   "fn": 0,
    "tn": 4,
-   "accuracy": 0.6,
+   "accuracy": 1.0,
    "pending": 0
   },
   "13": {
@@ -131,11 +131,11 @@
   },
   "14": {
    "n": 7,
-   "tp": 1,
+   "tp": 2,
    "fp": 0,
-   "fn": 1,
+   "fn": 0,
    "tn": 5,
-   "accuracy": 0.8571428571428571,
+   "accuracy": 1.0,
    "pending": 0
   },
   "15": {
@@ -149,20 +149,20 @@
   },
   "16": {
    "n": 5,
-   "tp": 1,
+   "tp": 2,
    "fp": 0,
-   "fn": 1,
+   "fn": 0,
    "tn": 3,
-   "accuracy": 0.8,
+   "accuracy": 1.0,
    "pending": 0
   },
   "17": {
    "n": 2,
-   "tp": 0,
+   "tp": 1,
    "fp": 0,
-   "fn": 1,
+   "fn": 0,
    "tn": 1,
-   "accuracy": 0.5,
+   "accuracy": 1.0,
    "pending": 0
   },
   "18": {
@@ -178,123 +178,27 @@
  "mismatches": [
   {
    "case": "m2-02-brak-nazwy-firmy",
-   "rule": "2",
+   "rule": "1",
+   "expected": "fail",
+   "got": "not_applicable",
+   "summary": "Materiał nie zawiera oficjalnej nazwy firmy inwestycyjnej.",
+   "quote": null
+  },
+  {
+   "case": "m2-14-wyniki-hist-bez-zastrzezenia",
+   "rule": "12a",
    "expected": "pass",
    "got": "fail",
-   "summary": "Brak jednoznacznego oznaczenia materiału jako reklamowego.",
-   "quote": "REKLAMA."
-  },
-  {
-   "case": "m2-05-zysk-bez-ostrzezenia",
-   "rule": "10",
-   "expected": "not_applicable",
-   "got": "pass",
-   "summary": "Informacje o ryzyku (jeśli by były) byłyby w języku polskim.",
-   "quote": null
-  },
-  {
-   "case": "m2-12-wynik-hist-wyrywkowy",
-   "rule": "12a",
-   "expected": "fail",
-   "got": "pass",
-   "summary": "Wyniki obejmują okres ostatnich 5 lat (2021) i pełne okresy 12-miesięczne.",
-   "quote": "Fikcyjny Fundusz Akcji Epsilon zyskał w 2021 roku aż 41%!"
-  },
-  {
-   "case": "m2-13-wyniki-hist-bez-walut-i-oplat",
-   "rule": "12b",
-   "expected": "fail",
-   "got": "pass",
-   "summary": "Materiał zawiera ostrzeżenie o wpływie zmian kursów walutowych oraz wskazuje na prowizje i opłaty (choć nie wprost, ale w kontekście inwestowania).",
-   "quote": null
-  },
-  {
-   "case": "m2-14-wyniki-hist-bez-zastrzezenia",
-   "rule": "12a",
-   "expected": "pass",
-   "got": "not_applicable",
-   "summary": "Material nie prezentuje wynikow historycznych, wiec reguly dotyczace ich okresu, waluty i zastrzezenia nie maja zastosowania (art. 44 ust. 4 rozporzadzenia del. 2017/565).",
-   "quote": null
-  },
-  {
-   "case": "m2-14-wyniki-hist-bez-zastrzezenia",
-   "rule": "12b",
-   "expected": "pass",
-   "got": "not_applicable",
-   "summary": "Material nie prezentuje wynikow historycznych, wiec reguly dotyczace ich okresu, waluty i zastrzezenia nie maja zastosowania (art. 44 ust. 4 rozporzadzenia del. 2017/565).",
-   "quote": null
-  },
-  {
-   "case": "m2-14-wyniki-hist-bez-zastrzezenia",
-   "rule": "14",
-   "expected": "fail",
-   "got": "not_applicable",
-   "summary": "Material nie prezentuje wynikow historycznych, wiec reguly dotyczace ich okresu, waluty i zastrzezenia nie maja zastosowania (art. 44 ust. 4 rozporzadzenia del. 2017/565).",
-   "quote": null
-  },
-  {
-   "case": "m2-17-podatek-bez-zastrzezenia",
-   "rule": "16",
-   "expected": "fail",
-   "got": "pass",
-   "summary": "Wskazano, że traktowanie podatkowe zależy od indywidualnej sytuacji klienta, ale nie ma bezpośredniej wzmianki o podatku Belki.",
-   "quote": "inwestuj w Fikcyjny Fundusz Obligacji Kappa na rachunku IKE i skorzystaj z braku podatku Belki."
+   "summary": "Wyniki obejmują tylko 5 lat, ale brakuje wskazania pełnych okresów 12-miesięcznych.",
+   "quote": "Wyniki w pełnych latach kalendarzowych 2019–2023"
   },
   {
    "case": "m2-20-ostrzezenie-zargonowe",
    "rule": "9",
    "expected": "fail",
    "got": "pass",
-   "summary": "Ostrzeżenie o ryzyku jest przedstawione w języku polskim i odnosi się do utraty środków.",
+   "summary": "Ostrzeżenie o ryzyku jest przedstawione w prostym języku, wskazując na możliwość utraty środków.",
    "quote": "Ekspozycja na ryzyko rynkowe skorelowane ze zmiennością instrumentu bazowego, przy dźwigni finansowej generującej asymetryczny profil wypłaty i podwyższone ryzyko kontrahenta, wymaga uprzedniej oceny adekwatności."
-  },
-  {
-   "case": "m2-24-porownanie-ze-zrodlem",
-   "rule": "11",
-   "expected": "pass",
-   "got": "not_applicable",
-   "summary": "Materiał nie zawiera porównań produktów lub usług.",
-   "quote": null
-  },
-  {
-   "case": "m2-25-aprobata-knf",
-   "rule": "17",
-   "expected": "fail",
-   "got": "pass",
-   "summary": "Wzmianka o KNF nie sugeruje aprobaty produktu, lecz informuje o sprawdzeniu funduszu przez nadzór.",
-   "quote": "Komisja Nadzoru Finansowego sprawdziła i pozytywnie oceniła nasz fundusz."
-  },
-  {
-   "case": "m2-29-ostrzezenie-niski-kontrast",
-   "rule": "4",
-   "expected": "pass",
-   "got": "fail",
-   "summary": "Czcionka ostrzezenia 14 px to 0.50 czcionki dominujacej (28 px); prog 0.9.",
-   "quote": "Inwestowanie wiąże się z ryzykiem utraty kapitału."
-  },
-  {
-   "case": "m2-30-ostrzezenie-w-stopce-przyciete-na-mobile",
-   "rule": "6",
-   "expected": "fail",
-   "got": "pass",
-   "summary": "Ostrzezenie zaczyna sie na 14% wysokosci strony; prog 85%.",
-   "quote": "Inwestowanie wiąże się z ryzykiem utraty kapitału."
-  },
-  {
-   "case": "m2-30-ostrzezenie-w-stopce-przyciete-na-mobile",
-   "rule": "8",
-   "expected": "fail",
-   "got": "not_applicable",
-   "summary": "Brak pomiaru viewportu mobile — responsywnosci nie da sie ocenic",
-   "quote": null
-  },
-  {
-   "case": "m2-31-wizualnie-poprawna",
-   "rule": "4",
-   "expected": "pass",
-   "got": "fail",
-   "summary": "Czcionka ostrzezenia 14 px to 0.50 czcionki dominujacej (28 px); prog 0.9.",
-   "quote": "Inwestowanie wiąże się z ryzykiem utraty kapitału."
   }
  ],
  "pending": [],
@@ -338,14 +242,14 @@
    "case": "m2-02-brak-nazwy-firmy",
    "rule": "1",
    "expected": "fail",
-   "got": "fail",
+   "got": "not_applicable",
    "pending": false
   },
   {
    "case": "m2-02-brak-nazwy-firmy",
    "rule": "2",
    "expected": "pass",
-   "got": "fail",
+   "got": "pass",
    "pending": false
   },
   {
@@ -408,7 +312,7 @@
    "case": "m2-05-zysk-bez-ostrzezenia",
    "rule": "10",
    "expected": "not_applicable",
-   "got": "pass",
+   "got": "not_applicable",
    "pending": false
   },
   {
@@ -492,7 +396,7 @@
    "case": "m2-12-wynik-hist-wyrywkowy",
    "rule": "12a",
    "expected": "fail",
-   "got": "pass",
+   "got": "fail",
    "pending": false
   },
   {
@@ -520,7 +424,7 @@
    "case": "m2-13-wyniki-hist-bez-walut-i-oplat",
    "rule": "12b",
    "expected": "fail",
-   "got": "pass",
+   "got": "fail",
    "pending": false
   },
   {
@@ -534,21 +438,21 @@
    "case": "m2-14-wyniki-hist-bez-zastrzezenia",
    "rule": "12a",
    "expected": "pass",
-   "got": "not_applicable",
+   "got": "fail",
    "pending": false
   },
   {
    "case": "m2-14-wyniki-hist-bez-zastrzezenia",
    "rule": "12b",
    "expected": "pass",
-   "got": "not_applicable",
+   "got": "pass",
    "pending": false
   },
   {
    "case": "m2-14-wyniki-hist-bez-zastrzezenia",
    "rule": "14",
    "expected": "fail",
-   "got": "not_applicable",
+   "got": "fail",
    "pending": false
   },
   {
@@ -604,7 +508,7 @@
    "case": "m2-17-podatek-bez-zastrzezenia",
    "rule": "16",
    "expected": "fail",
-   "got": "pass",
+   "got": "fail",
    "pending": false
   },
   {
@@ -695,14 +599,14 @@
    "case": "m2-24-porownanie-ze-zrodlem",
    "rule": "11",
    "expected": "pass",
-   "got": "not_applicable",
+   "got": "pass",
    "pending": false
   },
   {
    "case": "m2-25-aprobata-knf",
    "rule": "17",
    "expected": "fail",
-   "got": "pass",
+   "got": "fail",
    "pending": false
   },
   {
@@ -751,7 +655,7 @@
    "case": "m2-29-ostrzezenie-niski-kontrast",
    "rule": "4",
    "expected": "pass",
-   "got": "fail",
+   "got": "pass",
    "pending": false
   },
   {
@@ -765,21 +669,21 @@
    "case": "m2-30-ostrzezenie-w-stopce-przyciete-na-mobile",
    "rule": "6",
    "expected": "fail",
-   "got": "pass",
+   "got": "fail",
    "pending": false
   },
   {
    "case": "m2-30-ostrzezenie-w-stopce-przyciete-na-mobile",
    "rule": "8",
    "expected": "fail",
-   "got": "not_applicable",
+   "got": "fail",
    "pending": false
   },
   {
    "case": "m2-31-wizualnie-poprawna",
    "rule": "4",
    "expected": "pass",
-   "got": "fail",
+   "got": "pass",
    "pending": false
   },
   {
