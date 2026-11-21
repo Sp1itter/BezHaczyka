@@ -31,6 +31,11 @@ def test_default_config_wpina_whisper_gdy_wlaczony(monkeypatch):
     registry.default_config.cache_clear()
 
 
+class _FakeApi:
+    def post_document(self, doc):  # dokument z payloadu zapisujemy przed analiza
+        pass
+
+
 @pytest.mark.real_default_config
 def test_worker_bez_configu_uzywa_pelnego_potoku(monkeypatch):
     seen = {}
@@ -45,7 +50,7 @@ def test_worker_bez_configu_uzywa_pelnego_potoku(monkeypatch):
     payload = {"id": "x", "url": "https://example.invalid/a", "text": "t",
                "fetched_at": "2026-11-21T00:00:00Z", "source": "web"}
     try:
-        worker.handle_job(payload, api=None)  # type: ignore[arg-type]
+        worker.handle_job(payload, api=_FakeApi())  # type: ignore[arg-type]
     except RuntimeError:
         pass
     assert seen["config"] is not None
