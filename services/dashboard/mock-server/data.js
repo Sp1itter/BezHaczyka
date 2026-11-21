@@ -10,6 +10,9 @@ const uuid = () => randomUUID();
 
 export const SOURCES = ["youtube", "facebook", "www"];
 export const STATUSES = ["new", "triage", "in_review", "confirmed", "dismissed"];
+export const ANALYSTS = ["analityk.a", "analityk.b", "analityk.c"];
+// Statusy koncowe ustawia tylko czlowiek przez weryfikacje (review).
+export const HUMAN_ONLY = ["confirmed", "dismissed"];
 
 const RULES = [
   { rule_id: "1", rule_name: "Brak oznaczenia reklamy", engine: "LLM", severity: 3 },
@@ -90,8 +93,16 @@ export function makeFinding(createdAt = new Date()) {
       advertiser: { name: publisher, relation_to_firm: pick(["own", "third_party", "unknown"]) },
     },
     knn_score: Math.round(rnd() * 100) / 100,
-    status: pick(STATUSES),
-    assignee: pick([null, "analityk.a", "analityk.b"]),
+    status: "new",
+    // Sugestia modelu: tylko podpowiedz, decyzje podejmuje czlowiek.
+    ai_suggestion: {
+      status: risk_score >= 50 ? "confirmed" : "dismissed",
+      assignee: pick(ANALYSTS),
+      confidence: Math.round((0.55 + rnd() * 0.45) * 100) / 100,
+    },
+    assignee: null,
+    assigned_by: null, // "ai" | "human"
+    review: null, // { decision, by, at, note } - wylacznie decyzja czlowieka
     created_at: createdAt.toISOString(),
     document: {
       source,
@@ -103,9 +114,25 @@ export function makeFinding(createdAt = new Date()) {
   };
 }
 
+// Historia: czesc rekordow przypisana (przez AI lub czlowieka), czesc juz zweryfikowana.
+function withHistory(f) {
+  const r = rnd();
+  if (r < 0.35) return f;
+  f.assignee = rnd() < 0.5 ? f.ai_suggestion.assignee : pick(ANALYSTS);
+  f.assigned_by = f.assignee === f.ai_suggestion.assignee && rnd() < 0.6 ? "ai" : "human";
+  if (r < 0.55) f.status = "triage";
+  else if (r < 0.7) f.status = "in_review";
+  else {
+    const decision = rnd() < 0.8 ? f.ai_suggestion.status : f.ai_suggestion.status === "confirmed" ? "dismissed" : "confirmed";
+    f.status = decision;
+    f.review = { decision, by: f.assignee, at: f.created_at, note: null };
+  }
+  return f;
+}
+
 export function makeFindings(n = 240, days = 45) {
   const now = Date.now();
-  return Array.from({ length: n }, () => makeFinding(new Date(now - rnd() * days * 86400000)))
+  return Array.from({ length: n }, () => withHistory(makeFinding(new Date(now - rnd() * days * 86400000))))
     .sort((a, b) => b.created_at.localeCompare(a.created_at));
 }
 

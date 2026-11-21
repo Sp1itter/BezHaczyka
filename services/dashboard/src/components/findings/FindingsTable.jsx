@@ -1,5 +1,6 @@
 import { RiskBadge } from "../common/Badge.jsx";
 import StatusSelect from "./StatusSelect.jsx";
+import { AssigneeTag } from "./Assignee.jsx";
 import { SOURCE, fmtDate } from "../../lib/labels.js";
 
 // Tabela rekordow. columns sterowane z zewnatrz nie sa potrzebne w placeholderze.
@@ -27,7 +28,7 @@ export default function FindingsTable({ items, onOpen, onStatusChange, emptyText
               {f.entities?.investment_firm?.name_in_ad}
               {f.entities?.investment_firm?.is_authorized === false && <span className="tag warn">poza KNF</span>}
             </td>
-            <td className="muted">{f.assignee || "—"}</td>
+            <td><AssigneeTag finding={f} /></td>
             <td><StatusSelect value={f.status} onChange={(s) => onStatusChange(f.id, { status: s })} /></td>
           </tr>
         ))}

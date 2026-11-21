@@ -1,5 +1,5 @@
 // Nawigacja boczna. items: [{ id, label, icon, badge? }]
-export default function Sidebar({ items, active, onSelect, brand }) {
+export default function Sidebar({ items, active, onSelect, brand, footer }) {
   return (
     <aside className="sidebar">
       <div className="brand">
@@ -15,6 +15,7 @@ export default function Sidebar({ items, active, onSelect, brand }) {
           </button>
         ))}
       </nav>
+      {footer && <div className="sidebar-footer">{footer}</div>}
     </aside>
   );
 }

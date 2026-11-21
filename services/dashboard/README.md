@@ -31,6 +31,9 @@ Zmienne: `WEB_PORT` (5180), `MOCK_PORT` (4000), `MOCK_ALERT_MS` (co ile nowy rek
 - Dashboard: kafelki, trend incydentów w czasie, rozkład ryzyka, źródła, modułu, statusu, top reguł.
 - Wyniki: histogram + tabela, filtry daty, źródła, ryzyka, modułu, statusu, wyszukiwarka; szczegóły w panelu bocznym.
 - Alerty: kolejka wysokiego ryzyka do obsłużenia + strumień na żywo; zmiana statusu i przypisania.
+- Weryfikacja: rekordy z wynikiem ≥ progu z Kalibracji czekają na decyzję człowieka (Potwierdź alert / Fałszywy alarm + notatka).
+  Model tylko podpowiada status i osobę (`ai_suggestion`). Statusy „Potwierdzone” i „Odrzucone” ustawia wyłącznie człowiek,
+  a przypisanie zrobione przez AI jest oznaczone i wymaga zatwierdzenia.
 - Kalibracja: suwak progu, FP/FN, precyzja, pełność, F1, macierz pomyłek, wykres w funkcji progu.
 
 ## Punkty połączenia z bazą
@@ -42,10 +45,10 @@ Znaczniki `[DB-n]` są w `mock-server/server.js` i `src/api/client.js`.
 |---|---|---|
 | DB-1 | `GET /api/findings` | `findings` JOIN `documents` (jest w services/api) |
 | DB-2 | `GET /api/findings/:id` | jw. |
-| DB-3 | `PATCH /api/findings/:id` `{status, assignee}` | `findings.status` (jest), `assignee` (brak kolumny) |
+| DB-3 | `PATCH /api/findings/:id` `{status}`, `{assignee, actor}`, `{review: {decision, note}, actor}` | `findings.status` (jest); brak kolumn: `assignee`, `assigned_by`, `ai_suggestion`, `reviewed_by`, `reviewed_at`, `review_note` |
 | DB-4 | `GET /api/stats` | agregaty (jest, bez filtrów) |
 | DB-5 | `GET /api/stats/trend` | `GROUP BY dzień, risk_level` (brak) |
 | DB-6 | `GET /api/calibration` | `fixtures/gold/labels.json` (jest) |
 | DB-7 | Socket.io `finding.high` | dziś natywny WS `/ws/alerts` w services/api |
 
-Filtry `from`, `to`, `source` (lista) i `module` (lista) trzeba dodać do `GET /findings` w services/api.
+Filtry `from`, `to`, `source` (lista), `module` (lista), `min_score` i `reviewed` trzeba dodać do `GET /findings` w services/api.

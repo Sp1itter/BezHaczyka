@@ -83,3 +83,17 @@ h4 { margin: 16px 0 8px; font-size: 13px; }
 .cm th, .cm td { padding: 14px 8px; border: 1px solid var(--border); font-size: 13px; }
 .cm td { font-size: 18px; font-weight: 700; }
 .cm .good { background: rgba(84,179,153,.15); } .cm .bad { background: rgba(231,102,76,.15); }
+.sidebar { display: flex; flex-direction: column; }
+.sidebar-footer { margin-top: auto; padding: 10px 8px; border-top: 1px solid var(--border); }
+.user { display: flex; flex-direction: column; gap: 6px; }
+.tag.ai { background: rgba(169,135,209,.2); color: #c7aef0; }
+.tag.human { background: rgba(84,179,153,.2); color: #8fd6c1; }
+.btn.small { padding: 3px 8px; font-size: 12px; margin-left: 6px; }
+.assign { display: inline-flex; align-items: center; white-space: nowrap; }
+.assign select { padding: 3px 6px; font-size: 12px; }
+.review-actions { display: inline-flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.review-actions input { padding: 5px 8px; font-size: 12px; min-width: 200px; }
+.btn.confirm { background: #e7664c; border-color: #e7664c; color: #fff; padding: 4px 10px; font-size: 12px; }
+.btn.dismiss { padding: 4px 10px; font-size: 12px; }
+.ai-suggestion { font-size: 11px; font-weight: 500; padding: 2px 6px; border-radius: 3px; background: rgba(169,135,209,.2); color: #c7aef0; margin-left: 6px; white-space: nowrap; }
+.decision { background: var(--panel-2); border: 1px solid var(--border); border-radius: 6px; padding: 4px 12px 12px; margin-bottom: 16px; }
