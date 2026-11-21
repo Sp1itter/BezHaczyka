@@ -25,11 +25,11 @@ Bez `DATABASE_URL` baza to `services/api/data/api-dev.sqlite`. W compose
 | `GET` | `/documents/{id}` | analyzer (B) | pełny `AdDocument` |
 | `POST` | `/findings` | analyzer (B) | `Finding`; 409 gdy brak dokumentu; nowe `high` → broadcast WS |
 | `GET` | `/findings` | web | filtry: `risk_level` (wielokrotny), `status`, `module`, `source`, `min_score`, `max_score`, `q`, `limit`, `offset` |
-| `GET` | `/findings/{id}` | web | z podglądem dokumentu i `coverage` |
+| `GET` | `/findings/{id}` | web | z podglądem dokumentu, `coverage` oraz `summary` i `summary_engine` (NULL gdy brak; też w `GET /findings`) |
 | `PATCH` | `/findings/{id}` | web | `{"status": "in_review" \| "confirmed" \| "dismissed" \| ...}` |
 | `GET` | `/stats` | web | agregaty do wykresów |
 | `GET` | `/calibration` | web | zbiór złoty (`fixtures/gold/labels.json`); progi liczy front |
-| `WS` | `/ws/alerts` | web | `{"type": "finding.high", ...}` przy nowym lub eskalowanym `high` |
+| `WS` | `/ws/alerts` | web | `{"type": "finding.high", ...}` przy nowym lub eskalowanym `high`; na Postgresie także dla findingów zapisanych prosto do bazy (odpytywanie co `ALERT_POLL_S`, domyślnie 3 s; dedup po `id`) |
 | `GET` | `/reports/module1` | web | raport Modułu 1 (widok `module1_report`): `source`, `relation`, `flag` (z `m1_flags`; 400 gdy brak kolumny), `since` (po `last_seen_at`), `limit` (200, max 1000), `offset`; `{items, total}`. Na SQLite 503 |
 | `GET` | `/reports/module1.csv` | web | te same filtry; CSV z BOM, tablice jako `a;b`, `modul1-raport-YYYYMMDD.csv` |
 | `GET` | `/health` | compose | stan bazy |
