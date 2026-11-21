@@ -9,5 +9,6 @@ export const NAV = [
   { id: "discover", label: "Wyniki", icon: "☰" },
   { id: "alerts", label: "Alerty", icon: "⚑" },
   { id: "review", label: "Weryfikacja", icon: "✔" },
+  { id: "module1", label: "Moduł 1 — raport", icon: "▤" },
   { id: "calibration", label: "Kalibracja", icon: "⚙" },
 ];

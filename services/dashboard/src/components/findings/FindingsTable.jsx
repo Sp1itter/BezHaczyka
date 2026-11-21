@@ -1,20 +1,47 @@
+import { useMemo, useState } from "react";
 import { RiskBadge } from "../common/Badge.jsx";
 import StatusSelect from "./StatusSelect.jsx";
 import { AssigneeTag } from "./Assignee.jsx";
 import { SOURCE, fmtDate, publisherName } from "../../lib/labels.js";
+import { sortFindings } from "../../lib/sort.js";
 
-// Tabela rekordow. columns sterowane z zewnatrz nie sa potrzebne w placeholderze.
+// Kolumny sortowalne (key z lib/sort.js); reszta bez sortowania.
+const COLS = [
+  { key: "date", label: "Data" },
+  { key: "risk", label: "Ryzyko" },
+  { key: "source", label: "Źródło" },
+  { key: "module", label: "Moduły" },
+  { key: "publisher", label: "Tytuł / publikujący" },
+  { label: "Podmiot" },
+  { label: "Przypisany" },
+  { key: "status", label: "Status" },
+];
+
 export default function FindingsTable({ items, onOpen, onStatusChange, emptyText = "Brak wyników dla filtrów." }) {
+  const [sort, setSort] = useState({ key: "risk", dir: "desc" });
+  const rows = useMemo(() => sortFindings(items || [], sort.key, sort.dir), [items, sort]);
   if (!items?.length) return <div className="empty">{emptyText}</div>;
+  const toggle = (key) =>
+    setSort((s) => (s.key === key ? { key, dir: s.dir === "desc" ? "asc" : "desc" } : { key, dir: "desc" }));
   return (
     <table className="table">
       <thead>
         <tr>
-          <th>Data</th><th>Ryzyko</th><th>Źródło</th><th>Moduły</th><th>Tytuł / publikujący</th><th>Podmiot</th><th>Przypisany</th><th>Status</th>
+          {COLS.map((c) =>
+            c.key ? (
+              <th key={c.label} className="sortable" aria-sort={sort.key === c.key ? (sort.dir === "asc" ? "ascending" : "descending") : "none"}>
+                <button type="button" className="sort-btn" onClick={() => toggle(c.key)}>
+                  {c.label}{sort.key === c.key ? (sort.dir === "asc" ? " ▲" : " ▼") : ""}
+                </button>
+              </th>
+            ) : (
+              <th key={c.label}>{c.label}</th>
+            )
+          )}
         </tr>
       </thead>
       <tbody>
-        {items.map((f) => (
+        {rows.map((f) => (
           <tr key={f.id} onClick={() => onOpen(f.id)}>
             <td className="nowrap">{fmtDate(f.created_at)}</td>
             <td><RiskBadge level={f.risk_level} score={f.risk_score} /></td>

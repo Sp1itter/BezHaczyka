@@ -68,7 +68,8 @@ class ApiClient:
         if resp.status_code not in (200, 201):
             raise ApiError(f"Nie wyslano dokumentu {doc.id}: HTTP {resp.status_code}")
 
-    def post_finding(self, finding: Finding) -> None:
+    def post_finding(self, finding: Finding, *_args, **_kwargs) -> None:
+        # Dodatkowe argumenty (dokument, podsumowanie) ignorujemy: API ich nie przyjmuje.
         try:
             resp = self._http().post("/findings", json=finding.model_dump(mode="json"))
             resp.raise_for_status()
