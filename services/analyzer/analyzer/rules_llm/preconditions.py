@@ -32,6 +32,12 @@ from analyzer.router import normalize
 # Wyniki historyczne (reguly 12a, 12b, 14)
 # --------------------------------------------------------------------------- #
 
+# rok do 2025 wlacznie — pozniejsze to horyzont prognozy, nie wynik historyczny
+_PAST_YEAR = r"(?:19\d{2}|20[01]\d|202[0-5])"
+
+# czas przeszly czasownikow wyniku (zyskal, zarobila, wypracowalismy, osiagnelo...)
+_PAST_VERB = r"(?:zyskal|zarobil|wypracowal|osiagnel|osiagnal|przynios|wzrosl)\w*"
+
 HISTORICAL_PATTERNS: tuple[str, ...] = (
     r"\bhistoryczn\w*",
     r"\bwynik\w*\s+(za|z)\s+(19|20)\d{2}",
@@ -44,8 +50,27 @@ HISTORICAL_PATTERNS: tuple[str, ...] = (
     r"\bosiagn\w*\s+\d+[.,]?\d*\s*%",
     r"\bstop\w*\s+zwrotu\s+za\b",
     r"\bzysk\w*\s+za\s+(19|20)\d{2}",
+    # "zysk 34% w 2023 roku" — rok miniony (do 2025); "w 2030 roku zarobisz"
+    # to prognoza i nie moze tu wpadac.
+    r"\bw\s+(19\d{2}|20[01]\d|202[0-5])\s+roku",
     # "wyniosl 12%", "wzrosl o 8%", "spadl o 3%" — zdania o tym, co SIE STALO
     r"\b(wynios|wzros|spad)\w*\s+o?\s*\d+[.,]?\d*\s*%",
+    # zakres lat MINIONYCH ("pelne lata 2019-2023"); lata prognozy (2026+) nie wpadaja
+    rf"\b{_PAST_YEAR}\s*[–\-−—]\s*{_PAST_YEAR}\b",
+    # rok + zmiana procentowa ("2019 +6%", "2022 -5%")
+    rf"\b{_PAST_YEAR}\s*:?\s*[+\-−]\s*\d+[.,]?\d*\s*%",
+    r"\bstop\w*\s+zwrotu\s+w\s+(pelnych\s+)?latach",
+    r"\bw\s+(zeszlym|ubieglym)\s+roku",
+    # rok MINIONY (do 2025) + czasownik przeszly wyniku + procent, w jednym zdaniu:
+    # "w 2022 r. zyskalismy 18%". Prognoza ("w 2027 r. zarobisz 18%") nie wpada:
+    # rok > 2025 nie pasuje do _PAST_YEAR, a "zarobisz" nie jest czasem przeszlym.
+    rf"\b{_PAST_YEAR}\b(?:\s*r\.)?[^.!?%]{{0,40}}?\b{_PAST_VERB}[^.!?%]{{0,30}}?\d+[.,]?\d*\s*%",
+    # i odwrotnie: "zyskalismy 18% w 2022 r."
+    rf"\b{_PAST_VERB}[^.!?%]{{0,30}}?\d+[.,]?\d*\s*%[^.!?]{{0,30}}?\b{_PAST_YEAR}\b",
+    # "od 2018 roku przynosi srednio 7% rocznie": wynik liczony od roku minionego
+    rf"\bod\s+(?:roku\s+)?{_PAST_YEAR}\b[^.!?]{{0,60}}?\d+[.,]?\d*\s*%",
+    rf"\d+[.,]?\d*\s*%[^.!?]{{0,40}}?\bod\s+(?:roku\s+)?{_PAST_YEAR}\b",
+    r"\br\s*/\s*r\b",
 )
 
 HISTORICAL_REASON = (
