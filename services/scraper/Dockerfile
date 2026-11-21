@@ -39,6 +39,7 @@ COPY scraper/contracts.py scraper/jobs.py scraper/media.py scraper/net.py scrape
      scraper/worker_main.py scraper/scheduler_main.py ./
 COPY scraper/sources/ ./sources/
 COPY scraper/render/ ./render/
+COPY scraper/rules_det/ ./rules_det/
 # reresolve: ponowne rozwiazanie przypadkow po zmianie resolvera/rejestru (python tools/reresolve.py).
 COPY scraper/tools/reresolve.py ./tools/reresolve.py
 
