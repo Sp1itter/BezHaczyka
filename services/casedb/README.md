@@ -40,3 +40,40 @@ Uwaga: testy czyszcza tabele casedb w podanej bazie.
 
 ## Wymagania
 Docker z Compose v2. Bez GPU. Postgres ok. 100 MB RAM.
+
+## Instrukcja krok po kroku (dla czlowieka, Windows)
+
+1. Uruchom Docker Desktop i poczekaj, az bedzie gotowy.
+2. Baza (PowerShell, z katalogu repo):
+   ```
+   cd infra
+   copy .env.example .env
+   docker compose up -d postgres
+   docker compose run --rm --build casedb migrate
+   ```
+   Gdy port 5432 jest zajety, zmien `POSTGRES_PORT` w `infra/.env` (np. 5433).
+3. Dane ze scrapera YouTube (prawdziwe pobieranie, ok. 2-5 min):
+   ```
+   cd services\scraper\youtube
+   python -m venv .venv
+   .venv\Scripts\pip install -r requirements.txt
+   .venv\Scripts\python demo.py --limit 3 --output ..\..\..\data\casedb\yt.json
+   ```
+4. Dane Facebook: skopiuj przyklad kontraktu jako liste JSON (replay korpusu FB wymaga Chromium):
+   ```
+   python -c "import json;d=json.load(open('fixtures/contract-examples/facebook_ad_document.json',encoding='utf-8'));json.dump([d],open('data/casedb/fb.json','w',encoding='utf-8'),ensure_ascii=False)"
+   ```
+5. Wczytanie i eksport (z `infra/`):
+   ```
+   docker compose run --rm casedb ingest youtube /data/yt.json
+   docker compose run --rm casedb ingest facebook /data/fb.json
+   docker compose run --rm casedb export --status new -o /data/export.json
+   ```
+   Wynik: `data/casedb/export.json`. Ponowny ingest nie tworzy duplikatow.
+6. Podglad bazy:
+   ```
+   docker compose exec postgres psql -U investwatch -d investwatch -c "select source, status, count(*) from cases group by 1,2"
+   ```
+
+W Git Bash dodaj `MSYS_NO_PATHCONV=1` przed komendami z `/data/...`, inaczej sciezka
+zostanie zamieniona na windowsowa. Notatka dla modeli/agentow: `AGENTS.md`.
