@@ -170,3 +170,17 @@ def test_navigation_guard_blocks_redirect_and_locks(browser):
     assert page.locator("text=A").count() == 1
     assert any("again=1" in u for u in guard.blocked)
     ctx.close()
+
+
+def test_collapsed_nodes_are_not_visible_even_with_layout_box(page):
+    """Regresja z korpusu demo: tekst w zamknietym <details> mial visible=True."""
+    page.set_content(
+        """<div id="s"><details><summary>Więcej</summary><p>W details</p></details>
+             <div style="max-height:0;overflow:hidden"><p>Akordeon</p></div>
+             <p>Widoczne</p></div>"""
+    )
+    probe = run_probe(page, "#s")
+    assert _node(probe, "W details").visible is False
+    assert _node(probe, "Akordeon").visible is False
+    assert _node(probe, "Widoczne").visible is True
+    assert _node(probe, "Więcej").visible is True

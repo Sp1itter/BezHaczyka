@@ -253,7 +253,12 @@
     const cs = getComputedStyle(el);
     const fontPx = parseFloat(cs.fontSize) || 0;
     const [behind, evidence] = interactionOf(el);
-    const visible = behind !== "hidden" && rect.width > 0 && rect.height > 0;
+    // Zwiniety wezel NIE jest widoczny, nawet gdy ma bbox: Chromium zostawia
+    // pudelko ukladu tresci zamknietego <details> (content-visibility), wiec
+    // sama geometria dawala visible=true i R5 mierzyla kontrast niewidocznego tekstu.
+    const collapsed = behind === "hidden" || behind === "details" || behind === "accordion"
+      || evidence === "dialog[not(@open)]";
+    const visible = !collapsed && rect.width > 0 && rect.height > 0;
 
     let bg = backgroundOf(el);
     if (visible && bg.confidence !== "unknown") {

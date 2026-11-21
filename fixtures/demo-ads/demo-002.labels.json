@@ -1,0 +1,13 @@
+{
+  "id": "demo-002",
+  "source": "fixtures/demo-ads/demo-002.html",
+  "is_violation": true,
+  "note": "Jasnoszare ostrzeżenie na białym tle, kontrast ok. 1,7:1 (R5).",
+  "rule_labels": {
+    "4": "pass",
+    "5": "fail",
+    "6": "pass",
+    "7": "pass",
+    "8": "pass"
+  }
+}

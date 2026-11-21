@@ -1,0 +1,13 @@
+{
+  "id": "demo-004",
+  "source": "fixtures/demo-ads/demo-004.html",
+  "is_violation": true,
+  "note": "Jedyne ostrzeżenie w stopce, pod długą treścią promocyjną (R6).",
+  "rule_labels": {
+    "4": "pass",
+    "5": "pass",
+    "6": "fail",
+    "7": "pass",
+    "8": "pass"
+  }
+}
