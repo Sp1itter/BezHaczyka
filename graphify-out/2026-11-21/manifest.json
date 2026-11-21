@@ -199,9 +199,9 @@
     "semantic_hash": ""
   },
   "services/analyzer/analyzer/worker.py": {
-    "mtime": 1795270771.6838,
-    "seen": 1795277899.5923047,
-    "ast_hash": "fbf465e8c5ad20e6572da1463bad6877",
+    "mtime": 1795278025.9009695,
+    "seen": 1795278218.0147674,
+    "ast_hash": "65ae6624fd807dc799dc6fbec35ac94d",
     "semantic_hash": ""
   },
   "services/analyzer/tests/__init__.py": {
@@ -475,9 +475,9 @@
     "semantic_hash": ""
   },
   "services/analyzer/analyzer/scaling.py": {
-    "mtime": 1795277883.1662533,
-    "seen": 1795277899.5923047,
-    "ast_hash": "c63dd32b3af4391241299a07255a643b",
+    "mtime": 1795278078.4800215,
+    "seen": 1795278218.0147674,
+    "ast_hash": "32e52ad8ce68299ce3eaddbb33c0e2f6",
     "semantic_hash": ""
   },
   "services/analyzer/tests/test_change_detect.py": {
@@ -880,6 +880,12 @@
     "mtime": 1795277896.279606,
     "seen": 1795277924.190368,
     "ast_hash": "9955b2dc1382036bfcbe80f242189c82",
+    "semantic_hash": ""
+  },
+  "services/analyzer/tests/test_scaling_runtime.py": {
+    "mtime": 1795278198.333105,
+    "seen": 1795278218.0234334,
+    "ast_hash": "619d1758a49762b620b8d540b7e036bc",
     "semantic_hash": ""
   }
 }
