@@ -24,7 +24,8 @@ Po `git pull` albo własnej zmianie w `services/<x>` uruchom komendę z tabeli (
 | `services/<x>/**` | `docker compose up -d --build <x>` (scraper = `scraper-ingest scraper-render scheduler`) |
 | `infra/docker-compose.yml` | `docker compose up -d --build --remove-orphans` |
 | `infra/.env.example` | dopisz nowe zmienne do `.env`, potem `docker compose up -d` |
-| `infra/init.sql` / migracje | `docker compose down -v && ...up -d --build` tylko za zgodą człowieka |
+| `infra/init.sql` | `docker compose down -v`, potem `docker compose up -d --build` (**UWAGA: kasuje dane**, NIGDY bez zgody człowieka) |
+| `services/casedb/casedb/migrations/**` | `docker compose up -d --build casedb` (migracje przyrostowe, dane zostają) |
 | nie wiesz | `docker compose up -d --build` |
 
 - Potem `docker compose ps`: wszystkie długotrwałe serwisy `running`/`healthy`.

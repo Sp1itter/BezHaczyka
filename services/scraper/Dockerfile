@@ -18,15 +18,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends libatomic1 \
     && chmod -R a+rX /ms-playwright \
     && rm -rf /var/lib/apt/lists/*
 
+# Caly kontekst (wyjatki w .dockerignore: tests, youtube, tools...)
+COPY . .
+
 # Uzytkownik bez shella, uid/gid 10003
 RUN groupadd --gid 10003 scraper \
     && useradd --uid 10003 --gid 10003 --no-create-home --shell /usr/sbin/nologin scraper \
     && mkdir -p /app/services/scraper/data && chown scraper:scraper /app/services/scraper/data
-
-# Tylko kod runtime (bez tests/, youtube/)
-COPY *.py ./
-COPY sources/ sources/
-COPY render/ render/
 
 USER scraper
 CMD ["python", "worker_main.py", "q:ingest"]

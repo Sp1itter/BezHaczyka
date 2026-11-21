@@ -11,7 +11,7 @@ dziela jeden budzet zapytan do Meta.
 Przekazanie do analyzera: przez NAZWE funkcji (string), bez importu z innego
 serwisu (par. 5 — zero importow miedzy serwisami):
     SCRAPER_OUTPUT_QUEUE=q:gpu
-    SCRAPER_OUTPUT_FUNC=analyzer.jobs.analyze_document
+    SCRAPER_OUTPUT_FUNC=analyzer.worker.analyze_document
 """
 
 from __future__ import annotations
