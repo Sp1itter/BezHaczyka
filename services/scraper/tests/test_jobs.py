@@ -87,7 +87,7 @@ def test_build_source_www_and_unknown(monkeypatch):
     monkeypatch.delenv("S3_ENDPOINT", raising=False)
     assert jobs.build_source("www").name == "www"
     with pytest.raises(ValueError):
-        jobs.build_source("tiktok")
+        jobs.build_source("myspace")
 
 
 def test_build_source_youtube_uses_registry_rows():
