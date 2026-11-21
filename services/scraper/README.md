@@ -1,4 +1,4 @@
-# scraper — FacebookAdsSource (Meta Ad Library)
+# scraper: FacebookAdsSource (Meta Ad Library)
 
 Na razie ten katalog zawiera tylko źródło `facebook`, sondę RenderProbe i ich testy.
 Właścicielem serwisu jest osoba A: `Dockerfile`, compose, `WebPageSource` i `rules_det` są po jej stronie.
