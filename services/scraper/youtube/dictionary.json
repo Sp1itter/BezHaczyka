@@ -1,0 +1,9 @@
+{
+  "note": "Przykład znajdowania promocji konkretnych usług. Obecność firmy w tym słowniku ani jej reklamy NIE oznacza scamu. Nazwy domów maklerskich sprawdzono w wykazie KNF 2026-11-21. Własnych agentów i podejrzane domeny dodaje operator; skrypt nie ustala ich statusu.",
+  "entries": [
+    {"id": "xtb", "type": "organization", "value": "XTB", "aliases": ["XTB S.A.", "iks te be", "X T B"], "source": "https://www.knf.gov.pl/podmioty/Podmioty_rynku_kapitalowego/Firmy_inwestycyjne_i_Agenci_firm_inwestycyjnych/domy_maklerskie?page=2"},
+    {"id": "bos", "type": "organization", "value": "Dom Maklerski Banku Ochrony Środowiska", "aliases": ["DM BOŚ", "Bossa"], "source": "https://www.knf.gov.pl/podmioty/Podmioty_rynku_kapitalowego/Firmy_inwestycyjne_i_Agenci_firm_inwestycyjnych/domy_maklerskie"},
+    {"id": "xtb-domain", "type": "domain", "value": "xtb.com"},
+    {"id": "bossa-domain", "type": "domain", "value": "bossa.pl"}
+  ]
+}
