@@ -133,5 +133,21 @@ class TestHasProfitClaims:
         assert has_profit_claims("Zarobisz na tym krocie") is True
         assert has_profit_claims("Stopa zwrotu 12% rocznie") is True
 
+    def test_zaprzeczone_zastrzezenie_nie_jest_obietnica(self):
+        assert has_profit_claims("Jestesmy pod nadzorem KNF, co nie oznacza gwarancji zysku.") is False
+        assert has_profit_claims("Nie gwarantujemy zyskow.") is False
+        assert has_profit_claims("Brak gwarancji zysku.") is False
+
+    def test_zaprzeczenie_nie_wycisza_prawdziwej_obietnicy(self):
+        assert has_profit_claims("Bez ryzyka zarobisz 10%") is True
+        assert has_profit_claims("Nie gwarantujemy zyskow, ale stopa zwrotu 8% rocznie") is True
+
+    def test_stawka_podatku_i_prowizja_to_nie_obietnica(self):
+        assert has_profit_claims(
+            "Podatek od zyskow kapitalowych z ETF wynosi obecnie 19%. Zalezy od sytuacji."
+        ) is False
+        assert has_profit_claims("Prowizja Mi 0,29% (min. 3 zl), dostawca A 0,39% (min. 5 zl).") is False
+        assert has_profit_claims("Zyskaj 19% rocznie. Podatek zalezy od sytuacji.") is True
+
     def test_nie_wykrywa_tam_gdzie_nie_ma(self):
         assert has_profit_claims("Informacja o naszej siedzibie") is False

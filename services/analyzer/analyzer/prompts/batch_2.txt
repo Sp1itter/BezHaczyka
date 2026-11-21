@@ -26,7 +26,9 @@ ostrzeżeniem o ryzyku — jeśli w tekście nie ma zdania o ryzyku, werdykt to
 "not_applicable".
 verdict "fail", gdy ostrzeżenie jest, ale napisane żargonem prawniczym lub
 finansowym nieczytelnym dla zwykłego odbiorcy (np. "ekspozycja na ryzyko
-rynkowe skorelowane z zmiennością instrumentu bazowego"). Proste zdanie
+rynkowe skorelowane z zmiennością instrumentu bazowego", "asymetryczny profil
+wypłaty", "ryzyko kontrahenta", "ekspozycja na ryzyko stopy procentowej") — to
+NIEZROZUMIAŁE, więc "fail". Proste zdanie
 w rodzaju "możesz stracić pieniądze" to "pass", także gdy jest po angielsku
 (język oceniasz w regule 10, nie tutaj). W "quote" podaj to ostrzeżenie.
 
@@ -50,7 +52,9 @@ produkty między sobą)? Jeśli tak, sprawdź, czy wskazano źródło informacji
 i przyjęte założenia porównania. Jeśli materiał nie zawiera porównań,
 zwróć "not_applicable".
 Porównaniem jest każde zdanie typu "lepsze niż", "tańsze niż", "wyższe niż
-u konkurencji", "najlepszy na rynku w porównaniu z...". Źródłem jest np.
+u konkurencji", "najlepszy na rynku w porównaniu z...". Wyzwalacze porównania:
+"niższe/wyższe niż średnia", "w porównaniu z", "lepszy niż", "od konkurencji",
+"przewyższa rynek". Źródłem jest np.
 "wg raportu X z 2024", "dane: Analizy.pl", z przypisem lub datą.
 verdict "fail", gdy porównanie występuje bez wskazania źródła lub założeń
 (np. "nasze fundusze są lepsze niż fundusze konkurentów" bez żadnego źródła).

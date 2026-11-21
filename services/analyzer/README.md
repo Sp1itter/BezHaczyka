@@ -1,104 +1,122 @@
-# analyzer — Moduły Analityczne / AI
+# analyzer — Moduł 2 (analiza AI)
 
-Serwis **Osoby B**. Python. Nie zawiera reguł wizualnych (DET) — te liczy
-`services/scraper` z geometrii Playwrighta, bo tylko on ma `RenderProbe`.
+Serwis Osoby B. Liczy 18 kryteriów UKNF (19 `rule_id` z 12a/12b):
+reguły LLM (Bielik, 4 prompty wsadowe), hybrydowe 3 i 13, 10 (spójność języka)
+oraz DET 4–8. Dla Facebooka wynik DET ze scrapera ma pierwszeństwo; dla innych
+źródeł liczy je `rules_det_fallback.py` z `RenderProbe`, a bez niego
+`det_placeholders.py` zwraca `not_applicable` z powodem.
 
-## Quick start
+## Quick Start
 
 ```bash
 cd services/analyzer
 python -m venv .venv
-.venv/Scripts/python.exe -m pip install -r requirements-dev.txt   # Windows
-# source .venv/bin/activate && pip install -r requirements-dev.txt  # Linux/macOS
-.venv/Scripts/python.exe -m pytest tests/ -q
+.venv/Scripts/python.exe -m pip install -r requirements-dev.txt   # Linux/macOS: .venv/bin/python
+ollama pull SpeakLeash/bielik-4.5b-v3.0-instruct:Q8_0
+ollama pull bge-m3
+.venv/Scripts/python.exe -m pytest tests -q
 ```
 
-Wymagania zewnętrzne: **Ollama** z modelami `SpeakLeash/bielik-4.5b-v3.0-instruct:Q8_0`
-i `bge-m3`, oraz **ffmpeg** dla speech-to-text.
+Testy nie wymagają Ollamy; testy E2E Whispera i bazy są pomijane bez modelu/bazy. ffmpeg niepotrzebny (PyAV).
 
-## Co już jest (gotowe i przetestowane)
+## Wymagania sprzętowe
 
-| Plik | Co robi | Testy |
+RTX 3070 Ti Laptop (8 GB VRAM), 15,3 GB RAM. Bielik 4.5B Q8_0 ok. 5 GB VRAM, bge-m3
+ok. 1,2 GB, Whisper na CPU. Pełna analiza dokumentu: ok. 15–25 s.
+
+## Konfiguracja
+
+Wzór: `.env.example` (`.env` nie trafia do gita).
+
+| Zmienna | Domyślnie | Opis |
 |---|---|---|
-| `analyzer/contracts.py` | Zamrożone kontrakty danych (par. 6 design doca) | `test_contracts.py` |
-| `analyzer/rules_llm/base.py` | Interfejs `Rule` + `RuleBase` z konstruktorami wyników | `test_contracts.py` |
-| `analyzer/scoring.py` | `risk_score`, `risk_level`, `is_flagged`, `coverage` | `test_scoring.py` |
-| `analyzer/scope_gate.py` | Brama zakresu — kryterium instrumentowe (par. 6.6) | `test_scope_gate.py` |
-| `analyzer/router.py` | Tablica decyzyjna R1–R4 (par. 6.5) | `test_router.py` |
-| `analyzer/llm.py` | Klient Ollamy (Bielik + bge-m3), wstrzykiwany transport | `test_llm.py` |
-| `analyzer/rules_llm/batch_1.py` | Reguły 1, 2, 17, 18 jednym wywołaniem + weryfikacja cytatu | `test_llm.py` |
-| `analyzer/prompts/batch_1.txt` | Prompt wsadowy: reguły 1, 2, 17, 18 | — |
-| `tools/gen_contract_examples.py` | Generuje `fixtures/contract-examples/` z modeli | — |
-| `tools/smoke_llm.py` | Smoke test na żywo — uruchom, gdy Ollama wstanie | — |
+| `OLLAMA_BASE_URL` | `http://127.0.0.1:11434` | adres Ollamy |
+| `OLLAMA_MODEL` | `SpeakLeash/bielik-4.5b-v3.0-instruct:Q8_0` | model reguł |
+| `OLLAMA_EMBED_MODEL` | `bge-m3` | embeddingi (1024 wymiary) |
+| `OLLAMA_TEMPERATURE` | `0` | dekodowanie zachłanne; przy 0,1 ta sama reklama dawała różne werdykty |
+| `OLLAMA_SEED` | `42` | stały seed, razem z temperaturą 0 daje powtarzalne werdykty |
+| `WHISPER_MODEL` | `small` | faster-whisper, CPU int8 |
+| `STT_ENABLED` | `1` | `0` wyłącza transkrypcję |
+| `STT_MEDIA_ROOT`, `STT_MEDIA_CACHE`, `STT_MAX_MEDIA_MB` | -, -, `200` | katalog wideo, cache mediów, limit pliku |
+| `SEAWEEDFS_S3_PUBLIC_URL` | puste | brama S3 dla `s3://`; puste = takie media pomijane |
+| `DATABASE_URL` | - | Postgres casedb (`--db`); na Windows `127.0.0.1`, nie `localhost` |
+| `FINDINGS_OUT_DIR` | puste | zapis `Finding` do JSON, gdy API nie działa |
+| `API_BASE_URL`, `VALKEY_URL`, `PROFILE` | `http://api:8000`, `redis://valkey:6379/0`, `gpu8` | serwis api, kolejka RQ, profil sprzętowy |
 
-Żaden z tych plików nie wymaga działającej Ollamy, więc dało się je napisać
-i przetestować, zanim modele się pobrały. Testy używają `httpx.MockTransport`.
+## Mapa plików
 
-## Co trzeba zrobić dalej (kolejność ma znaczenie)
+| Plik | Co robi |
+|---|---|
+| `analyzer/contracts.py`, `pipeline.py` | zamrożone kontrakty; `analyze(doc)` -> `Finding` |
+| `analyzer/scope_gate.py`, `router.py`, `scoring.py`, `llm.py`, `embeddings.py` | brama zakresu, R1–R4, `risk_score`, Ollama, bge-m3 |
+| `analyzer/rules_llm/batch_1..4.py` + `prompts/batch_*.txt` | reguły 1,2,17,18 / 9,11 / 12a,12b,14 / 15,16 |
+| `analyzer/rules_llm/guards.py` | strażnicy w kodzie dla reguł 2, 12a, 12b, 14, 16, 17 |
+| `analyzer/rules_llm/preconditions.py`, `lang_consistency.py` | warunki wstępne reguł warunkowych; reguła 10 |
+| `analyzer/rules_hybrid.py` | reguły 3 (geometria, czas, tekst, proporcje czcionek) i 13 |
+| `analyzer/rules_det_fallback.py`, `det_placeholders.py` | DET 4–8 z `RenderProbe` / `not_applicable` |
+| `analyzer/rules_llm/registry.py` | `default_config()`: potok produkcyjny (LLM, embeddingi, Whisper) |
+| `analyzer/completeness.py` | wykrywanie materiału częściowego |
+| `analyzer/stt.py`, `media_fetch.py` | Whisper; media: ścieżka, http(s), `s3://` |
+| `analyzer/worker.py` | worker RQ na `q:gpu` |
+| `analyzer/casedb_adapter.py`, `casedb_bridge.py` | przypadek <-> `AdDocument`/`Finding`, claim i upsert |
+| `tools/casedb_batch.py` | analiza przypadków casedb |
+| `tools/eval_rules.py` | ewaluacja per reguła (`fixtures/module2-cases/`) |
+| `tools/evaluate.py`, `score_corpus.py`, `smoke_*.py` | zbiór złoty `fixtures/gold/` (8 reklam FB), smoke testy |
 
-1. **Uruchom `python tools/smoke_llm.py`**, gdy tylko Ollama i Bielik będą
-   gotowe. To jedyna rzecz, której testy nie mogą sprawdzić: czy prawdziwy
-   model rozumie nasz prompt i trzyma się schematu. Jeśli reguły wyjdą
-   `not_applicable` — iteruj `prompts/batch_1.txt`, nie kod.
-2. **`analyzer/embeddings.py`** — `bge-m3` przez `client.embed()` → wektor 1024,
-   plus `simhash` na znormalizowanym tekście i cosine do dedupu.
-3. **`analyzer/rules_llm/registry.py`** — rejestr zbierający reguły DET (od A)
-   i LLM (nasze) po wspólnym interfejsie `Rule`.
-4. Prompty wsadowe 2–4: reguły `9+10+11`, `12a+12b+14`, `15+16`.
-   Kopiuj strukturę z `batch_1.py` — `RULE_META` + `FAIL_MEANS_ABSENCE` i gotowe.
-5. **Reguły HYBRID 3 i 13** — potrzebują `RenderProbe` od osoby A.
-6. **`analyzer/stt.py`** — `faster-whisper`, `device="cpu"`, `compute_type="int8"`.
-7. **`analyzer/module3.py`** — shadow advisory (korzysta z resolvera osoby A).
-8. **`tools/evaluate.py`** — precision / recall / F1 / macierz pomyłek.
+## Uruchomienie
 
-### Weryfikacja cytatu — zabezpieczenie przed halucynacją
+Wszystkie komendy z `services/analyzer`.
 
-`batch_1.py` sprawdza, czy cytat podany przez model **faktycznie występuje
-w materiale** (po normalizacji wielkości liter i białych znaków). Jeśli nie:
-
-- dla reguł **17 i 18** (`fail` twierdzi, że coś w materiale *jest*) —
-  `confidence` spada do 40%, cytat jest usuwany, a w `summary` ląduje adnotacja
-  o potrzebie weryfikacji ręcznej. Ustalenie zostaje, ale samo się wytłumia
-  w `risk_score`, bo `confidence` wchodzi do wzoru.
-- dla reguł **1 i 2** (`fail` oznacza, że czegoś *brakuje*) — brak cytatu jest
-  poprawny i nie obniża pewności. Lista takich reguł to `FAIL_MEANS_ABSENCE`.
-
-Dodawając kolejne prompty wsadowe, **zadeklaruj dla każdej reguły, czy jej
-`fail` oznacza obecność czy brak** — inaczej zabezpieczenie będzie karać
-poprawne ustalenia.
-
-## Zasady, których trzymamy się w tym serwisie
-
-- **18 reguł = 4 prompty wsadowe, nie 18 wywołań modelu na dokument.**
-  Osiemnaście requestów zabije przepustowość przy 8 GB VRAM.
-- **`evidence` reguł LLM zawiera dosłowny cytat, nigdy parafrazę.**
-  Nadzorca musi móc odnaleźć fragment w materiale.
-- **Brak danych → `not_applicable`, nigdy `fail`.** Fałszywy alarm na oczach
-  jury jest droższy niż przyznanie się do niepewności.
-- **Whisper na CPU int8.** GPU jest zarezerwowane dla Bielika — przy 8 GB VRAM
-  Bielik 4.5B (~5 GB) + bge-m3 (~1,2 GB) mieści się, Whisper by się nie zmieścił.
-- **Prompty w plikach `prompts/*.txt`, nie w kodzie.**
-- **Nie dotykamy `services/scraper/` ani `services/api/` ani `services/web/`.**
-
-## Brama zakresu — najważniejsza decyzja domenowa
-
-Kryterium jest **instrumentowe, nie aktywowe**. Materiał jest w zakresie, gdy
-rozpoznano opakowanie będące instrumentem finansowym wg art. 2 ustawy o obrocie,
-**bez względu na aktywo bazowe**.
-
-CFD na kryptoaktywo **jest** instrumentem finansowym (art. 2 ust. 1 pkt 2 lit. h)
-i zostaje w zakresie z podwyższonym priorytetem. Poza zakresem jest wyłącznie
-zakup spot bez opakowania — reżim MiCA, nie MiFID II.
-
-Słownikowe wykluczanie słów „krypto"/„bitcoin" dawałoby false negative na
-najagresywniej reklamowanych produktach detalicznych pod nadzorem KNF.
-
-## Regeneracja przykładów kontraktów
+Worker RQ (payload: `{document_id}`, `{document: ...}` albo płaski `AdDocument`, opcjonalnie `det_results`):
 
 ```bash
-.venv/Scripts/python.exe tools/gen_contract_examples.py
+.venv/Scripts/python.exe -m analyzer.worker
 ```
 
-Pliki lądują w `fixtures/contract-examples/` i są walidowane przez
-`tests/test_contracts.py`. To mechanizm, który chroni zduplikowany interfejs
-`Rule` przed rozjechaniem się z kopią osoby A w `services/scraper/rules_det/base.py`.
+Most casedb: tryb plikowy zapisuje `<case_id>.json` i `casedb_commands.txt` (komendy
+`casedb ai-result`), tryb `--db` czyta i zapisuje wprost w bazie:
+
+```bash
+.venv/Scripts/python.exe tools/casedb_batch.py --in export.json --out DIR
+.venv/Scripts/python.exe tools/casedb_batch.py --db --limit 10 --source youtube [--retry]
+```
+
+Smoke testy:
+
+```bash
+.venv/Scripts/python.exe tools/smoke_llm.py
+.venv/Scripts/python.exe tools/smoke_stt.py fixtures/stt/ad_pl_risk_late.wav
+```
+
+Ewaluacja:
+
+```bash
+.venv/Scripts/python.exe tools/eval_rules.py [--rule 12a] [--offline] [--cases PLIK] [--out PLIK]
+.venv/Scripts/python.exe tools/evaluate.py
+.venv/Scripts/python.exe tools/score_corpus.py
+```
+
+## Zasady
+
+- 18 reguł = 4 prompty wsadowe, nie 18 wywołań modelu na dokument (8 GB VRAM).
+- `evidence` reguł LLM to dosłowny cytat, nigdy parafraza.
+- Brak danych -> `not_applicable`, nigdy `fail`.
+- Elementy obiektywne sprawdzają strażnicy w kodzie (`guards.py`): Bielik ignorował część poleceń promptu.
+- Materiał częściowy (klipy napisów YouTube, `engine` z `:partial`): `fail` reguł
+  „brak” (1, 2, 3, 11, 12a, 12b, 14, 15, 16) -> `not_applicable`.
+- Whisper na CPU int8; GPU dla Bielika.
+- Prompty w `prompts/*.txt`, nie w kodzie.
+- Nie dotykamy `services/scraper/`, `services/api/`, `services/web/`, `services/casedb/`.
+
+## Brama zakresu
+
+Kryterium instrumentowe, nie aktywowe: w zakresie jest materiał z instrumentem finansowym
+wg art. 2 ustawy o obrocie, bez względu na aktywo bazowe. CFD na kryptoaktywo zostaje
+w zakresie (art. 2 ust. 1 pkt 2 lit. h); poza nim tylko zakup spot (MiCA).
+
+## Weryfikacja cytatu
+
+`batch_1.py` sprawdza, czy cytat modelu występuje w materiale. Dla reguł, gdzie `fail`
+oznacza obecność (17, 18), brak cytatu obniża `confidence` do 40% i dodaje adnotację
+w `summary`. Dla reguł, gdzie `fail` oznacza brak (`FAIL_MEANS_ABSENCE`), brak cytatu
+jest poprawny. Nowa reguła musi zadeklarować, którego rodzaju jest.

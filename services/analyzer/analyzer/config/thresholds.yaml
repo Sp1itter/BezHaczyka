@@ -28,6 +28,15 @@ rules:
     max_gap_seconds: 5.0
     legal_basis: "art. 44 ust. 2 lit. b rozporzadzenia delegowanego 2017/565"
 
+  # Regula 13 (HYBRYDOWA) - dominacja wynikow historycznych. Wezel z wynikiem
+  # historycznym nie moze byc najbardziej wyeksponowanym elementem materialu.
+  #   dominance_ratio - fail, gdy czcionka wyniku >= ratio * najwieksza inna
+  #                     czcionka (i wynik jest wiekszy albo, przy remisie, wyzej)
+  # Brak wynikow historycznych albo brak RenderProbe -> not_applicable.
+  rule_13:
+    dominance_ratio: 1.0
+    legal_basis: "art. 44 ust. 4 lit. a rozporzadzenia delegowanego 2017/565"
+
   # Regula 4 - rozmiar czcionki ryzyka.
   # Stosunek czcionki ostrzezenia o ryzyku do dominujacej czcionki w materiale.
   # Ponizej progu -> fail.
