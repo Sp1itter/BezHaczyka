@@ -106,6 +106,17 @@ def alert_payload(finding: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _csv_cell(v: Any) -> Any:
+    """Komorka CSV; tekst zaczynajacy sie od =,+,-,@, tab, CR dostaje prefiks ' (formula injection)."""
+    if v is None:
+        return ""
+    if isinstance(v, list):
+        v = ";".join(str(x) for x in v)
+    if isinstance(v, str) and v[:1] in ("=", "+", "-", "@", "\t", "\r"):
+        return "'" + v
+    return v
+
+
 def create_app(store: SqlStore | None = None, gold_path: Path | None = None) -> FastAPI:
     app = FastAPI(title="InvestWatch API", version="0.1.0")
     app.state.store = store or open_store(os.getenv("DATABASE_URL"))
@@ -268,8 +279,7 @@ def create_app(store: SqlStore | None = None, gold_path: Path | None = None) -> 
         w = csv.writer(buf)
         w.writerow(cols)
         for it in items:
-            w.writerow([";".join(str(x) for x in v) if isinstance(v, list)
-                        else ("" if v is None else v) for v in (it.get(c) for c in cols)])
+            w.writerow([_csv_cell(v) for v in (it.get(c) for c in cols)])
         stamp = datetime.now(timezone.utc).strftime("%Y%m%d")
         return Response(
             content="﻿" + buf.getvalue(),

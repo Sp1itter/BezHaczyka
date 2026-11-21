@@ -515,17 +515,25 @@ def sync_registry_from_knf(conn: psycopg.Connection) -> int:
     from casedb.knf import name_key
 
     curated = conn.execute(
-        "SELECT name, aliases FROM authorized_entities WHERE source = 'curated'").fetchall()
+        "SELECT name, aliases, active FROM authorized_entities WHERE source = 'curated'").fetchall()
     skip = {name_key(n) for r in curated for n in [r["name"], *(r["aliases"] or [])]}
+    active_curated = {name_key(n) for r in curated if r["active"] is not False
+                      for n in [r["name"], *(r["aliases"] or [])]}
     rows = conn.execute(
         "SELECT register, active, name, name_key, former_names, fields FROM knf_entities"
         " WHERE category = ANY(%s) ORDER BY id", (list(_SYNC_CATEGORIES),)).fetchall()
+    # Nieaktywny wpis pomijamy, gdy ta sama nazwa ma aktywny wpis (w dowolnym rejestrze).
+    active_keys = active_curated | {r["name_key"] for r in rows if r["active"]}
     n = 0
+    dropped: list[str] = []
     with conn.transaction():
         for r in rows:
             if r["name_key"] in skip:
                 continue
             knf_id = "KNF-%s-%s" % (r["register"], hashlib.sha1(r["name_key"].encode()).hexdigest()[:10])
+            if not r["active"] and r["name_key"] in active_keys:
+                dropped.append(knf_id)
+                continue
             conn.execute(
                 """
                 INSERT INTO authorized_entities (knf_id, name, normalized_name, type, country,
@@ -542,6 +550,9 @@ def sync_registry_from_knf(conn: psycopg.Connection) -> int:
                  r["active"]),
             )
             n += 1
+        if dropped:  # wpisy zostale po wczesniejszej synchronizacji
+            conn.execute("DELETE FROM authorized_entities WHERE source = 'knf' AND knf_id = ANY(%s)",
+                         (dropped,))
     return n
 
 

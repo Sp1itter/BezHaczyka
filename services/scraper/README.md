@@ -21,6 +21,8 @@ Rejestr: `python tools/knf_registry.py --dry-run` (w katalogu głównym repo) uz
 `knf_registry.csv` o nowe podmioty z wykazów KNF (adresy w kolumnie `source_url`), nie nadpisując
 ręcznych aliasów/domen. Po zmianie CSV: `docker compose run --rm casedb load-registry`.
 
+Po zmianie resolvera lub rejestru KNF: `docker compose exec scraper-worker python tools/reresolve.py` (domyślnie `DATABASE_URL`; `--dry-run`, `--source`) przelicza `cases.entity_resolution` z `cases.raw`.
+
 ## Quick start
 
 ```bash

@@ -33,7 +33,7 @@ export async function getModule1Report(filters) {
   return res.json();
 }
 
-export const getFinding =(id) => call(`/findings/${id}`);
+export const getFinding = (id) => call(`/findings/${id}`);
 export const getStats = () => call("/stats");
 export const getCalibration = () => call("/calibration");
 export const getHealth = () => call("/health");
