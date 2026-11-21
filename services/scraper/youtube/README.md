@@ -1,3 +1,8 @@
+!!!!!!!usun po dopracowaniu filtrowania opis:
+przydalby sie jeszcze system wykluczania powtorzen i usystematyzowanie skanowania pod wiele skanerow
+
+config w chuj do ustawienia szczegolnie dict bo to on glownie dziala na korzysc testu
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 # Demo INVESTWATCH
 
 Szuka maksymalnie 5 filmów z **konkretną firmą, agentem lub domeną ze słownika oraz sygnałem promocji w pobliskim tekście**. Samo „inwestowanie”, „ETF”, nazwa firmy bez promocji czy dowolny link nie wystarczą. To selekcja materiałów do sprawdzenia pod kątem scamu, nie automatyczny werdykt.
