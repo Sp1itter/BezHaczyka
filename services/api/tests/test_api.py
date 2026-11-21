@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import json
+import os
 from pathlib import Path
 
 import pytest
@@ -9,7 +10,7 @@ from fastapi.testclient import TestClient
 
 from api.main import create_app
 from api.seed import seed
-from api.store import SqliteStore
+from api.store import PostgresStore, SqliteStore
 
 REPO = Path(__file__).resolve().parents[3]
 EXAMPLES = REPO / "fixtures" / "contract-examples"
@@ -20,9 +21,28 @@ def load(name: str) -> dict:
     return json.loads((EXAMPLES / name).read_text(encoding="utf-8"))
 
 
+PG_URL = os.getenv("TEST_DATABASE_URL")
+
+
+def _postgres_store():
+    # Schemat tworzy infra/init.sql. UWAGA: test czysci tabele documents/findings w tej bazie.
+    store = PostgresStore(PG_URL)
+    store._execute("TRUNCATE findings, documents CASCADE")
+    return store
+
+
+@pytest.fixture(params=["sqlite", "postgres"])
+def store(request):
+    if request.param == "postgres":
+        if not PG_URL:
+            pytest.skip("TEST_DATABASE_URL nieustawione - Postgres pominiety")
+        return _postgres_store()
+    return SqliteStore(":memory:")
+
+
 @pytest.fixture()
-def client() -> TestClient:
-    return TestClient(create_app(store=SqliteStore(":memory:"), gold_path=GOLD))
+def client(store) -> TestClient:
+    return TestClient(create_app(store=store, gold_path=GOLD))
 
 
 @pytest.fixture()
@@ -57,9 +77,28 @@ def test_document_upsert_returns_200_second_time(client: TestClient) -> None:
 
 def test_embedding_survives_roundtrip(client: TestClient) -> None:
     doc = load("ad_document.json")
-    doc["embedding"] = {"model": "bge-m3", "dim": 3, "vector": [0.1, -0.2, 0.3]}
+    vec = [round(i / 1024, 4) - 0.5 for i in range(1024)]  # bge-m3: 1024 wymiary
+    doc["embedding"] = {"model": "bge-m3", "dim": 1024, "vector": vec}
     client.post("/documents", json=doc)
-    assert client.get(f"/documents/{doc['id']}").json()["embedding"]["vector"] == [0.1, -0.2, 0.3]
+    got = client.get(f"/documents/{doc['id']}").json()["embedding"]["vector"]
+    assert got == pytest.approx(vec, abs=1e-6)  # pgvector trzyma float4
+
+
+def test_non_uuid_ids(client: TestClient) -> None:
+    doc = load("ad_document.json")
+    doc["id"] = "nie-uuid"
+    status = client.post("/documents", json=doc).status_code
+    # SQLite przyjmuje dowolny tekst; Postgres (UUID) - czytelne 422, nie 500
+    assert status in (201, 422)
+    assert client.get("/findings/nie-uuid").status_code == 404
+    assert client.patch("/findings/nie-uuid", json={"status": "confirmed"}).status_code == 404
+
+
+def test_wrong_dim_embedding_does_not_block_document(store) -> None:
+    from api.contracts import AdDocument
+    doc = AdDocument.model_validate(load("ad_document.json"))  # przyklad ma skrocony wektor (3)
+    store.upsert_document(doc)
+    assert store.document_exists(doc.id)
 
 
 def test_missing_document_404(client: TestClient) -> None:
@@ -148,7 +187,6 @@ def test_ws_alert_on_escalation_to_high(client: TestClient) -> None:
         assert ws.receive_json()["type"] == "finding.high"
 
 
-def test_seed_loads_contract_examples() -> None:
-    store = SqliteStore(":memory:")
+def test_seed_loads_contract_examples(store) -> None:
     docs, findings = seed(store, EXAMPLES)
     assert docs == 2 and findings == 1

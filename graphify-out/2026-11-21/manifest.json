@@ -325,9 +325,9 @@
     "semantic_hash": ""
   },
   "tools/check_compliance.py": {
-    "mtime": 1795282066.7012765,
-    "seen": 1795282869.750116,
-    "ast_hash": "8561a583d81830bec1da329c79568303",
+    "mtime": 1795283924.8113034,
+    "seen": 1795283945.4306002,
+    "ast_hash": "27903e4956a7a49caef24a5fb0bad776",
     "semantic_hash": ""
   },
   "KOMENDY.txt": {
@@ -439,9 +439,9 @@
     "semantic_hash": ""
   },
   "infra/docker-compose.yml": {
-    "mtime": 1795282784.3941834,
-    "seen": 1795282869.750116,
-    "ast_hash": "93ba27a6030f5f928e82d312d5821544",
+    "mtime": 1795283898.1129844,
+    "seen": 1795283945.3972874,
+    "ast_hash": "b72a5fcf24dc615941a3e335b93e0332",
     "semantic_hash": ""
   },
   "services/analyzer/analyzer/change_detect.py": {
@@ -1126,6 +1126,12 @@
     "mtime": 1795282445.7460701,
     "seen": 1795282869.750116,
     "ast_hash": "e273b423318111aed28e7d415b1c4ced",
+    "semantic_hash": ""
+  },
+  "README.md": {
+    "mtime": 1795283898.2234056,
+    "seen": 1795283945.4340644,
+    "ast_hash": "4ec041f80c23aba9ec1b766a2c19f712",
     "semantic_hash": ""
   },
   "services/web/package-lock.json": {

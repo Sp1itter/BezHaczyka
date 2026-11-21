@@ -24,11 +24,12 @@ from typing import Any, Literal
 
 from fastapi import FastAPI, HTTPException, Query, Response, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
 
 from api.contracts import AdDocument, Finding
-from api.store import FindingFilter, SqlStore, open_store
+from api.store import FindingFilter, InvalidId, SqlStore, open_store
 
 log = logging.getLogger("api")
 
@@ -112,6 +113,10 @@ def create_app(store: SqlStore | None = None, gold_path: Path | None = None) -> 
 
     def st() -> SqlStore:
         return app.state.store
+
+    @app.exception_handler(InvalidId)
+    async def invalid_id(_request, exc: InvalidId) -> JSONResponse:
+        return JSONResponse(status_code=422, content={"detail": str(exc)})
 
     @app.get("/health")
     async def health() -> dict[str, Any]:
