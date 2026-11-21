@@ -31,6 +31,16 @@ CREATE TABLE IF NOT EXISTS authorized_entities (
 
 CREATE INDEX IF NOT EXISTS idx_authorized_entities_norm ON authorized_entities (normalized_name);
 
+-- Baza postawiona starym infra/init.sql (przed Modulem 1) ma juz authorized_entities,
+-- documents i findings w starszym ksztalcie - CREATE ... IF NOT EXISTS ich nie zmieni.
+ALTER TABLE authorized_entities
+    ADD COLUMN IF NOT EXISTS register   TEXT,
+    ADD COLUMN IF NOT EXISTS aliases    TEXT[] NOT NULL DEFAULT '{}',
+    ADD COLUMN IF NOT EXISTS domains    TEXT[] NOT NULL DEFAULT '{}',
+    ADD COLUMN IF NOT EXISTS handles    TEXT[] NOT NULL DEFAULT '{}',
+    ADD COLUMN IF NOT EXISTS source_url TEXT,
+    ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now();
+
 -- documents: AdDocument w ksztalcie kontraktu, czytany przez services/api (dashboard).
 -- Dawniej w infra/init.sql. Analyzer (ANALYZER_STORE=db) wypelnia go migawka dokumentu
 -- przy zapisie findingu (store.save_finding); API zapisuje tu przez POST /documents.
@@ -78,6 +88,17 @@ CREATE TABLE IF NOT EXISTS findings (
     -- AdDocument w chwili analizy, potrzebny do detekcji zmian.
     document_snapshot JSONB
 );
+
+-- Stary ksztalt findings (init.sql): klucz obcy do documents i NOT NULL, ktorych Modul 1 nie ma.
+ALTER TABLE findings DROP CONSTRAINT IF EXISTS findings_document_id_fkey;
+ALTER TABLE findings
+    ALTER COLUMN primary_module DROP NOT NULL,
+    ALTER COLUMN routing DROP NOT NULL,
+    ALTER COLUMN risk_score DROP NOT NULL,
+    ALTER COLUMN risk_level DROP NOT NULL,
+    ALTER COLUMN rule_results DROP NOT NULL,
+    ALTER COLUMN entities DROP NOT NULL,
+    ADD COLUMN IF NOT EXISTS document_snapshot JSONB;
 
 CREATE INDEX IF NOT EXISTS idx_findings_risk_level ON findings (risk_level);
 CREATE INDEX IF NOT EXISTS idx_findings_created_at ON findings (created_at DESC);
