@@ -4,11 +4,13 @@ import Findings from "./components/Findings.jsx";
 import Overview from "./components/Overview.jsx";
 import Calibration from "./components/Calibration.jsx";
 import Alerts from "./components/Alerts.jsx";
+import Module1 from "./components/Module1.jsx";
 
 const TABS = [
   ["findings", "Ustalenia"],
   ["overview", "Przegląd"],
   ["calibration", "Kalibracja"],
+  ["module1", "Moduł 1 — raport"],
 ];
 
 export default function App() {
@@ -67,6 +69,7 @@ export default function App() {
       )}
       {tab === "overview" && <Overview refreshKey={refreshKey} />}
       {tab === "calibration" && <Calibration />}
+      {tab === "module1" && <Module1 />}
 
       <Alerts
         alerts={alerts}

@@ -16,10 +16,13 @@ Uruchomienie lokalne (bez Dockera, SQLite):
 from __future__ import annotations
 
 import asyncio
+import csv
+import io
 import json
 import logging
 import os
 from collections import Counter
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Literal
 
@@ -31,13 +34,15 @@ from starlette.concurrency import run_in_threadpool
 
 from api.contracts import AdDocument, Finding
 from api.review import ReviewLabel, labels_payload, verdict_for
-from api.store import UNSET, FindingFilter, InvalidId, SqlStore, open_store
+from api.store import UNSET, FindingFilter, FlagsUnavailable, InvalidId, ReportUnavailable, SqlStore, open_store
 
 log = logging.getLogger("api")
 
 # W repo: <root>/services/api/api/main.py. W kontenerze sciezke podaje GOLD_LABELS_PATH.
 _PARENTS = Path(__file__).resolve().parents
 DEFAULT_GOLD = (_PARENTS[3] if len(_PARENTS) > 3 else _PARENTS[-1]) / "fixtures" / "gold" / "labels.json"
+
+CSV_MAX_ROWS = 50000  # twardy limit eksportu CSV
 
 Status = Literal["new", "in_review", "confirmed", "dismissed", "triage"]
 
@@ -116,6 +121,17 @@ def alert_payload(finding: dict[str, Any]) -> dict[str, Any]:
         "source": doc.get("source"),
         "failed_rules": [r["rule_id"] for r in finding["rule_results"] if r["verdict"] == "fail"],
     }
+
+
+def _csv_cell(v: Any) -> Any:
+    """Komorka CSV; tekst zaczynajacy sie od =,+,-,@, tab, CR dostaje prefiks ' (formula injection)."""
+    if v is None:
+        return ""
+    if isinstance(v, list):
+        v = ";".join(str(x) for x in v)
+    if isinstance(v, str) and v[:1] in ("=", "+", "-", "@", "\t", "\r"):
+        return "'" + v
+    return v
 
 
 def create_app(store: SqlStore | None = None, gold_path: Path | None = None) -> FastAPI:
@@ -268,6 +284,55 @@ def create_app(store: SqlStore | None = None, gold_path: Path | None = None) -> 
             for it in data.get("items", [])
         ]
         return {"items": items, "source": path.name, "available": True}
+
+    # --- raport Modulu 1 (JSON + CSV) ---------------------------------------------
+    async def _report(source, relation, flag, since, limit, offset):
+        try:
+            return await run_in_threadpool(
+                lambda: st().module1_report(source=source, relation=relation, flag=flag,
+                                            since=since, limit=limit, offset=offset))
+        except ReportUnavailable as e:
+            raise HTTPException(503, str(e))
+        except FlagsUnavailable as e:
+            raise HTTPException(400, str(e))
+
+    @app.get("/reports/module1")
+    async def report_module1(
+        source: str | None = None,
+        relation: str | None = None,
+        flag: str | None = None,
+        since: datetime | None = None,
+        limit: int = Query(200, ge=1, le=1000),
+        offset: int = Query(0, ge=0),
+    ) -> dict[str, Any]:
+        items, total = await _report(source, relation, flag, since, limit, offset)
+        return {"items": items, "total": total}
+
+    @app.get("/reports/module1.csv")
+    async def report_module1_csv(
+        source: str | None = None,
+        relation: str | None = None,
+        flag: str | None = None,
+        since: datetime | None = None,
+    ) -> Response:
+        # CSV = wszystkie pasujace wiersze (bez stronicowania), twardy limit bezpieczenstwa.
+        items, total = await _report(source, relation, flag, since, CSV_MAX_ROWS, 0)
+        try:
+            cols = await run_in_threadpool(st().module1_columns)
+        except ReportUnavailable as e:
+            raise HTTPException(503, str(e))
+        buf = io.StringIO()
+        w = csv.writer(buf)
+        w.writerow(cols)
+        for it in items:
+            w.writerow([_csv_cell(v) for v in (it.get(c) for c in cols)])
+        stamp = datetime.now(timezone.utc).strftime("%Y%m%d")
+        return Response(
+            content="﻿" + buf.getvalue(),
+            media_type="text/csv; charset=utf-8",
+            headers={"Content-Disposition": f'attachment; filename="modul1-raport-{stamp}.csv"',
+                     "X-Total-Count": str(total)},
+        )
 
     # --- alerty na zywo -----------------------------------------------------------
     @app.websocket("/ws/alerts")

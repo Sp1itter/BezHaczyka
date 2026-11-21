@@ -59,6 +59,14 @@ class FindingFilter:
     offset: int = 0
 
 
+class ReportUnavailable(RuntimeError):
+    """Widok module1_report istnieje tylko w Postgresie (migracje casedb)."""
+
+
+class FlagsUnavailable(RuntimeError):
+    """Widok nie ma jeszcze kolumny m1_flags."""
+
+
 @dataclass
 class UpsertResult:
     created: bool
@@ -396,6 +404,15 @@ class SqlStore:
         rows = self._execute(f"{self._finding_select()} ORDER BY f.created_at DESC")
         return [self._hydrate(r) for r in rows]
 
+    # --- raport Modulu 1 (widok casedb) -------------------------------------
+    def module1_report(self, *, source: str | None = None, relation: str | None = None,
+                       flag: str | None = None, since: datetime | None = None,
+                       limit: int = 200, offset: int = 0) -> tuple[list[dict[str, Any]], int]:
+        raise ReportUnavailable("Raport Modulu 1 wymaga Postgresa (widok module1_report z migracji casedb)")
+
+    def module1_columns(self) -> list[str]:
+        raise ReportUnavailable("Raport Modulu 1 wymaga Postgresa (widok module1_report z migracji casedb)")
+
     def ping(self) -> bool:
         try:
             self._execute("SELECT 1 AS x")
@@ -498,6 +515,51 @@ class PostgresStore(SqlStore):
             return True
         except ValueError:
             return False
+
+    def module1_report(self, *, source: str | None = None, relation: str | None = None,
+                       flag: str | None = None, since: datetime | None = None,
+                       limit: int = 200, offset: int = 0) -> tuple[list[dict[str, Any]], int]:
+        cols = {r["column_name"] for r in self._execute(
+            "SELECT column_name FROM information_schema.columns WHERE table_name = 'module1_report'"
+            " AND table_schema = current_schema()")}
+        if not cols:
+            raise ReportUnavailable("Brak widoku module1_report - uruchom migracje casedb")
+        where, params = [], []
+        if source:
+            where.append("source = %s")
+            params.append(source)
+        if relation:
+            where.append("relation = %s")
+            params.append(relation)
+        if flag:
+            if "m1_flags" not in cols:
+                raise FlagsUnavailable("flagi niedostepne")
+            where.append("%s = ANY(m1_flags)")
+            params.append(flag)
+        if since is not None:
+            where.append("last_seen_at >= %s")
+            params.append(since)
+        clause = (" WHERE " + " AND ".join(where)) if where else ""
+        total = self._execute(f"SELECT COUNT(*) AS n FROM module1_report{clause}", params)[0]["n"]
+        rows = self._execute(
+            f"SELECT * FROM module1_report{clause} ORDER BY last_seen_at DESC, case_id LIMIT %s OFFSET %s",
+            params + [limit, offset],
+        )
+        for r in rows:
+            for k, v in r.items():
+                if isinstance(v, datetime):
+                    r[k] = _iso(v)
+                elif hasattr(v, "hex") and not isinstance(v, (bytes, str)):  # UUID
+                    r[k] = str(v)
+        return rows, int(total)
+
+    def module1_columns(self) -> list[str]:
+        rows = self._execute(
+            "SELECT column_name FROM information_schema.columns WHERE table_name = 'module1_report'"
+            " AND table_schema = current_schema() ORDER BY ordinal_position")
+        if not rows:
+            raise ReportUnavailable("Brak widoku module1_report - uruchom migracje casedb")
+        return [r["column_name"] for r in rows]
 
     # pgvector bez dodatkowego pakietu: literal tekstowy '[a,b,...]' rzutowany na vector.
     def _embedding_value(self, vec: list[float] | None) -> Any:
