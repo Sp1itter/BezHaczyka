@@ -1,0 +1,10 @@
+# Serwis scraper — wersje PRZYPIETE (weryfikowalny lancuch dostaw, par. 5 specyfikacji).
+# Wylacznie licencje permisywne — par. 3.1 design doca, docs/LICENSES.md.
+# FacebookAdsSource NIE dodaje zadnej biblioteki scrapujacej (decyzja Fazy 1: B').
+
+pydantic==2.14.4        # MIT          — kontrakty (kopia z analyzera)
+playwright==1.65.2      # Apache-2.0   — render, RenderProbe, discover/fetch
+boto3==1.44.9           # Apache-2.0   — SeaweedFS po S3 API
+rq==2.9.1               # BSD-2-Clause — kolejki q:ingest / q:render (rq-scheduler 0.14 wymaga rq>=2)
+redis==8.1.0            # MIT          — klient Valkey (BSD-3); to klient, nie serwer Redis
+yt-dlp==2026.10.26      # Unlicense    — wideo: tylko fallback, gdy brak bezposredniego mp4
