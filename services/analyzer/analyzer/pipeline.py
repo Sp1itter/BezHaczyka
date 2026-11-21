@@ -94,12 +94,16 @@ class AnalyzerConfig:
     module2_runners: Sequence[RuleRunner] = field(default_factory=tuple)
     # Czy nadpisac wynik bramy zakresu (gdy LLM rozstrzygnal `uncertain`).
     scope_override: ScopeStatus | None = None
+    # Klient do policzenia embeddingu, gdy dokument go nie ma. None = pomijamy.
+    # Brak embeddingu to degradacja (dedup na samym simhashu), nie awaria.
+    embed_client: object | None = None
 
 
 def analyze(
     doc: AdDocument,
     entities: EntityResolution | None = None,
     config: AnalyzerConfig | None = None,
+    det_results: list[RuleResult] | None = None,
 ) -> Finding:
     """Przepusc dokument przez caly potok i zwroc gotowy Finding.
 
@@ -109,6 +113,12 @@ def analyze(
     """
     entities = entities or EntityResolution()
     config = config or AnalyzerConfig()
+
+    # --- ② reprezentacja wektorowa -------------------------------------- #
+    # Scraper oddaje dokument z `simhash` i `embedding` ustawionymi na null —
+    # liczy je analyzer (par. 6.5 i 6.7 design doca). Specyfikacja wymaga
+    # reprezentacji wektorowej wprost, wiec to nie jest opcjonalne.
+    _ensure_vector_representation(doc, config)
 
     # --- ① brama zakresu ------------------------------------------------ #
     # Liczymy na tekscie WRAZ z transkrypcja: reklama wideo moze wymieniac
@@ -134,6 +144,12 @@ def analyze(
     # --- ④ ewaluacja regul --------------------------------------------- #
     results: list[RuleResult] = []
     if 2 in decision.modules:
+        # Reguly DET (4, 5, 6, 7, 8) liczy SCRAPER z geometrii renderu i oddaje
+        # je gotowe w zadaniu kolejki — analyzer nie ma RenderProbe w swojej
+        # domenie i nie powtarza tych pomiarow. Doklejamy je do wynikow regul
+        # LLM, zeby scoring widzial pelny obraz.
+        if det_results:
+            results.extend(det_results)
         for runner in config.module2_runners:
             try:
                 results.extend(runner(doc))
@@ -158,6 +174,26 @@ def analyze(
         status="triage" if decision.routing.rule == "R4" else "new",
         created_at=datetime.now(timezone.utc),
     )
+
+
+def _ensure_vector_representation(doc: AdDocument, config: AnalyzerConfig) -> None:
+    """Dolicz `simhash` i `embedding`, jesli dokument ich nie ma.
+
+    `simhash` liczymy ZAWSZE — to czysta funkcja, bez modelu i bez kosztu.
+    `embedding` tylko gdy podano klienta; jego brak degraduje dedup do samego
+    simhasha, ale nie jest awaria i nie blokuje oceny regul.
+    """
+    from analyzer.embeddings import embed_document_text, simhash_hex
+
+    text = doc.analyzable_text
+    if not text.strip():
+        return
+
+    if not doc.simhash:
+        doc.simhash = simhash_hex(text)
+
+    if doc.embedding is None and config.embed_client is not None:
+        doc.embedding = embed_document_text(text, config.embed_client)  # type: ignore[arg-type]
 
 
 def _crashed_rule_result(runner: RuleRunner, exc: Exception) -> RuleResult:

@@ -54,6 +54,16 @@ INSTRUMENT_WRAPPERS: list[tuple[str, str, str]] = [
     (r"\bforward\w*", "forward", ART2_DERIV),
     (r"\betf\w*", "etf", ART2_FUND),
     (r"\betn\w*", "etn", ART3_SEC),
+    # ETP / ETC — produkty notowane na gieldzie, zbywalne papiery wartosciowe.
+    # Stoja PRZED "akcje", bo reklama ETP czesto porownuje go do akcji
+    # ("inwestowanie w Solane w podobny sposob jak zakup akcji") i bez tego
+    # wykrylibysmy opakowanie "akcje" na podstawie porownania, nie instrumentu.
+    (r"\betp\w*", "etp", ART3_SEC),
+    (r"\betc\b", "etc", ART3_SEC),
+    (r"\bexchange\s+traded\s+(product|note|commodit)\w*", "etp", ART3_SEC),
+    # Notowanie na rynku regulowanym samo w sobie wskazuje papier wartosciowy.
+    (r"notowan\w*\s+na\s+(gield|rynku\s+regulowan)\w*", "papier_notowany", ART3_SEC),
+    (r"giel\w*\s+papierow\s+wartosciowych", "papier_notowany", ART3_SEC),
     (r"certyfikat\w*\s+inwestycyjn\w*", "certyfikat", ART3_SEC),
     (r"tytul\w*\s+uczestnictwa", "fundusz", ART2_FUND),
     (r"fundusz\w*\s+inwestycyjn\w*", "fundusz", ART2_FUND),

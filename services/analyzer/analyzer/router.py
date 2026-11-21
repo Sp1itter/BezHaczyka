@@ -263,16 +263,31 @@ def route(inp: RoutingInput) -> RoutingDecision:
             ),
         )
 
-    # --- R4: triage -------------------------------------------------------- #
+    # --- R4: podmiot nieustalony, ale material OCENIAMY -------------------- #
+    #
+    # Wazna poprawka wzgledem pierwotnego designu. Wczesniej R4 dawalo
+    # `modules=[]`, czyli ZERO ocenionych regul. Na realnym dokumencie ze
+    # scrapera (reklama z Meta Ad Library, bez jeszcze dopasowanego rejestru
+    # KNF) oznaczalo to, ze material nie byl oceniany w ogole — a razem z nim
+    # przepadaly wyniki regul DET, ktore scraper juz policzyl.
+    #
+    # Wymogi informacji o ryzyku z art. 44 rozporzadzenia del. 2017/565 dotycza
+    # MATERIALU, nie statusu publikujacego. To, czy podmiot ma zezwolenie,
+    # rozstrzyga o PRZYPISANIU do Modulu 1 albo 3 — nie o tym, czy ostrzezenie
+    # o ryzyku musi byc czytelne. Dlatego Modul 2 jest ocena bazowa kazdego
+    # materialu w zakresie, a `status: triage` nadal sygnalizuje, ze podmiot
+    # wymaga ustalenia przez czlowieka.
     return RoutingDecision(
-        modules=[],
-        primary_module=None,
+        modules=[2],
+        primary_module=2,
         routing=Routing(
             rule="R4",
             reason=(
-                "Nie udalo sie przypisac modulu: brak dopasowania publikujacego "
-                "do rejestru i brak wzmianki o autoryzowanej firmie. Do przegladu "
-                "recznego; zasila liste brakow w rejestrze."
+                "Nie ustalono podmiotu: brak dopasowania publikujacego do "
+                "rejestru KNF i brak wzmianki o autoryzowanej firmie. Material "
+                "jest jednak w zakresie, wiec oceniono informacje o ryzyku "
+                "(Modul 2). Przypisanie podmiotu wymaga przegladu recznego "
+                "i zasila liste brakow w rejestrze."
             ),
             scope_gate=inp.scope_status,
         ),

@@ -12,7 +12,9 @@ import os
 from dataclasses import fields
 
 from analyzer.api_client import ApiClient, ApiError
-from analyzer.contracts import Finding, Relation
+from pydantic import ValidationError
+
+from analyzer.contracts import Finding, Relation, RuleResult
 from analyzer.pipeline import AnalyzerConfig, EntityResolution, analyze
 
 log = logging.getLogger("analyzer.worker")
@@ -38,6 +40,27 @@ def _build_resolution(raw: object) -> EntityResolution:
         return EntityResolution()
 
 
+def _build_det_results(raw: object) -> list[RuleResult]:
+    """Wyniki regul deterministycznych (4-8) policzone przez SCRAPER.
+
+    Scraper ma RenderProbe i geometrie renderu, my nie — wiec nie powtarzamy
+    tych pomiarow, tylko przyjmujemy gotowe wyniki w zadaniu kolejki.
+
+    Pozycja, ktora nie przechodzi walidacji kontraktu, jest POMIJANA
+    z ostrzezeniem, a nie wywraca calego zadania: lepiej ocenic dokument
+    niepelnym zestawem regul (`coverage` to pokaze) niz nie ocenic go wcale.
+    """
+    if not isinstance(raw, list):
+        return []
+    out: list[RuleResult] = []
+    for item in raw:
+        try:
+            out.append(RuleResult.model_validate(item))
+        except ValidationError as exc:
+            log.warning("Pomijam niepoprawny RuleResult ze scrapera: %s", exc)
+    return out
+
+
 def handle_job(
     payload: dict, *, api: ApiClient, config: AnalyzerConfig | None = None
 ) -> Finding | None:
@@ -57,7 +80,8 @@ def handle_job(
         return None
 
     entities = _build_resolution(payload.get("entity_resolution"))
-    finding = analyze(doc, entities, config)
+    det_results = _build_det_results(payload.get("det_results"))
+    finding = analyze(doc, entities, config, det_results=det_results)
 
     try:
         api.post_finding(finding)
