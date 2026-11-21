@@ -156,6 +156,8 @@ services:
       GOLD_LABELS_PATH: /data/gold/labels.json
     volumes:
       - ../fixtures/gold:/data/gold:ro
+      # przyklady kontraktowe: docker compose exec api python -m api.seed --dir /data/contract-examples
+      - ../fixtures/contract-examples:/data/contract-examples:ro
     ports:
       - "127.0.0.1:${API_PORT}:8000"
     networks: [investwatch]
