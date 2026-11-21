@@ -6,9 +6,9 @@ import json
 import re
 
 import pytest
+from tools.gen_facebook_examples import SANITIZED_HOST, sanitize
 
 from tests.conftest import REPO_ROOT
-from tools.gen_facebook_examples import SANITIZED_HOST, sanitize
 
 AD_LIB = "https://www.facebook.com/ads/library/?id=912810501476495"  # compliance:allow — wejscie testu sanityzacji
 LANDING = "https://www.virtune.com/pl/sol?utm_source=meta&utm_campaign=sol&ref=x&aff=y"  # compliance:allow — j.w.

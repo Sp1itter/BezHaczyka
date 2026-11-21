@@ -229,7 +229,7 @@ def test_pause_stops_collector_only(store, files, cfg):
     assert src.calls == []
     # flota dalej przerabia kolejke
     _queue(store, files, 1)
-    assert run_fleet(store, files, cfg, fetcher=lambda r: _golden(), handoff=lambda d: None,
+    assert run_fleet(store, files, cfg, fetcher=lambda r: _golden(), pipeline=lambda r: {"case_id": "c"},
                      stop_when_empty=True, sleep=lambda s: None)
 
 
@@ -256,26 +256,40 @@ def _golden() -> AdDocument:
     return AdDocument.model_validate(json.loads(GOLDEN.read_text(encoding="utf-8")))
 
 
-def test_fleet_sends_only_priority_to_analyzer(store, files, cfg):
+def test_fleet_sends_only_priority_to_module1_pipeline(store, files, cfg):
     lex = files.lexicons()
     high = cand("Jan Przykladowy ujawnia sekret: gwarantowany zysk z platformy AI, z 1000 zł dziennie.",
-                external_id="hi", publisher_key="web:a")
+                external_id="hi", publisher_key="web:a", source_type="web")
     low = cand("Akcje i ETF na giełdzie dla każdego, prowadź rachunek maklerski u nas.",
-               external_id="lo", publisher_key="web:b")
+               external_id="lo", publisher_key="web:b", source_type="web")
     for c in (high, low):
         store.upsert(c, score(c, lex), creative_key(c.publisher_key, c.primary_text), None)
     sent = []
-    result = run_fleet(store, files, cfg, fetcher=lambda r: _golden(), handoff=sent.append,
+
+    def pipeline(row):
+        sent.append(row["external_id"])
+        return {"case_id": "case-hi", "outcome": "new"}
+
+    result = run_fleet(store, files, cfg, fetcher=lambda r: _golden(), pipeline=pipeline,
                        stop_when_empty=True, sleep=lambda s: None)
     assert result == {"done": 1, "fetched": 1}
-    assert len(sent) == 1
+    assert sent == ["hi"]  # tylko priorytet idzie drogim torem (resolver, casedb, Bielik)
     states = {r["external_id"]: r for r in store.rows(("done", "fetched"))}
-    assert states["hi"]["state"] == "done" and states["lo"]["state"] == "fetched"
-    assert states["hi"]["document_id"] == _golden().id
+    assert states["hi"]["state"] == "done" and states["hi"]["document_id"] == "case-hi"
+    assert states["lo"]["state"] == "fetched" and states["lo"]["document_id"] == _golden().id
     assert (cfg.state_dir / "documents" / f"{_golden().id}.json").is_file()
 
 
-def test_fleet_fetch_error_and_handoff_error_are_retried(store, files, cfg):
+def test_synthetic_rows_never_enter_pipeline(store, files, cfg):
+    c = cand("Jan Przykladowy ujawnia sekret: gwarantowany zysk z platformy AI.", external_id="s1")
+    store.upsert(c, score(c, files.lexicons()), None, None)
+    calls = []
+    run_fleet(store, files, cfg, fetcher=lambda r: _golden(), pipeline=lambda r: calls.append(r) or {},
+              stop_when_empty=True, sleep=lambda s: None)
+    assert calls == [] and store.rows(("fetched",))
+
+
+def test_fleet_errors_are_retried_and_gone_is_rejected(store, files, cfg):
     (row_id,) = _queue(store, files, 1)
 
     def bad_fetch(row):
@@ -284,26 +298,25 @@ def test_fleet_fetch_error_and_handoff_error_are_retried(store, files, cfg):
     assert process_one(store, files, cfg, "w", bad_fetch, None) == "retry"
     store._execute(f"UPDATE url_store SET locked_until = NULL, state = 'queued' WHERE id = {row_id}")
     store.set_priority(row_id, 5.0, "queued", {"instrument": ["cfd"]})
+    store._execute(f"UPDATE url_store SET source_type = 'web' WHERE id = {row_id}")
 
-    def bad_handoff(doc):
-        raise ConnectionError("api down")
+    def bad_pipeline(row):
+        raise ConnectionError("casedb down")
 
-    assert process_one(store, files, cfg, "w", lambda r: _golden(), bad_handoff) == "retry"
-    assert "handoff" in store.get(row_id)["last_error"]
+    assert process_one(store, files, cfg, "w", lambda r: _golden(), bad_pipeline) == "retry"
+    assert "casedb down" in store.get(row_id)["last_error"]
+    store._execute(f"UPDATE url_store SET locked_until = NULL, state = 'queued' WHERE id = {row_id}")
+    assert process_one(store, files, cfg, "w", lambda r: _golden(),
+                       lambda r: {"case_id": "x", "outcome": "gone"}) == "rejected"
 
 
 # ------------------------------------------------------------ UA i proxy --
 
 
-def test_user_agents_and_proxy_list_from_env():
+def test_facebook_uses_shared_rotator_per_context():
     from sources.facebook import FacebookAdsSource, FacebookConfig
 
-    env = {"USER_AGENTS": "UA-1||UA-2", "PROXY_URLS": "http://p1.invalid:3128, http://p2.invalid:3128"}
-    c = FacebookConfig.from_env(env)
-    assert c.user_agents == ["UA-1", "UA-2"]
-    assert c.proxies == ["http://p1.invalid:3128", "http://p2.invalid:3128"]
-    assert FacebookConfig.from_env({"SCRAPER_PROXY": "http://p.invalid:1"}).proxies == ["http://p.invalid:1"]
-
+    env = {"SCRAPER_USER_AGENTS": "UA-1||UA-2", "SCRAPER_PROXIES": "http://127.0.0.1:3128||http://localhost:3129"}
     seen = []
 
     class FakeBrowser:
@@ -311,12 +324,11 @@ def test_user_agents_and_proxy_list_from_env():
             seen.append(kw)
             return object()
 
-    src = FacebookAdsSource(config=c)
-    for _ in range(3):
+    src = FacebookAdsSource(config=FacebookConfig.from_env(env))
+    for _ in range(6):
         src._new_context(FakeBrowser(), "desktop")
-    assert [k["proxy"]["server"] for k in seen] == ["http://p1.invalid:3128", "http://p2.invalid:3128",
-                                                    "http://p1.invalid:3128"]
-    assert all(k["user_agent"] in ("UA-1", "UA-2") for k in seen)
+    assert {k["user_agent"] for k in seen} <= {"UA-1", "UA-2"}
+    assert {k["proxy"]["server"] for k in seen} <= {"http://127.0.0.1:3128", "http://localhost:3129"}
 
 
 def test_no_proxy_by_default():
@@ -329,7 +341,7 @@ def test_no_proxy_by_default():
             seen.append(kw)
 
     FacebookAdsSource(config=FacebookConfig.from_env({}))._new_context(FakeBrowser(), "desktop")
-    assert "proxy" not in seen[0] and "user_agent" not in seen[0]
+    assert "proxy" not in seen[0] and seen[0]["user_agent"]
 
 
 # ------------------------------------------------------------ konfiguracja --

@@ -5,12 +5,25 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 import pytest
-
-from contracts import AdDocument, BBox, Engine, RenderProbe, RuleResult, TextNode, Verdict, ViewportProbe
-from sources.facebook import PLATFORM_TYPOGRAPHY_REASON, FacebookAdsSource, FacebookConfig
+from contracts import (
+    AdDocument,
+    BBox,
+    Engine,
+    RenderProbe,
+    RuleResult,
+    TextNode,
+    Verdict,
+    ViewportProbe,
+)
+from sources.facebook import (
+    PLATFORM_TYPOGRAPHY_REASON,
+    FacebookAdsSource,
+    FacebookConfig,
+)
 from sources.facebook_rules import FEED_FOLD_CONFIDENCE, facebook_det_results
 from sources.meta_json import canonical_ad_url
 from storage import LocalBlobStore
+
 from tests.conftest import FIXTURES
 
 AD_ID = "1234567890123456"

@@ -33,7 +33,7 @@ build/
 npm-debug.log*
 
 # --- Dane lokalne i artefakty runtime ---
-data/
+/data/
 volumes/
 *.sqlite3
 *.db

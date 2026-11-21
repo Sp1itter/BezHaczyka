@@ -4,9 +4,9 @@ Jeden URL = jeden aktywny lease (`locked_until`), wiec kilka procesow floty
 moze dzialac rownolegle bez dublowania pracy. Collector niczego tu nie robi
 i odwrotnie: flota nie wyszukuje, tylko przetwarza kolejke.
 
-Drogi tor (analyzer: Bielik) dostaja tylko kandydaci z priorytetem
->= analyzer_min_priority (lub pas instrumentow, jesli wlaczony) — reszta konczy
-jako `fetched` z zapisanym AdDocument.
+Drogi tor (jobs.fetch_job: resolver KNF, casedb, analyzer na Bieliku) dostaja
+tylko kandydaci z priorytetem >= analyzer_min_priority (lub pas instrumentow,
+jesli wlaczony) — reszta konczy jako `fetched` z zapisanym AdDocument.
 """
 
 from __future__ import annotations
@@ -28,7 +28,7 @@ from sources.base import SourceBlocked
 log = logging.getLogger("collector.fleet")
 
 Fetcher = Callable[[dict[str, Any]], AdDocument]
-Handoff = Callable[[AdDocument], None]
+Pipeline = Callable[[dict[str, Any]], dict[str, Any]]
 
 
 def default_worker_id() -> str:
@@ -61,17 +61,20 @@ def make_fetcher(cfg: CollectorConfig) -> Fetcher:
     return fetch
 
 
-def make_handoff(cfg: CollectorConfig) -> Handoff:
-    """Przekazanie do analyzera wg docs/INTEGRACJA.md (POST /documents + q:gpu)."""
+# url_store.source_type -> nazwa zrodla w jobs.build_source (Modul 1 na main)
+PIPELINE_SOURCES = {"facebook": "facebook", "web": "www", "youtube": "youtube"}
 
-    def handoff(doc: AdDocument) -> None:
-        from rq import Queue
 
-        from jobs import ANALYSIS_QUEUE, _redis, hand_off
+def make_pipeline(cfg: CollectorConfig) -> Pipeline:
+    """Drogi tor wspolny z reszta Modulu 1: jobs.fetch_job robi fetch, resolver KNF,
+    zapis w casedb i zlecenie analizy (q:gpu). Flota nie renderuje wtedy drugi raz."""
 
-        hand_off(doc, Queue(ANALYSIS_QUEUE, connection=_redis()))
+    def pipeline(row: dict[str, Any]) -> dict[str, Any]:
+        from jobs import fetch_job
 
-    return handoff
+        return fetch_job(PIPELINE_SOURCES[row["source_type"]], row["url"])
+
+    return pipeline
 
 
 def _save_document(cfg: CollectorConfig, doc: AdDocument) -> None:
@@ -81,13 +84,22 @@ def _save_document(cfg: CollectorConfig, doc: AdDocument) -> None:
 
 
 def process_one(store: UrlStore, files: CollectorConfigFiles, cfg: CollectorConfig, worker: str,
-                fetcher: Fetcher, handoff: Handoff | None) -> str | None:
-    """Jeden kandydat z kolejki. Zwraca stan koncowy albo None, gdy kolejka pusta."""
+                fetcher: Fetcher, pipeline: Pipeline | None) -> str | None:
+    """Jeden kandydat z kolejki. Zwraca stan koncowy albo None, gdy kolejka pusta.
+
+    Priorytet >= progu (i zrodlo obslugiwane przez Modul 1) -> pipeline (casedb + analiza);
+    reszta -> sam fetch i zapis AdDocument lokalnie (`fetched`).
+    """
     row = store.claim(worker, lease_s=cfg.lease_s)
     if row is None:
         return None
+    analyze = (pipeline is not None and row["source_type"] in PIPELINE_SOURCES
+               and wants_analysis(row["priority"], row.get("signals") or {}, files.lexicons()))
     try:
-        doc = fetcher(row)
+        if analyze:
+            result = pipeline(row)
+        else:
+            doc = fetcher(row)
     except SourceBlocked as exc:
         log.warning("flota: blokada zrodla przy %s — wraca do kolejki za %.0f s", row["url"], cfg.blocked_pause_s)
         return store.fail(row["id"], f"blocked: {exc}", cfg.max_attempts + 1, retry_after_s=cfg.blocked_pause_s)
@@ -95,31 +107,29 @@ def process_one(store: UrlStore, files: CollectorConfigFiles, cfg: CollectorConf
         log.warning("flota: blad %s: %s", row["url"], exc)
         return store.fail(row["id"], f"{type(exc).__name__}: {exc}", cfg.max_attempts, cfg.retry_after_s)
 
-    _save_document(cfg, doc)
-    if handoff is not None and wants_analysis(row["priority"], row.get("signals") or {}, files.lexicons()):
-        try:
-            handoff(doc)
-        except Exception as exc:  # noqa: BLE001 — API/kolejka niedostepne: dokument zostaje zapisany
-            log.warning("flota: przekazanie %s do analyzera nieudane: %s", doc.id, exc)
-            return store.fail(row["id"], f"handoff: {exc}", cfg.max_attempts, cfg.retry_after_s)
-        store.finish(row["id"], "done", document_id=doc.id)
+    if analyze:
+        if result.get("outcome") == "gone":
+            store.finish(row["id"], "rejected", error="zrodlo: material zniknal")
+            return "rejected"
+        store.finish(row["id"], "done", document_id=result.get("case_id"))
         return "done"
+    _save_document(cfg, doc)
     store.finish(row["id"], "fetched", document_id=doc.id)
     return "fetched"
 
 
 def run_fleet(store: UrlStore, files: CollectorConfigFiles, cfg: CollectorConfig, *,
-              worker: str | None = None, fetcher: Fetcher | None = None, handoff: Handoff | None = None,
+              worker: str | None = None, fetcher: Fetcher | None = None, pipeline: Pipeline | None = None,
               max_items: int | None = None, stop_when_empty: bool = False,
               sleep: Callable[[float], None] = time.sleep) -> dict[str, int]:
     worker = worker or default_worker_id()
     fetcher = fetcher or make_fetcher(cfg)
-    if handoff is None and cfg.analyze:
-        handoff = make_handoff(cfg)
+    if pipeline is None and cfg.analyze:
+        pipeline = make_pipeline(cfg)
     done: dict[str, int] = {}
     processed = 0
     while max_items is None or processed < max_items:
-        state = process_one(store, files, cfg, worker, fetcher, handoff)
+        state = process_one(store, files, cfg, worker, fetcher, pipeline)
         if state is None:
             if stop_when_empty:
                 break

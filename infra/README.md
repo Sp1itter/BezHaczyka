@@ -1,36 +1,84 @@
-# infra - punkt startowy dla Osoby C (API + dashboard)
+# infra – stos Docker Compose (projekt `investwatch`)
 
-> **Zweryfikowane 21.11 (Docker Desktop 29.9.3 + WSL2): postgres, api, web.** Pozostałe
-> serwisy (valkey, seaweedfs, nginx, analyzer, casedb) nadal czekają na pierwsze uruchomienie.
->
-> **Pierwotna uwaga: ten stos był NIEPRZETESTOWANY.** Autor nie miał Dockera na swojej
-> maszynie, więc `docker-compose.yml`, `init.sql` i `nginx.conf` nigdy nie zostały
-> uruchomione. Sprawdzono tylko składnię YAML i zgodność licencyjną
-> (`tools/check_compliance.py`). Lista rzeczy do sprawdzenia jest na końcu.
+Komendy uruchomienia, adresy i procedura „po git pull”: `README.md` w korzeniu repo.
 
-## Szybki start: same bazy
+## Serwisy
+
+| Serwis | Rola | Start |
+|---|---|---|
+| postgres (`pgvector/pgvector:pg16`) | przypadki, dokumenty, findingi (schemat: migracje casedb) | długotrwały |
+| valkey | kolejki RQ, stan scrapera (limiter, breaker) | długotrwały |
+| seaweedfs | S3 :8333: HTML, zrzuty, mp4 | długotrwały |
+| nginx | korpus demo offline :8080 | długotrwały |
+| casedb | migracje casedb + rejestr KNF | jednorazowy (Exited 0) |
+| api | FastAPI :8000 | długotrwały |
+| web | dashboard :8090 | długotrwały |
+| analyzer | worker kolejki `q:gpu` | długotrwały |
+| scraper-worker | worker `q:ingest` (discover) + `q:render` (pobranie, Playwright) | długotrwały, repliki `SCRAPER_WORKERS` |
+| scheduler | rq-scheduler: harmonogram z `services/scraper/schedule.yaml` | długotrwały |
+| ollama | opcja bez natywnej Ollamy | tylko `--profile ollama` |
+
+Przepływ: `scheduler` zleca discover (FB/YT/WWW) do `q:ingest` i `recheck` znanych URL-i →
+`scraper-worker` pobiera materiał (`q:render`), rozpoznaje podmioty z rejestru KNF, zapisuje
+przypadek w casedb i zleca analizę do `q:gpu` → `analyzer` analizuje (Ollama), zapisuje finding,
+dokument i `ChangeEvent` w Postgresie → `api` czyta je i wysyła alert WebSocket → `web` pokazuje.
+Uproszczony launcher tylko dla FB (`scraper/scheduler_main.py`, `worker_main.py`) jest w obrazie,
+ale compose go nie używa.
+
+## Szybki start: caly stos jedną komendą
 
 ```
 cd infra
 cp .env.example .env
-docker compose up postgres valkey seaweedfs nginx
+docker compose up -d --build
+docker compose ps
 ```
 
-To **wystarczy do zbudowania całego API i frontu**. Nie potrzebujesz analyzera,
-Bielika, Ollamy ani pobierania 6,3 GB modeli. Dostajesz: Postgres+pgvector
-(`localhost:5432`, schemat z `init.sql`), Valkey (`6379`), SeaweedFS S3 (`8333`)
-i korpus demo jako statyczne pliki (`http://localhost:8080/`).
+Startuje: Postgres+pgvector, Valkey, SeaweedFS (S3 z kluczami z `.env`), nginx z korpusem
+demo, `casedb` (jednorazowo: migracje + rejestr KNF, kończy się kodem 0), `analyzer`
+(worker `q:gpu`), `scraper-worker` (repliki wg `SCRAPER_WORKERS`, kolejki `q:ingest` + `q:render`)
+`scheduler` (harmonogram z `services/scraper/schedule.yaml`) oraz `api` (FastAPI, `localhost:8000`)
+i `web` (dashboard, `localhost:8090`), które czytają findingi zapisane przez analyzer.
+
+Demo Modułu 1 bez internetu:
+
+```
+docker compose exec scheduler python -m scheduler --once     # zleca wszystkie zadania raz
+docker compose exec postgres psql -U investwatch -d investwatch \
+  -c "select source,url,status,seen_count from cases"
+docker compose exec postgres psql -U investwatch -d investwatch -c "select * from module1_report"
+docker compose run --rm casedb report module1 --format csv -o /data/modul1.csv   # -> data/casedb/
+```
+
+Strony `www` pochodzą z nginx (`http://nginx/www/...`), Facebook przy braku sieci przechodzi na
+korpus `fixtures/demo-ads/facebook` (`FB_MODE=auto`, montowany do kontenera), YouTube wymaga
+internetu (błędy sieci kończą pojedyncze zadanie, nie worker). Powtórne `--once` daje wynik
+`unchanged` i `seen_count` + 1, bez nowego findingu. Harmonogram wraca do normalnego rytmu sam;
+zadania wyłączasz zmienną `SCHEDULE_DISABLE`.
+
+Same bazy (praca nad API i frontem):
+
+```
+docker compose up -d postgres valkey seaweedfs nginx
+```
+
+Dostajesz: Postgres+pgvector (`localhost:5432`), Valkey (`6379`), SeaweedFS S3 (`8333`,
+klucze `S3_ACCESS_KEY`/`S3_SECRET_KEY` z `.env`) i korpus demo (`http://localhost:8080/`).
+Schemat i rejestr KNF tworzy `casedb` (`docker compose run --rm casedb init`).
 
 `api` i `web` są w compose bez profilu, więc zwykłe `docker compose up` je poda:
 API na `localhost:${API_PORT}` (8000), dashboard na `localhost:${WEB_PORT}` (8090).
+Tabele `documents` i `findings`, z których korzysta API, tworzy migracja casedb
+(`002_modul1.sql`), więc `api` startuje po zakończeniu kontenera `casedb`.
 Praca bez Dockera (SQLite + vite): `services/api/README.md`, `services/web/README.md`.
 
 ## Budowanie na kontrakcie bez uruchamiania analizy
 
 `fixtures/contract-examples/finding.json` to gotowy, prawdziwy obiekt `Finding`
 (a `facebook_ad_document.json` obok - `AdDocument`). Zasil nimi bazę i front jako
-fixture. Analyzer wysyła do Ciebie dokładnie ten kształt przez `POST /findings`
-(szczegóły przepływu: `docs/INTEGRACJA.md`). Modele Pydantic:
+fixture. Analyzer zapisuje dokładnie ten kształt w tabeli `findings` (`ANALYZER_STORE=db`)
+i przy `risk_level == "high"` wysyła `pg_notify('findings_high', <id>)` – API może tego
+słuchać i rozsyłać WebSocket (przepływ: `docs/MODUL1-ARCHITEKTURA.md`). Modele Pydantic:
 `services/analyzer/analyzer/contracts.py` - są zamrożone, nie zmieniaj.
 
 ## Trzy rzeczy krytyczne dla panelu kalibracji (nie upraszczać)
@@ -54,30 +102,23 @@ Uruchomienie z `services/analyzer`: `./.venv/Scripts/python.exe tools/evaluate.p
 
 ## Ollama
 
-Ollama NIE jest serwisem compose. Działa natywnie na hoście, a kontenery łączą się
-przez `host.docker.internal:11434`. Potrzebna tylko osobie uruchamiającej analyzer.
+Domyślnie Ollama działa natywnie na hoście, a kontenery łączą się przez
+`host.docker.internal:11434`. Alternatywa bez instalacji: profil `ollama` (CPU, wolno),
+opis w `README.md`. Potrzebna tylko regułom LLM analyzera.
 
-## Do sprawdzenia przy pierwszym starcie (nic z tego nie było uruchomione)
+## Uwagi eksploatacyjne
 
-- [x] `docker compose config` przechodzi bez błędów i ostrzeżeń o brakujących zmiennych.
-- [x] `init.sql` się wykonał: `\dt` w psql pokazuje `documents`, `findings`, `authorized_entities`;
-      `CREATE EXTENSION vector` nie padł. Pamiętaj: init działa tylko na PUSTYM wolumenie
-      (po zmianie `docker compose down -v`).
-- [x] Indeks ivfflat zbudował się na pustej tabeli; po załadowaniu danych rozważ `REINDEX`.
-- [ ] Healthcheck SeaweedFS (`wget` na `:9333/cluster/status`) działa w tym obrazie; jeśli
-      brak `wget`, popraw lub usuń healthcheck.
-- [ ] Zapis i odczyt przez S3 na `localhost:8333` działa (tryb `server -s3`, bez
-      uwierzytelniania - tylko dev).
-- [ ] nginx serwuje `http://localhost:8080/` z `autoindex`; montowanie `../fixtures/demo-ads`
-      działa na Windows (Docker Desktop, udostępnienie dysku).
-- [ ] Obraz `analyzer` się buduje (`requirements.txt`, kontekst `../services/analyzer`).
-- [ ] `/health` na 8081 w analyzerze odpowiada. Worker uruchamia ten serwer w wątku-demonie
-      przed wejściem w pętlę kolejki, a zgodności portu z `health.HEALTH_PORT` pilnuje test
-      `tests/test_spojnosc.py::TestPortHealth` — więc powinno działać od razu. Jeśli nie,
-      sprawdź, czy port 8081 nie jest zajęty na hoście.
-- [ ] `host.docker.internal:11434` osiągalny z kontenera (Linux: wymaga wpisu `extra_hosts`;
-      Ollama musi słuchać na adresie dostępnym z kontenera, np. `OLLAMA_HOST=0.0.0.0`).
-- [ ] Analyzer wysyła do `http://api:8000` - `api` jest już w compose; sprawdź `POST /findings` z workera.
-- [x] `api` łączy się z Postgresem (`/health` zwraca `"db": true`, `"dialect": "postgresql"`); testy API przechodzą na Postgresie (`TEST_DATABASE_URL`).
-- [x] Dashboard na `localhost:8090` łączy się z `/ws/alerts` przez nginx (pill „alerty na żywo”).
-- [ ] Wolne porty 5432, 6379, 8333, 8080, 8000, 8090 na hoście (port 3000 bywa zarezerwowany przez Hyper-V — `netsh interface ipv4 show excludedportrange protocol=tcp`).
+- Dockerfile'e `analyzer` i `scraper` mają kontekst `services/` (obok kodu potrzebny pakiet `casedb`).
+- Obraz scrapera bazuje na `mcr.microsoft.com/playwright/python:v1.65.2-noble` - tag musi
+  odpowiadać wersji `playwright` w `services/scraper/requirements.txt`.
+- SeaweedFS ma małe woluminy (128 MB, max 100), bo domyślne 30 GB nie mieszczą się na małym
+  dysku (objaw: `no free volumes left`, PutObject -> InternalError).
+- `init.sql` (tylko rozszerzenie `vector`) działa tylko na PUSTYM wolumenie Postgresa; schemat
+  tworzą migracje casedb (tabela `casedb_migrations`), więc zmiana schematu = nowa migracja.
+- Ollama (natywna, `host.docker.internal:11434`) jest potrzebna tylko regułom LLM analyzera;
+  bez niej dostają `not_applicable` z powodem. Na Linuksie Ollama musi słuchać na adresie
+  dostępnym z kontenera (`OLLAMA_HOST=0.0.0.0`).
+- Analyzer wysyła do `http://api:8000` tylko w trybie `ANALYZER_STORE=api`; compose używa `db`.
+- Wolne porty 5432, 6379, 8333, 8080, 8000, 8090 na hoście (port 3000 bywa zarezerwowany przez
+  Hyper-V — `netsh interface ipv4 show excludedportrange protocol=tcp`).
+- Montowanie `../fixtures/demo-ads` na Windows wymaga udostępnienia dysku w Docker Desktop.

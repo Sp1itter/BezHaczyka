@@ -8,5 +8,11 @@ boto3==1.44.9           # Apache-2.0   — SeaweedFS po S3 API
 rq==2.9.1               # BSD-2-Clause — kolejki q:ingest / q:render (rq-scheduler 0.14 wymaga rq>=2)
 redis==8.1.0            # MIT          — klient Valkey (BSD-3); to klient, nie serwer Redis
 yt-dlp==2026.10.26      # Unlicense    — wideo: tylko fallback, gdy brak bezposredniego mp4
-PyYAML==6.0.3           # MIT          — edytowalne slowniki collectora (config/*.yaml)
-psycopg[binary]==3.3.9  # LGPL-3.0     — url_store w Postgresie; ta sama wersja co api i casedb (decyzja licencyjna zespolu)
+httpx==0.28.1           # BSD-3-Clause — zrodlo www (WebPageSource)
+youtube-transcript-api==1.2.5  # MIT    — napisy YouTube (YouTubeSource)
+langdetect==1.0.9       # Apache-2.0   — filtr jezyka (YouTubeSource)
+requests==2.34.2        # Apache-2.0   — sesja z naglowkami/proxy dla napisow
+rapidfuzz==3.14.6       # MIT          — resolver podmiotow (fuzzy match nazw z rejestru KNF)
+rq-scheduler==0.14      # MIT          — harmonogram Modulu 1 (scheduler.py, scheduler_main.py), jak w analyzerze
+PyYAML==6.0.2           # MIT          — schedule.yaml
+# casedb (wspolna warstwa danych, psycopg) instalowany osobno: pip install ../casedb

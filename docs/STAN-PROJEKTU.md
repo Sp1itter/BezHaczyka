@@ -135,10 +135,12 @@ Każda wynikła z problemu znalezionego na prawdziwych danych, nie z teorii.
 
 ## 5. Do zrobienia
 
-### Nasze (Osoba B) — Moduł 1, harmonogram
-Specyfikacja, część „Harmonogram": *CronJob jako mechanizm uruchamiania scrapperów
-lub system orchestratora.* Moduł 1 wymaga też wprost **mechanizmu okresowej
-aktualizacji**. Projekt: `docs/superpowers/specs/2026-11-22-harmonogram-design.md`.
+### Moduł 1 — zrobione (2026-11-21)
+Rejestr KNF + resolver podmiotów, źródła Facebook/YouTube/WWW z rotacją UA i proxy, `casedb`
+jako jedyna baza, harmonogram (`rq-scheduler`, `schedule.yaml`) z recheckiem i `last_seen`,
+detekcja zmian (`change_events`), raport `module1_report`, całość w `docker compose`.
+Opis: `docs/MODUL1-ARCHITEKTURA.md`. Rejestr KNF w `casedb/data/knf_registry.csv` jest
+zestawieniem roboczym — odśwież go `tools/knf_registry.py` z sieci, która widzi knf.gov.pl.
 
 ### Osoba A
 1. **Transkrypcje albo pliki wideo** — to największy pojedynczy zysk w całym projekcie.
