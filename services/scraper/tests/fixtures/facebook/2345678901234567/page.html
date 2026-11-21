@@ -1,0 +1,48 @@
+<!doctype html>
+<!--
+  SYNTETYCZNA fixture: zwykla reklama (NIE-DCO) w widoku `?id=`.
+  Regresja z nagrywania 21.11.2026: w dialogu NIE MA
+  data-testid="ad-library-dynamic-content-container" (wystepuje tylko w DCO),
+  za to jest on w karcie listy POD dialogiem. Kreacje trzeba znalezc od etykiety
+  „Sponsorowane" w gore — do granicy metadanych biblioteki (render/creative.js).
+-->
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<title>Biblioteka reklam</title>
+<style>
+  html, body { margin: 0; font-family: Arial, sans-serif; background: #f0f2f5; }
+  .card { width: 340px; background: #fff; margin: 16px; }
+  .addialog { position: fixed; left: 50%; top: 40px; transform: translateX(-50%); width: min(600px, 96vw);
+              max-height: calc(100vh - 80px); overflow-y: auto; background: #fff; }
+  .meta, .creative { padding: 12px 16px; font-size: 14px; color: #1c1e21; }
+</style>
+<script type="application/json">
+{"data":{"results":[{"ad_archive_id":"2345678901234567","page_id":"55555","page_name":"Strefa Inwestycji",
+ "snapshot":{"display_format":"VIDEO","body":{"text":"Inwestorze – działki inwestycyjne przez cały rok! Sprawdź ofertę."},
+ "title":"Działki inwestycyjne","link_url":"https://example.invalid/oferta?utm_campaign=dzialki",
+ "page_profile_uri":"https://www.facebook.com/strefainwestycji/","videos":[],"cards":[]}}]}}
+</script>
+</head>
+<body>
+  <div class="card">
+    <div class="meta">Identyfikator biblioteki: 2345678901234567</div>
+    <div data-testid="ad-library-dynamic-content-container">Karta z listy POD dialogiem</div>
+  </div>
+  <div class="addialog" role="dialog" aria-labelledby="h">
+    <div>
+      <div class="meta">
+        <div id="h" role="heading">Link do reklamy</div>
+        <div>Identyfikator biblioteki: 2345678901234567</div>
+        <div role="button">Zobacz szczegóły reklamy</div>
+      </div>
+      <div class="creative">
+        <div><a href="https://www.facebook.com/strefainwestycji/">Strefa Inwestycji</a></div>
+        <div><span>Sponsorowane</span></div>
+        <div data-testid="ad-content-body-video-container">Inwestorze – działki inwestycyjne przez cały rok! Sprawdź ofertę.</div>
+        <div role="button">Dowiedz się więcej</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

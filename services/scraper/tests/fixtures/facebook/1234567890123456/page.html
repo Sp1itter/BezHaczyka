@@ -1,0 +1,114 @@
+<!doctype html>
+<!--
+  SYNTETYCZNA fixture testu kontraktowego FacebookAdsSource.
+  Odwzorowuje strukture widoku Meta Ad Library `?id=<ad_archive_id>` ustalona
+  na zywo 21.11.2026 (niezalogowany, PL), ale z fikcyjnymi danymi:
+    * reklama w role="dialog" („Link do reklamy") NAD lista reklam strony,
+    * ten sam data-testid kreacji takze w karcie listy POD dialogiem,
+    * ukryty drawer nawigacji z role="dialog" i tekstem „Zaloguj sie",
+    * inline JSON z wezlem reklamy DCO (szablony {{...}} w snapshot, tekst w cards[]),
+    * blok CTA owiniety w <a href="l.facebook.com/l.php?u=..."> razem z obrazem.
+  Dodatkowo pulapki: modal logowania, baner cookies, napis na grafice
+  z pointer-events:none, skrypt probujacy nawigacji na /login/.
+-->
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<title>Biblioteka reklam</title>
+<style>
+  html, body { margin: 0; font-family: Arial, sans-serif; background: #f0f2f5; overflow: hidden; }
+  .grid { display: flex; gap: 16px; padding: 16px; flex-wrap: wrap; }
+  .card { width: 340px; background: #fff; border: 1px solid #ddd; }
+  .drawer { position: fixed; right: 0; top: 0; width: 305px; height: 100%; transform: translateX(100%); background: #fff; }
+  .backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, .4); }
+  .addialog { position: fixed; left: 50%; top: 40px; transform: translateX(-50%); width: min(600px, 96vw);
+              max-height: calc(100vh - 80px); overflow-y: auto; background: #fff; border-radius: 8px; }
+  .meta { padding: 12px 16px; color: #1c1e21; font-size: 14px; }
+  .creative { padding: 0 16px 16px; }
+  .body { font-size: 15px; color: #1c1e21; padding: 8px 0; }
+  .media { position: relative; }
+  .media img { display: block; width: 100%; height: 260px; }
+  .overlay { position: absolute; left: 24px; top: 100px; color: #ffffff; font-size: 28px; font-weight: 700; pointer-events: none; }
+  .cta { display: block; text-decoration: none; color: #1c1e21; background: #f0f2f5; }
+  .cta img { display: block; width: 100%; height: 80px; }
+  .caption { font-size: 12px; color: #65676b; padding: 4px 8px; }
+  .desc { font-size: 14px; padding: 0 8px 8px; }
+  .login { position: fixed; inset: 0; background: rgba(255, 255, 255, .97); z-index: 50; }
+  .cookies { position: fixed; left: 0; right: 0; bottom: 0; height: 180px; background: #fff; z-index: 60; }
+</style>
+<script type="application/json" data-sjs>
+{"require":[["ScheduledServerJS","handle",null,[{"__bbox":{"result":{"data":{"ad_library_main":{"search_results_connection":{"edges":[{"node":{"collated_results":[
+  {"ad_archive_id":"1234567890123456","page_id":"987654321","page_name":"Inwestor PL","is_active":true,
+   "publisher_platform":["FACEBOOK","INSTAGRAM"],
+   "snapshot":{
+     "display_format":"DCO",
+     "body":{"text":"{{product.brand}}"},
+     "title":"{{product.name}}",
+     "link_description":"{{product.description}}",
+     "caption":"https://example.invalid",
+     "cta_text":"Dowiedz się więcej",
+     "link_url":"https://example.invalid/kurs?utm_source=meta&utm_campaign=sygnaly24&ref=jan",
+     "page_name":"Inwestor PL",
+     "page_id":"987654321",
+     "page_profile_uri":"https://www.facebook.com/inwestorpl/",
+     "videos":[],
+     "cards":[
+       {"body":"Chcesz zarabiać więcej niż na lokacie? Dołącz do 12 000 inwestorów, którzy już korzystają z naszych sygnałów tradingowych na akcje i CFD. Zapisz się dziś przez mój link i odbierz bonus na start. Inwestowanie wiąże się z ryzykiem utraty kapitału.\u200b",
+        "title":"Zyski do 18% rocznie!",
+        "link_description":"Ryzyko utraty kapitału",
+        "caption":"https://example.invalid",
+        "link_url":"https://l.facebook.com/l.php?u=https%3A%2F%2Fexample.invalid%2Fkurs%3Futm_source%3Dmeta%26utm_campaign%3Dsygnaly24%26aff%3Djan77&h=AT0abc"}
+     ]
+   }}
+]}}]}}}}}}]]]}
+</script>
+</head>
+<body>
+  <div class="drawer" role="dialog">Zaloguj się · Biblioteka reklam · Raport Biblioteki reklam</div>
+
+  <main class="grid">
+    <div class="card">
+      <div class="meta">Identyfikator biblioteki: 1111111111111111</div>
+      <div data-testid="ad-library-dynamic-content-container">
+        <div class="body">Inna reklama z listy POD dialogiem — nie może trafić do sondy.</div>
+      </div>
+    </div>
+  </main>
+
+  <div class="backdrop"></div>
+  <div class="addialog" role="dialog" aria-labelledby="hdr" tabindex="-1">
+    <div class="meta">
+      <div role="heading" id="hdr">Link do reklamy</div>
+      <div>Identyfikator biblioteki: 1234567890123456</div>
+      <div role="button" tabindex="0" aria-expanded="false">Otwórz menu rozwijane</div>
+      <div role="button" tabindex="0">Zobacz szczegóły reklamy</div>
+    </div>
+    <div class="creative" data-testid="ad-library-dynamic-content-container">
+      <a href="https://www.facebook.com/inwestorpl/">Inwestor PL</a>
+      <div><strong>Sponsorowane</strong></div>
+      <div class="body" role="button" tabindex="0">Chcesz zarabiać więcej niż na lokacie? Dołącz do 12 000 inwestorów, którzy już korzystają z naszych sygnałów tradingowych na akcje i CFD. Zapisz się dziś przez mój link i odbierz bonus na start. Inwestowanie wiąże się z ryzykiem utraty kapitału.</div>
+      <div class="media">
+        <img alt="" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='260'%3E%3Crect width='600' height='260' fill='%23224488'/%3E%3Ccircle cx='450' cy='130' r='90' fill='%23ffcc00'/%3E%3C/svg%3E">
+        <span class="overlay">Zyski do 18% rocznie!</span>
+      </div>
+      <a class="cta" href="https://l.facebook.com/l.php?u=https%3A%2F%2Fexample.invalid%2Fkurs%3Faff%3Djan77&amp;h=AT0abc">
+        <img alt="" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='80'%3E%3Crect width='600' height='80' fill='%23dddddd'/%3E%3C/svg%3E">
+        <div class="caption">HTTPS://EXAMPLE.INVALID</div>
+        <div class="desc">Ryzyko utraty kapitału</div>
+      </a>
+      <div role="button" tabindex="0">Dowiedz się więcej</div>
+    </div>
+  </div>
+
+  <div class="login" role="dialog" aria-modal="true">
+    <form action="/login/device-based/regular/login/"><input name="email" placeholder="E-mail"><input type="password" name="pass"></form>
+    <div>Zaloguj się do Facebooka, aby zobaczyć więcej</div>
+  </div>
+  <div class="cookies" data-cookiebanner="banner">Zezwolić na użycie plików cookie z Facebooka w tej przeglądarce?</div>
+
+  <script>
+    // Pulapka: Meta-podobny skrypt probuje przeniesc niezalogowanego uzytkownika.
+    document.addEventListener("DOMContentLoaded", function () { window.location.href = "/login/?next=ads"; });
+  </script>
+</body>
+</html>
