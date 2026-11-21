@@ -177,6 +177,29 @@ def apply_rule_10_override(
     if current is None or current.verdict is Verdict.NOT_APPLICABLE:
         return results
 
+    # Brak zdania o ryzyku = brak przedmiotu oceny. Model potrafil "ocenic"
+    # spojnosc jezykowa nieistniejacego ostrzezenia; jego brak ocenia regula 3.
+    if not risk_sentences(text):
+        name, severity, basis = rule_meta["10"]
+        return [
+            RuleResult(
+                rule_id="10",
+                rule_name=name,
+                engine=Engine.HYBRID,
+                verdict=Verdict.NOT_APPLICABLE,
+                confidence=1.0,
+                severity=severity,
+                legal_basis=basis,
+                evidence=Evidence(
+                    kind=EvidenceKind.ABSENCE,
+                    summary="brak informacji o ryzyku; jej brak ocenia regula 3",
+                ),
+            )
+            if r.rule_id == "10"
+            else r
+            for r in results
+        ]
+
     deterministic = assess_rule_10(text, rule_meta["10"])
     if deterministic is None:
         return results

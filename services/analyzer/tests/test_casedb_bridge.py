@@ -122,7 +122,7 @@ def _fake_llm():
         return httpx.Response(200, json={"response": json.dumps({"results": results})})
 
     return OllamaClient(
-        client=httpx.Client(transport=httpx.MockTransport(handler), base_url="http://f"))
+        client=httpx.Client(transport=httpx.MockTransport(handler), base_url="http://f.invalid"))
 
 
 def test_tryb_plikowy_z_fake_llm(tmp_path):

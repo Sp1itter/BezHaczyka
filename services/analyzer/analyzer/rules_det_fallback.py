@@ -59,14 +59,24 @@ def _na(rule_id: str, reason: str) -> RuleResult:
     )
 
 
-def _risk_hits(doc: AdDocument, visible_only: bool = True) -> list[_Hit]:
+def _risk_hits(
+    doc: AdDocument, visible_only: bool = True, include_unseen: bool = False
+) -> list[_Hit]:
+    """Wezly ryzyka.
+
+    include_unseen=True dolacza wezly niewidoczne BEZ behind_interaction (ukryte lub
+    przyciete bez mechanizmu "kliknij"). Semantyka jak w probe.js: visible=false +
+    behind_interaction="hidden" to display:none itp. (regula 7), a wezel schowany za
+    "Zobacz wiecej" ma behind_interaction i ocenia go TYLKO regula 7 — nie dublujemy kary.
+    """
     out: list[_Hit] = []
     if doc.render_probe is None:
         return out
     for name, vp in doc.render_probe.viewports.items():
         for n in vp.nodes:
             if visible_only and not n.visible:
-                continue
+                if not (include_unseen and n.behind_interaction is None):
+                    continue
             if _matches(n.text, RISK_PATTERNS):
                 out.append((name, vp, n))
     return out
@@ -83,16 +93,35 @@ def _evidence(summary: str, hit: _Hit, measured: dict[str, float]) -> Evidence:
     )
 
 
+def _dominant_font_px(vp: ViewportProbe) -> float:
+    """Przewazajaca czcionka materialu BEZ informacji o ryzyku.
+
+    probe.js wybiera rozmiar z najwieksza laczna liczba znakow widocznych wezlow,
+    ale liczy w tym samo ostrzezenie. Dlugie, drobne zastrzezenie (8 px, 200
+    znakow) staje sie wtedy "przewazajaca czcionka" i regula 4 nigdy go nie
+    zlapie - to falszywy negatyw na najczestszym triku. Kryterium UKNF porownuje
+    ostrzezenie z przewazajaca czcionka MATERIALU, wiec liczymy ja z wezlow
+    nie-ryzyka; wartosc z probe tylko gdy innych wezlow brak.
+    """
+    chars: dict[float, int] = {}
+    for n in vp.nodes:
+        if n.visible and n.font_px > 0 and not _matches(n.text, RISK_PATTERNS):
+            chars[n.font_px] = chars.get(n.font_px, 0) + len(n.text)
+    if chars:
+        return max(chars, key=lambda px: (chars[px], px))
+    return vp.dominant_font_px if vp.dominant_font_px > 0 else 0.0
+
+
 def _rule_4(doc: AdDocument) -> RuleResult:
-    hits = [h for h in _risk_hits(doc) if h[1].dominant_font_px > 0]
+    hits = [h for h in _risk_hits(doc) if _dominant_font_px(h[1]) > 0]
     if not hits:
         return _na("4", REASON_NO_RISK)
     min_ratio = float(get_threshold("rules.rule_4.min_ratio", DEFAULT_MIN_RATIO))
-    worst = min(hits, key=lambda h: h[2].font_px / h[1].dominant_font_px)
-    ratio = worst[2].font_px / worst[1].dominant_font_px
+    worst = min(hits, key=lambda h: h[2].font_px / _dominant_font_px(h[1]))
+    ratio = worst[2].font_px / _dominant_font_px(worst[1])
     summary = (
         f"Czcionka ostrzezenia {worst[2].font_px:g} px to {ratio:.2f} czcionki dominujacej "
-        f"({worst[1].dominant_font_px:g} px); prog {min_ratio:g}."
+        f"({_dominant_font_px(worst[1]):g} px); prog {min_ratio:g}."
     )
     return _result(
         "4",
@@ -102,7 +131,7 @@ def _rule_4(doc: AdDocument) -> RuleResult:
             worst,
             {
                 "risk_font_px": worst[2].font_px,
-                "dominant_font_px": worst[1].dominant_font_px,
+                "dominant_font_px": _dominant_font_px(worst[1]),
                 "ratio": round(ratio, 3),
             },
         ),
@@ -136,7 +165,7 @@ def _rule_5(doc: AdDocument) -> RuleResult:
 
 
 def _rule_6(doc: AdDocument) -> RuleResult:
-    hits = [h for h in _risk_hits(doc) if h[1].page_height_px > 0]
+    hits = [h for h in _risk_hits(doc, include_unseen=True) if h[1].page_height_px > 0]
     if not hits:
         return _na("6", REASON_NO_RISK)
     fraction = float(get_threshold("rules.rule_6.footer_position_fraction", DEFAULT_FOOTER_FRACTION))
@@ -147,10 +176,29 @@ def _rule_6(doc: AdDocument) -> RuleResult:
     def share(h: _Hit) -> float:
         return h[2].bbox.y / h[1].page_height_px
 
-    # Najpierw wezel w stopce/legal, w przeciwnym razie ten polozony najnizej.
-    worst = next((h for h in hits if hidden_path(h[2])), None) or max(hits, key=share)
+    # Najpierw wezel ukryty (visible=false bez interakcji), potem w stopce/legal,
+    # w przeciwnym razie ten polozony najnizej.
+    unseen = next((h for h in hits if not h[2].visible), None)
+    worst = (
+        unseen
+        or next((h for h in hits if hidden_path(h[2])), None)
+        or max(hits, key=share)
+    )
     y_share = share(worst)
     in_hidden = hidden_path(worst[2])
+    if unseen is not None:
+        return _result(
+            "6",
+            Verdict.FAIL,
+            _evidence(
+                f"Ostrzezenie ukryte (niewidoczne w renderze, viewport {worst[0]})"
+                + (", w stopce / sekcji prawnej" if in_hidden else "")
+                + ".",
+                worst,
+                {"y_share_of_page": round(y_share, 3), "hidden": 1.0,
+                 "in_footer": 1.0 if in_hidden else 0.0},
+            ),
+        )
     summary = (
         f"Ostrzezenie zaczyna sie na {y_share:.0%} wysokosci strony"
         + (", w stopce / sekcji prawnej" if in_hidden else "")
@@ -194,8 +242,9 @@ def _rule_7(doc: AdDocument) -> RuleResult:
 
 
 def _rule_8(doc: AdDocument) -> RuleResult:
-    hits = _risk_hits(doc)
-    if not hits:
+    all_hits = _risk_hits(doc, include_unseen=True)
+    hits = [h for h in all_hits if h[2].visible]
+    if not all_hits:
         return _na("8", REASON_NO_RISK)
     min_font = float(get_threshold("rules.rule_8.min_mobile_font_px", DEFAULT_MIN_MOBILE_FONT_PX))
     clipped = next((h for h in hits if h[2].clipped), None)
@@ -207,6 +256,19 @@ def _rule_8(doc: AdDocument) -> RuleResult:
                 f"Ostrzezenie obciete (clipped) w viewporcie {clipped[0]}.",
                 clipped,
                 {"clipped": 1.0, "font_px": clipped[2].font_px},
+            ),
+        )
+    # Ostrzezenie niewidoczne na mobile (bez interakcji): ukryte/przyciete przy zmianie ukladu.
+    unseen = next((h for h in all_hits if h[0] == "mobile" and not h[2].visible), None)
+    if unseen is not None:
+        return _result(
+            "8",
+            Verdict.FAIL,
+            _evidence(
+                "Ostrzezenie niewidoczne/przyciete na mobile.",
+                unseen,
+                {"visible": 0.0, "clipped": 1.0 if unseen[2].clipped else 0.0,
+                 "font_px": unseen[2].font_px},
             ),
         )
     mobile = [h for h in hits if h[0] == "mobile"]

@@ -43,3 +43,18 @@ etykiet do wyniku modelu uniewazniloby metryki.
 Uwagi do etykiet: regula 7 (dostepnosc za 1 kliknieciem) ma tylko etykiete `pass`
 (ostrzezenie widoczne bez klikania); regula 13 bez geometrii to `not_applicable`
 (brak pomiaru nie jest dowodem dominacji).
+
+## Korekty niespojnosci danych (nie dopasowanie do wyniku)
+
+m2-29, m2-30, m2-31: pole `render_probe.viewports.*.dominant_font_px` mialo 28 (rozmiar
+naglowka). Wg `services/scraper/render/probe.js` dominant_font_px to czcionka o najwiekszej
+LACZNEJ liczbie znakow widocznych wezlow (`fontChars`, wygrywa max), a nie najwiekszy
+naglowek. Liczone na wezlach fixture'u: 14 px = 41 + 50 = 91 znakow, 28 px = 30-34, 16 px = 37
+-> dominant = 14. Poprawiono dane na 14 (we wszystkich viewportach tych trzech przypadkow).
+Etykiety `expected` bez zmian: ostrzezenie 14 px / 14 px = 1.0 >= 0.9 -> regula 4 pass.
+Kod fallbacku byl poprawny; niespojny byl fixture.
+
+Uwaga otwarta (poza zakresem tej korekty): m2-28 ma ten sam typ danych (dominant 28), ale
+wg definicji probe.js dominantem bylby tam 8 px (50 znakow samego ostrzezenia), co dawaloby
+ratio 1.0 i pass wbrew etykiecie fail. Definicja "po liczbie znakow" jest wrazliwa na to,
+ze samo ostrzezenie jest dlugim tekstem; przypadek wymaga decyzji autora zbioru.

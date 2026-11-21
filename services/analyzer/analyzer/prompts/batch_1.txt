@@ -49,6 +49,11 @@ nadzoru w sposób sugerujący, że organ ZATWIERDZIŁ albo APROBOWAŁ produkt b�
 usługę? Samo rzeczowe podanie informacji o posiadanym zezwoleniu lub o wpisie
 do rejestru jest dozwolone i daje verdict "pass".
 verdict "fail", gdy wzmianka o nadzorze służy jako rekomendacja produktu.
+JAWNE WYZWALACZE "fail": "zatwierdzony przez KNF", "zaakceptowany przez KNF",
+"sprawdzony przez KNF", "KNF pozytywnie ocenił/ocenia", "rekomendowany/polecany
+przez KNF" — to sugestia aprobaty produktu. NIE jest nią "podlegamy nadzorowi
+KNF" ani "posiadamy zezwolenie KNF" (to "pass"); w "quote" podaj zdanie
+z wyzwalaczem.
 
 Reguła 18 — Nadzór jako argument bezpieczeństwa inwestycji
 Szczególny przypadek reguły 17. Czy materiał powołuje się na nadzór, licencję
