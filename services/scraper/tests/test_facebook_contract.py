@@ -24,6 +24,7 @@ from storage import LocalBlobStore
 from tests.conftest import FIXTURES, REPO_ROOT
 
 AD_ID = "1234567890123456"
+NON_DCO_ID = "2345678901234567"
 
 
 @pytest.fixture
@@ -43,7 +44,19 @@ def test_implements_source_protocol(source):
 
 
 def test_discover_replay_yields_canonical_urls(source):
-    assert source.discover("inwestycje") == [canonical_ad_url(AD_ID)]
+    assert source.discover("inwestycje") == [canonical_ad_url(AD_ID), canonical_ad_url(NON_DCO_ID)]
+
+
+def test_non_dco_ad_without_testid_is_scoped_from_sponsored_label(source):
+    """Regresja z nagrywania: zwykla reklama nie ma w dialogu kontenera DCO."""
+    doc = source.fetch(canonical_ad_url(NON_DCO_ID))
+    for name, vp in doc.render_probe.viewports.items():
+        texts = [n.text for n in vp.nodes]
+        assert "Sponsorowane" in texts and "Strefa Inwestycji" in texts, name
+        assert any(t.startswith("Inwestorze") for t in texts), name
+        assert not any("Identyfikator biblioteki" in t or "POD dialogiem" in t for t in texts), name
+    assert doc.publisher.handle == "@strefainwestycji"
+    assert "utm_campaign=dzialki" in doc.text
 
 
 def test_document_matches_frozen_contract(doc):
@@ -129,7 +142,7 @@ def test_auto_mode_falls_back_to_fixture_when_breaker_open(tmp_path, chromium_av
     config = FacebookConfig(mode="auto", fixtures_dir=FIXTURES / "facebook", min_interval_s=0)
     src = FacebookAdsSource(config=config, store=LocalBlobStore(tmp_path), breaker=breaker)
     assert src.fetch(canonical_ad_url(AD_ID)).source == "facebook"
-    assert src.discover("cokolwiek") == [canonical_ad_url(AD_ID)]
+    assert src.discover("cokolwiek") == [canonical_ad_url(AD_ID), canonical_ad_url(NON_DCO_ID)]
 
 
 def test_replay_without_fixture_is_a_source_error(source):

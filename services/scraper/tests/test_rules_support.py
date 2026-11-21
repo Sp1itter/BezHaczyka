@@ -55,3 +55,21 @@ def test_cfd_retail_loss_disclosure_detected():
     body = "x" * 130 + " 74% rachunków inwestorów detalicznych traci pieniądze."
     ev = feed_fold_evidence(body)
     assert ev is not None and ev.beyond_fold
+
+
+def test_rhetorical_question_about_risky_assets_is_not_a_warning():
+    """Regresja z nagrania (reklama 675484101807418): to pytanie, nie ostrzezenie."""
+    body = "W co inwestują nasi Klienci? " * 5 + "Czy inwestują w ryzykowne aktywa, np. kryptowaluty?"
+    assert feed_fold_evidence(body) is None
+
+
+def test_quote_is_not_cut_at_abbreviation():
+    body = "x" * 130 + ". Inwestycje, np. w akcje, wiążą się z ryzykiem utraty kapitału. Zapraszamy!"
+    ev = feed_fold_evidence(body)
+    assert ev is not None
+    assert ev.quote == "Inwestycje, np. w akcje, wiążą się z ryzykiem utraty kapitału."
+
+
+def test_english_and_cfd_style_warnings():
+    assert feed_fold_evidence("Capital at risk. Trade now.") is not None
+    assert feed_fold_evidence("Trading CFDs involves high risk of losing money.") is not None

@@ -21,6 +21,7 @@ import logging
 import shutil
 import tempfile
 
+from sources import SourceBlocked, SourceError
 from sources.facebook import FacebookAdsSource, FacebookConfig
 from sources.meta_json import canonical_ad_url
 from storage import LocalBlobStore
@@ -40,18 +41,41 @@ def main() -> int:
     config.mode = "live"
     config.max_ads_per_run = args.max
     config.record_dir = config.fixtures_dir
+    recorded, skipped, failed = 0, 0, 0
     with tempfile.TemporaryDirectory() as tmp:
-        source = FacebookAdsSource(config=config, store=LocalBlobStore(tmp))
+        blob = LocalBlobStore(tmp)
+        source = FacebookAdsSource(config=config, store=blob)
         urls = [canonical_ad_url(i) for i in args.id]
-        if args.query:
-            urls += source.discover(args.query)
+        try:
+            if args.query:
+                urls += source.discover(args.query)
+        except SourceBlocked as exc:
+            print(f"BLOKADA przy discover: {exc} — koncze bez ponawiania")
+            return 2
         for url in urls:
-            doc = source.fetch(url)
-            blob = LocalBlobStore(tmp)
+            ad_id = url.rsplit("=", 1)[-1]
+            target = config.fixtures_dir / ad_id
+            if (target / "page.html").is_file():
+                skipped += 1  # juz nagrana (np. z innego zapytania) — nie obciazamy Meta ponownie
+                print(f"POMIN  {url}  (juz w korpusie)")
+                continue
+            try:
+                doc = source.fetch(url)
+            except SourceBlocked as exc:
+                # Ban/checkpoint: zachowujemy to, co juz nagrane, i NIE probujemy dalej.
+                shutil.rmtree(target, ignore_errors=True)
+                print(f"BLOKADA {url}: {exc} — koncze (nagrane: {recorded})")
+                return 2
+            except SourceError as exc:
+                shutil.rmtree(target, ignore_errors=True)  # bez polowicznych nagran w korpusie
+                failed += 1
+                print(f"BLAD   {url}: {exc}")
+                continue
             for media in doc.media:  # wideo do korpusu (lokalnie, *.mp4 jest w .gitignore)
-                target = config.fixtures_dir / url.rsplit("=", 1)[-1] / "video.mp4"
-                shutil.copyfile(blob.path_of(media.path), target)
-            print(f"OK  {url}  ->  {config.fixtures_dir / url.rsplit('=', 1)[-1]}")
+                shutil.copyfile(blob.path_of(media.path), target / "video.mp4")
+            recorded += 1
+            print(f"OK     {url}  ->  {target}  (wideo: {len(doc.media)})")
+    print(f"PODSUMOWANIE: nagrane={recorded} pominiete={skipped} bledy={failed}")
     return 0
 
 

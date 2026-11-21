@@ -26,6 +26,7 @@ import logging
 import os
 import random
 import re
+import time
 import uuid
 from collections.abc import Iterator, MutableMapping
 from dataclasses import dataclass, field
@@ -36,6 +37,7 @@ from typing import Any, Literal
 from contracts import AdDocument, MediaItem, Publisher, RenderProbe, ViewportProbe
 from render.probe import (
     CHROMIUM_ARGS,
+    MARK_CREATIVE_JS,
     SCREENSHOT_VIEWPORTS,
     VIEWPORTS,
     NavigationGuard,
@@ -63,12 +65,12 @@ from storage import BlobStore, LocalBlobStore
 
 log = logging.getLogger("scraper.facebook")
 
-# Kreacja reklamodawcy wewnatrz dialogu „Link do reklamy" (ustalone na zywo
-# 21.11.2026). Ten sam data-testid wystepuje tez w kartach listy POD dialogiem,
-# dlatego selektor jest zakotwiczony w role="dialog".
+# Kreacja reklamodawcy wewnatrz dialogu „Link do reklamy". Wyszukuje ja i oznacza
+# render/creative.js (data-testid kontenera istnieje TYLKO w reklamach DCO —
+# ustalone na zywo 21.11.2026), a sonda i zrzuty uzywaja tego oznaczenia.
 CREATIVE_TESTID = "ad-library-dynamic-content-container"
-SCOPE_SELECTOR = f'[role="dialog"] [data-testid="{CREATIVE_TESTID}"]'
-DIALOG_SELECTOR = f'[role="dialog"]:has([data-testid="{CREATIVE_TESTID}"])'
+SCOPE_SELECTOR = '[data-iw-creative="1"]'
+DIALOG_SELECTOR = '[role="dialog"]:has([data-iw-creative="1"])'
 
 # Sygnaly blokady sprawdzane TYLKO gdy nie znalezlismy karty / wynikow —
 # inaczej tekst samej reklamy mogl by wywolac falszywy alarm.
@@ -93,15 +95,22 @@ PLATFORM_TYPOGRAPHY_REASON = "typografia platformy (Meta Ad Library)"
 PLATFORM_TYPOGRAPHY_RULES = frozenset({"4", "5", "8"})
 FEED_FOLD_CHARS = 125
 
+# FRAZY OSTRZEGAWCZE, nie samo slowo „ryzyko". Golym `ryzyk\w*` zlapalismy na
+# nagraniu pytanie retoryczne „Czy inwestuja w ryzykowne aktywa?" — falszywy
+# alarm R7 dokladnie tego rodzaju, przed ktorym ostrzega par. 6.2.1.
 _RISK_RE = re.compile(
-    r"(?<!bez )(?<!zero )\bryzyk\w*"
-    r"|\butrat\w*\s+(?:\w+\s+){0,2}?(?:kapitał\w*|środk\w*|pieniędzy|inwestycji)"
+    r"\bryzyk\w*\s+(?:utraty|straty|inwestycyjn\w*|inwestowania|związan\w*|kursow\w*|walutow\w*)"
+    r"|\b(?:wiąż\w*\s+się|obarczon\w*|niesie|niosą)\s+(?:\w+\s+){0,2}?ryzyk\w*"
+    r"|\butrat\w*\s+(?:\w+\s+){0,2}?(?:kapitał\w*|środk\w*|pieniędzy|inwestycji|części|całości)"
     r"|\bnie\s+gwarantuj\w*"
     r"|\brachunk\w*\s+inwestorów\s+detalicznych"
     r"|\bwyniki\s+(?:historyczne|osiągnięte\s+w\s+przeszłości)\s+nie"
-    r"|\b(?:capital\s+at\s+risk|lose\s+money|risk\s+warning)\b",
+    r"|\b(?:capital\s+at\s+risk|lose\s+money|losing\s+money|risk\s+warning|involves?\s+(?:a\s+)?(?:high\s+)?risk)\b",
     re.IGNORECASE,
 )
+# Koniec zdania: [.!?] przed wielka litera / cyfra / koncem tekstu albo nowa linia,
+# zeby „np.", „m.in.", „tj." w srodku zdania nie ucinaly cytatu.
+_SENTENCE_END_RE = re.compile(r"[.!?](?=\s+[A-ZĄĆĘŁŃÓŚŹŻ0-9]|\s*$)|\n")
 
 
 def platform_rule_override(rule_id: str, source: str) -> tuple[str, str] | None:
@@ -159,15 +168,39 @@ def feed_fold_evidence(body: str | None, fold_chars: int = FEED_FOLD_CHARS) -> F
     match = _RISK_RE.search(body)
     if not match:
         return None
-    start = max(body.rfind(sep, 0, match.start()) for sep in (".", "!", "?", "\n")) + 1
-    ends = [i for i in (body.find(sep, match.end()) for sep in (".", "!", "?", "\n")) if i != -1]
-    end = min(ends) + 1 if ends else len(body)
+    start = max((m.end() for m in _SENTENCE_END_RE.finditer(body, 0, match.start())), default=0)
+    nxt = _SENTENCE_END_RE.search(body, match.end())
+    end = nxt.end() if nxt else len(body)
     return FeedFoldEvidence(
         risk_offset_chars=match.start(),
         fold_chars=fold_chars,
         beyond_fold=match.start() > fold_chars,
         quote=body[start:end].strip(),
     )
+
+
+def collect_ads_from_dom(page: Any, sink: dict[str, dict], timeout_s: float, poll_ms: int = 700) -> int:
+    """Czeka, az w DOM pojawi sie inline JSON z reklamami, i dokleja je do `sink`.
+
+    Ustalone na zywo: Meta po `goto` wykonuje PRAWDZIWA nawigacje na
+    skanonizowany URL wyszukiwania (dokleja `sort_data`, `is_targeted_country`),
+    a wyniki trafiaja do DOM ok. 2 s pozniej. Pojedyncze `page.content()` po
+    stalym odczekaniu widzialo strone posrednia (0 reklam) albo rzucalo
+    „page is navigating". Dlatego polling z tolerancja na nawigacje w toku.
+    Zwraca liczbe nowych wezlow; konczy tez, gdy GraphQL juz cos dostarczyl.
+    """
+    from playwright.sync_api import Error as PlaywrightError
+
+    deadline = time.monotonic() + timeout_s
+    added = 0
+    while True:
+        try:
+            added += merge_nodes(sink, ads_from_html(page.content()).items())
+        except PlaywrightError:
+            pass  # nawigacja w toku — sprobuj za chwile
+        if sink or time.monotonic() >= deadline:
+            return added
+        page.wait_for_timeout(poll_ms)
 
 
 # --------------------------------------------------------------------------- #
@@ -295,8 +328,7 @@ class FacebookAdsSource:
                     wait_until="domcontentloaded",
                     timeout=self.config.nav_timeout_s * 1000,
                 )
-                page.wait_for_timeout(self.config.settle_ms)
-                merge_nodes(collected, ads_from_html(page.content()).items())
+                collect_ads_from_dom(page, collected, timeout_s=self.config.card_timeout_s)
                 if not collected:
                     self._raise_if_blocked(page, deep=True)
 
@@ -378,8 +410,8 @@ class FacebookAdsSource:
                         # O sukcesie decyduje obecnosc kreacji ponizej, nie goto.
                         log.info("facebook %s [%s]: goto timeout — sprawdzam karte", ad_id, vp)
                     try:
-                        page.wait_for_selector(
-                            SCOPE_SELECTOR, state="attached", timeout=self.config.card_timeout_s * 1000
+                        page.wait_for_function(
+                            MARK_CREATIVE_JS, arg=ad_id, timeout=self.config.card_timeout_s * 1000, polling=500
                         )
                     except PlaywrightTimeout as exc:
                         self._raise_if_blocked(page, deep=True)
