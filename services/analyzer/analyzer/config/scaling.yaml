@@ -1,0 +1,46 @@
+# Konfiguracja autoskalera puli workerow analyzera.
+#
+# Podstawa pomiaru: caly czas analizy dokumentu (18,4 s) to warstwa modelu,
+# etapy CPU zajmuja 3,7 ms. Dlatego liczba workerow kolejki `gpu` nie moze
+# przekraczac liczby endpointow Ollamy - worker bez modelu nie daje przepustowosci.
+#
+# Niezmienniki sprawdzane przy starcie (naruszenie = ScalingConfigError):
+#   - min <= max w kazdej kolejce
+#   - gpu.max <= liczba ollama_endpoints
+#   - hard_max_total >= suma min ze wszystkich kolejek
+#   - executor nalezy do {dry-run, pool, compose}
+scaling:
+
+  # Sposob wykonywania decyzji: dry-run (tylko loguje), pool (procesy lokalne),
+  # compose (docker compose - jeszcze niezaimplementowany).
+  executor: dry-run
+
+  # Twardy limit sumy workerow ze wszystkich kolejek razem.
+  hard_max_total: 6
+
+  queues:
+
+    # Pobieranie i wstepna obrobka materialu (CPU, tanie).
+    ingest:
+      min: 1                  # nigdy mniej workerow niz tyle
+      max: 4                  # nigdy wiecej workerow niz tyle
+      scale_up_backlog: 10    # backlog >= tyle zadan => dodaj jednego workera
+      scale_down_idle_s: 300  # pusta kolejka przez tyle sekund => zdejmij jednego
+
+    # Renderowanie strony (przegladarka, srednio kosztowne).
+    render:
+      min: 1
+      max: 2
+      scale_up_backlog: 5
+      scale_down_idle_s: 300
+
+    # Analiza modelem - waskie gardlo; max ograniczony liczba endpointow Ollamy.
+    gpu:
+      min: 1
+      max: 1
+      scale_up_backlog: 3
+      scale_down_idle_s: 600
+
+  # Endpointy Ollamy dostepne dla workerow kolejki gpu.
+  ollama_endpoints:
+    - http://host.docker.internal:11434
