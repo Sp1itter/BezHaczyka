@@ -1,0 +1,13 @@
+{
+  "id": "demo-005",
+  "source": "fixtures/demo-ads/demo-005.html",
+  "is_violation": true,
+  "note": "Ostrzeżenie w pasku o stałej szerokości 640 px – na ekranie 390 px tekst jest ucięty (R8).",
+  "rule_labels": {
+    "4": "pass",
+    "5": "pass",
+    "6": "pass",
+    "7": "pass",
+    "8": "fail"
+  }
+}

@@ -1,0 +1,41 @@
+# Slowniki i wagi collectora. Edycja bez restartu: collector i flota
+# przeladowuja plik po zmianie (mtime). Bledny plik jest odrzucany w calosci
+# (zostaje poprzednia wersja) — sprawdz: python -m collector ctl errors
+# Po zmianie wag/slownikow: python -m collector ctl reprioritize
+#
+# Terminy to POCZATKI slow, bez polskich znakow (dopasowanie normalizuje obie
+# strony): "mieszkan" lapie mieszkanie, mieszkania, mieszkaniu.
+version: 1
+
+weights:
+  scam_lure: 3.0            # x min(trafienia, 2)
+  impersonation: 3.0        # osoba z personas.json poza jej kanalem albo hook
+  instrument: 2.0
+  finfluencer: 1.5
+  affiliate: 1.5            # ref / aff / partner / promo / code w linku (utm_* to tylko tracking)
+  meta_finserv: 1.0         # Meta oznaczyla reklame jako uslugi finansowe
+  repeat: 0.5               # x log10(1 + seen_count)
+  non_instrument_only: -4.0 # tylko nieruchomosci/uslugi, bez instrumentu i scamu -> kwarantanna
+  official_registered: -1.5 # publikuje oficjalny kanal osoby
+
+analyzer_min_priority: 3.0  # drogi tor (Bielik) od tego priorytetu
+instrument_lane_min: null   # pas instrumentow: ustaw np. 2.0, zeby analizowac tez sam instrument
+
+lexicon:
+  instrument: [akcje, akcji, akcjach, etf, etp, cfd, "kontrakty na roznice", forex, obligacj,
+               tfi, "fundusz inwestycyjn", "fundusze inwestycyjn", "dom maklerski", "biuro maklerskie",
+               "rachunek maklerski", "rachunku maklerskim", gield, gpw, nasdaq, "s&p 500", "kontrakt terminow",
+               futures, opcje, dzwigni, lewar]
+  non_instrument: [mieszkan, apartament, dzialk, nieruchomos, basen, resort, "dom jednorodzinn",
+                   "kredyt hipoteczn", wynajem, condohotel, "lokal uzytkow", grunt, deweloper, osiedl]
+  scam_lure: ["gwarantowany zysk", "gwarantowane zyski", "gwarantowana stopa zwrotu", "bez ryzyka",
+              "pewny zysk", "dochod pasywny", "pasywny dochod", "z 1000 zl", "od 1000 zl", "od 250 zl",
+              "zarabiaj od", "zarabiaj codziennie", "platforma ai", "platforma inwestycyjna ai",
+              "robot inwestycyjny", "bot inwestycyjny", "sztuczna inteligencja inwestuje",
+              "tysiecy zlotych miesiecznie", "zysk dziennie", podwoj]
+  impersonation_hook: ["ujawnia sekret", "ujawnil sekret", "sekret bogactwa", "bank chce to zablokowac",
+                       "banki nienawidza", "rzadowy program", "program rzadowy", "ekskluzywny wywiad",
+                       "skandal na antenie", "tajemnica sukcesu"]
+  finfluencer: [sygnaly, "sygnal transakcyjn", "copy trade", "copy trading", "kopiuj transakcje",
+                "moj link", "link w bio", "kod polecajacy", "link partnerski", "link afiliacyjny",
+                "grupa vip", "kanal vip", "mentoring tradingowy", "kurs tradingu"]
