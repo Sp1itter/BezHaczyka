@@ -11,7 +11,8 @@ export default defineConfig({
     host: "127.0.0.1",
     port: Number(process.env.WEB_PORT || 5180),
     proxy: {
-      "/api": { target, changeOrigin: true },
+      // /api/x -> /x, tak jak nginx w obrazie (services/api nie ma prefiksu /api).
+      "/api": { target, changeOrigin: true, rewrite: (p) => p.replace(/^\/api/, "") },
       "/ws": { target, ws: true, changeOrigin: true },
     },
   },

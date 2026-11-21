@@ -27,7 +27,7 @@ PG_URL = os.getenv("TEST_DATABASE_URL")
 def _postgres_store():
     # Schemat tworzy infra/init.sql. UWAGA: test czysci tabele documents/findings w tej bazie.
     store = PostgresStore(PG_URL)
-    store._execute("TRUNCATE findings, documents CASCADE")
+    store._execute("TRUNCATE findings, documents, finding_events CASCADE")
     return store
 
 
@@ -190,3 +190,60 @@ def test_ws_alert_on_escalation_to_high(client: TestClient) -> None:
 def test_seed_loads_contract_examples(store) -> None:
     docs, findings = seed(store, EXAMPLES)
     assert docs == 2 and findings == 1
+
+
+# --- praca czlowieka: przypisanie, ocena z etykieta, historia -------------------
+
+
+def test_assign_and_release(seeded: TestClient) -> None:
+    fid = load("finding.json")["id"]
+    r = seeded.patch(f"/findings/{fid}", json={"assignee": "analityk.a", "actor": "analityk.a"})
+    assert r.status_code == 200
+    body = r.json()
+    assert (body["assignee"], body["assigned_by"]) == ("analityk.a", "human")
+    assert body["assigned_at"]
+    released = seeded.patch(f"/findings/{fid}", json={"assignee": None, "actor": "analityk.a"}).json()
+    assert released["assignee"] is None and released["assigned_by"] is None
+
+
+def test_review_sets_verdict_label_and_events(seeded: TestClient) -> None:
+    fid = load("finding.json")["id"]
+    r = seeded.patch(
+        f"/findings/{fid}",
+        json={"review": {"label": "true_positive_wrong_entity", "note": "zly podmiot"}, "actor": "analityk.b"},
+    )
+    assert r.status_code == 200
+    f = r.json()
+    assert f["status"] == "confirmed"
+    assert f["review"]["label"] == "true_positive_wrong_entity"
+    assert f["review"]["by"] == "analityk.b" and f["review"]["note"] == "zly podmiot"
+    assert f["assignee"] == "analityk.b"  # oceniajacy przejmuje nieprzypisany alert
+    fp = seeded.patch(f"/findings/{fid}", json={"review": {"label": "false_positive"}, "actor": "analityk.b"})
+    assert fp.json()["status"] == "dismissed"
+    events = seeded.get(f"/findings/{fid}/events").json()["items"]
+    assert [e["action"] for e in events] == ["review", "review"]
+    assert events[0]["actor"] == "analityk.b" and events[0]["detail"]["label"] == "true_positive_wrong_entity"
+
+
+def test_review_requires_actor_and_known_label(seeded: TestClient) -> None:
+    fid = load("finding.json")["id"]
+    assert seeded.patch(f"/findings/{fid}", json={"review": {"label": "true_positive"}}).status_code == 422
+    bad = {"review": {"label": "cos"}, "actor": "x"}
+    assert seeded.patch(f"/findings/{fid}", json=bad).status_code == 422
+    assert seeded.patch(f"/findings/{fid}", json={}).status_code == 422
+
+
+def test_reanalysis_keeps_human_decision(seeded: TestClient) -> None:
+    f = load("finding.json")
+    seeded.patch(f"/findings/{f['id']}", json={"review": {"label": "false_positive"}, "actor": "a"})
+    again = copy.deepcopy(f)
+    again["status"] = "new"
+    assert seeded.post("/findings", json=again).status_code == 200
+    got = seeded.get(f"/findings/{f['id']}").json()
+    assert got["status"] == "dismissed" and got["review"]["label"] == "false_positive"
+
+
+def test_review_labels_endpoint(client: TestClient) -> None:
+    items = client.get("/review-labels").json()["items"]
+    values = {i["value"]: i["verdict"] for i in items}
+    assert values["true_positive"] == "confirmed" and values["false_positive"] == "dismissed"
