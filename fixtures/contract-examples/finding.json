@@ -1,0 +1,96 @@
+{
+  "id": "22222222-2222-4222-8222-222222222222",
+  "document_id": "11111111-1111-4111-8111-111111111111",
+  "primary_module": 1,
+  "modules": [
+    1,
+    2
+  ],
+  "routing": {
+    "rule": "R2",
+    "reason": "@finfluencer_pl nie jest oficjalnym kanałem XYZ Dom Maklerski, a materiał reklamuje tę firmę lub jej produkty — reklama przez podmiot trzeci. Materiał zawiera twierdzenia o zyskach, więc dodatkowo oceniany regułami Modułu 2.",
+    "scope_gate": "in_scope"
+  },
+  "risk_score": 78.5,
+  "risk_level": "high",
+  "rule_results": [
+    {
+      "rule_id": "4",
+      "rule_name": "Rozmiar czcionki ryzyka",
+      "engine": "DET",
+      "verdict": "fail",
+      "confidence": 1.0,
+      "severity": 4,
+      "legal_basis": "art. 44 ust. 2 lit. c rozporządzenia del. 2017/565",
+      "evidence": {
+        "kind": "measurement",
+        "summary": "Ostrzeżenie o ryzyku ma 7.0 px przy dominującej czcionce 16.0 px (44%).",
+        "measured": {
+          "risk_font_px": 7.0,
+          "dominant_font_px": 16.0,
+          "ratio": 0.44
+        },
+        "quote": null,
+        "viewport": "mobile",
+        "screenshot_crop": "s3://crops/11111111-rule4.png",
+        "transcript_ts": null
+      }
+    },
+    {
+      "rule_id": "18",
+      "rule_name": "Nadzór jako argument bezpieczeństwa",
+      "engine": "LLM",
+      "verdict": "fail",
+      "confidence": 0.88,
+      "severity": 5,
+      "legal_basis": "art. 44 ust. 8 rozporządzenia del. 2017/565",
+      "evidence": {
+        "kind": "quote",
+        "summary": "Materiał powołuje się na nadzór KNF jako argument bezpieczeństwa inwestycji.",
+        "measured": null,
+        "quote": "Nasza inwestycja jest w pełni bezpieczna — spełniamy rygorystyczne wymogi KNF",
+        "viewport": null,
+        "screenshot_crop": null,
+        "transcript_ts": null
+      }
+    },
+    {
+      "rule_id": "5",
+      "rule_name": "Ekspozycja i kontrast ryzyka",
+      "engine": "DET",
+      "verdict": "not_applicable",
+      "confidence": 1.0,
+      "severity": 4,
+      "legal_basis": "art. 44 ust. 2 lit. c i e rozporządzenia del. 2017/565",
+      "evidence": {
+        "kind": "absence",
+        "summary": "Nie dało się zmierzyć kontrastu — tło graficzne (background_confidence=unknown). Wymaga oceny ręcznej.",
+        "measured": null,
+        "quote": null,
+        "viewport": "mobile",
+        "screenshot_crop": null,
+        "transcript_ts": null
+      }
+    }
+  ],
+  "entities": {
+    "investment_firm": {
+      "name_in_ad": "XYZ Dom Maklerski",
+      "registry_match": {
+        "knf_id": "DM-123",
+        "official_name": "XYZ DM S.A.",
+        "score": 0.94
+      },
+      "is_authorized": true
+    },
+    "advertiser": {
+      "name": "@finfluencer_pl",
+      "relation_to_firm": "third_party",
+      "disclosure_found": false,
+      "affiliate_link": "https://example.invalid/?ref=finflu123"
+    }
+  },
+  "knn_score": 0.81,
+  "status": "new",
+  "created_at": "2026-11-21T14:03:00Z"
+}
