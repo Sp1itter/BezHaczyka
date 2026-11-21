@@ -1,4 +1,5 @@
 // Klient API. Wszystkie sciezki przez /api (proxy vite w dev, nginx w compose).
+import { buildQuery } from "./module1.js";
 const BASE = "/api";
 
 async function call(path, options = {}) {
@@ -19,7 +20,20 @@ export function listFindings(filters) {
   return call(`/findings?${p}`);
 }
 
-export const getFinding = (id) => call(`/findings/${id}`);
+export async function getModule1Report(filters) {
+  const q = buildQuery({ ...filters, limit: filters.limit ?? 200 });
+  const res = await fetch(`${BASE}/reports/module1?${q}`);
+  if (!res.ok) {
+    throw new Error(
+      res.status === 503
+        ? "Raport Modułu 1 jest chwilowo niedostępny (brak widoku w bazie — uruchom migracje casedb)."
+        : `Nie udało się pobrać raportu (HTTP ${res.status}).`,
+    );
+  }
+  return res.json();
+}
+
+export const getFinding =(id) => call(`/findings/${id}`);
 export const getStats = () => call("/stats");
 export const getCalibration = () => call("/calibration");
 export const getHealth = () => call("/health");
