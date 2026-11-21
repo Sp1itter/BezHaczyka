@@ -57,7 +57,7 @@ Decyzje dla reguł DET (konsumuje `rules_det`):
 | `FB_BREAKER_THRESHOLD` / `FB_BREAKER_COOLDOWN_S` | `2` / `1800` | po 2 blokadach źródło pauzuje 30 min |
 | `FB_FIXTURES_DIR` | `fixtures/demo-ads/facebook` | korpus offline |
 | `SCRAPER_USER_AGENTS` / `SCRAPER_PROXIES` | – | listy UA / proxy rozdzielone `\|\|` (`SCRAPER_PROXY`: pojedyncze proxy) |
-| `YT_MIN_INTERVAL_S` | `3` | odstęp między zapytaniami do YouTube (Valkey `yt:ratelimit`) |
+| `YT_MIN_INTERVAL_S` | `8` | odstęp między zapytaniami do YouTube (Valkey `yt:ratelimit`); 3 s dawało IpBlocked przy napisach |
 | `DATABASE_URL` | – | baza `casedb` (w compose składana z `POSTGRES_*`) |
 | `SCHEDULE_FILE` / `SCHEDULE_DISABLE` / `SCHEDULE_INTERVAL_<NAZWA>` | `schedule.yaml` / – / – | nadpisania harmonogramu |
 | `S3_ENDPOINT`, `S3_ACCESS_KEY`, `S3_SECRET_KEY` | – | SeaweedFS; bez tych zmiennych pliki trafiają do `SCRAPER_DATA_DIR` |
