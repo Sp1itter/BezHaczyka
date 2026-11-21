@@ -17,10 +17,10 @@ from tests.test_api import load
 PG_URL = os.getenv("TEST_DATABASE_URL")
 
 
-def _finding(level: str, doc_id: str) -> Finding:
+def _finding(level: str, doc_id: str, shift_s: float = 1) -> Finding:
     d = load("finding.json")
     d.update(id=str(uuid.uuid4()), document_id=doc_id, risk_level=level,
-             created_at=(datetime.now(timezone.utc) + timedelta(seconds=1)).isoformat())
+             created_at=(datetime.now(timezone.utc) + timedelta(seconds=shift_s)).isoformat())
     return Finding.model_validate(d)
 
 
@@ -101,3 +101,37 @@ def test_sqlite_no_loop_and_summary_none() -> None:
         body = client.get("/findings").json()["items"][0]
         assert body["summary"] is None and body["summary_engine"] is None
         assert client.get(f"/findings/{body['id']}").json()["summary"] is None
+
+
+def test_out_of_order_insert_still_alerts(pg) -> None:
+    app, client, doc_id = pg
+    b = _finding("high", doc_id, shift_s=-10)
+    a = _finding("high", doc_id, shift_s=-60)  # starszy created_at, wstawiony pozniej
+    app.state.store.upsert_finding(b)
+    assert _poll(client, app) == 1
+    app.state.store.upsert_finding(a)
+    assert _poll(client, app) == 1
+    assert _poll(client, app) == 0
+
+
+def test_restart_seed_does_not_realert(pg) -> None:
+    app, client, doc_id = pg
+    app.state.store.upsert_finding(_finding("high", doc_id, shift_s=-5))
+    app2 = create_app(store=PostgresStore(PG_URL))
+    with TestClient(app2) as c2:  # lifespan zasiewa dedup
+        assert c2.portal.call(poll_alerts_once, app2) == 0
+
+
+def test_low_updated_to_high_alerts_once(pg) -> None:
+    app, client, doc_id = pg
+    f = _finding("low", doc_id, shift_s=-5)
+    app.state.store.upsert_finding(f)
+    assert _poll(client, app) == 0
+    app.state.store.upsert_finding(f.model_copy(update={"risk_level": "high"}))
+    assert _poll(client, app) == 1
+    assert _poll(client, app) == 0
+
+
+def test_bad_env_falls_back(monkeypatch) -> None:
+    monkeypatch.setenv("ALERT_LOOKBACK_S", "abc")
+    assert create_app(store=SqliteStore(":memory:")).state.alert_lookback_s == 3600

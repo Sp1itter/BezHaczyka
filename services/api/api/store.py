@@ -20,7 +20,7 @@ import sqlite3
 import threading
 import uuid
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -335,12 +335,16 @@ class SqlStore:
         rows = self._execute(f"{self._finding_select()} WHERE f.id = {self.ph}", [finding_id])
         return self._hydrate(rows[0]) if rows else None
 
-    def new_high_findings(self, since: datetime) -> list[dict[str, Any]]:
-        """Findingi `high` utworzone po `since` (od najstarszego) - zrodlo alertow z bazy."""
+    def new_high_findings(self, lookback_s: float) -> list[dict[str, Any]]:
+        """Findingi `high` z ostatnich `lookback_s` s (wg zegara bazy), od najstarszego."""
+        if self.dialect == "postgresql":
+            cond, param = f"f.created_at > now() - make_interval(secs => {self.ph})", lookback_s
+        else:
+            cond = f"f.created_at > {self.ph}"
+            param = _iso(datetime.now(timezone.utc) - timedelta(seconds=lookback_s))
         rows = self._execute(
-            f"{self._finding_select()} WHERE f.risk_level = 'high' AND f.created_at > {self.ph}"
-            " ORDER BY f.created_at, f.id",
-            [since if self.dialect == "postgresql" else _iso(since)],
+            f"{self._finding_select()} WHERE f.risk_level = 'high' AND {cond} ORDER BY f.created_at, f.id",
+            [param],
         )
         return [self._hydrate(r) for r in rows]
 
