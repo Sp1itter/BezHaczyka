@@ -25,28 +25,47 @@ i `bge-m3`, oraz **ffmpeg** dla speech-to-text.
 | `analyzer/scoring.py` | `risk_score`, `risk_level`, `is_flagged`, `coverage` | `test_scoring.py` |
 | `analyzer/scope_gate.py` | Brama zakresu — kryterium instrumentowe (par. 6.6) | `test_scope_gate.py` |
 | `analyzer/router.py` | Tablica decyzyjna R1–R4 (par. 6.5) | `test_router.py` |
+| `analyzer/llm.py` | Klient Ollamy (Bielik + bge-m3), wstrzykiwany transport | `test_llm.py` |
+| `analyzer/rules_llm/batch_1.py` | Reguły 1, 2, 17, 18 jednym wywołaniem + weryfikacja cytatu | `test_llm.py` |
 | `analyzer/prompts/batch_1.txt` | Prompt wsadowy: reguły 1, 2, 17, 18 | — |
 | `tools/gen_contract_examples.py` | Generuje `fixtures/contract-examples/` z modeli | — |
+| `tools/smoke_llm.py` | Smoke test na żywo — uruchom, gdy Ollama wstanie | — |
 
 Żaden z tych plików nie wymaga działającej Ollamy, więc dało się je napisać
-i przetestować, zanim modele się pobrały.
+i przetestować, zanim modele się pobrały. Testy używają `httpx.MockTransport`.
 
 ## Co trzeba zrobić dalej (kolejność ma znaczenie)
 
-1. **`analyzer/llm.py`** — klient Ollamy po REST (`httpx`, `POST /api/generate`
-   z `format: "json"`, `temperature: 0.2`). Zacznij od tego, bo blokuje wszystkie
-   reguły LLM.
-2. **`analyzer/rules_llm/batch_1.py`** — pierwsze cztery reguły (1, 2, 17, 18)
-   przez `prompts/batch_1.txt`. Jedno wywołanie modelu, cztery `RuleResult`.
-3. **`analyzer/embeddings.py`** — `bge-m3` przez `POST /api/embed` → wektor 1024,
-   plus `simhash` na znormalizowanym tekście.
-4. **`analyzer/rules_llm/registry.py`** — rejestr zbierający reguły DET (od A)
+1. **Uruchom `python tools/smoke_llm.py`**, gdy tylko Ollama i Bielik będą
+   gotowe. To jedyna rzecz, której testy nie mogą sprawdzić: czy prawdziwy
+   model rozumie nasz prompt i trzyma się schematu. Jeśli reguły wyjdą
+   `not_applicable` — iteruj `prompts/batch_1.txt`, nie kod.
+2. **`analyzer/embeddings.py`** — `bge-m3` przez `client.embed()` → wektor 1024,
+   plus `simhash` na znormalizowanym tekście i cosine do dedupu.
+3. **`analyzer/rules_llm/registry.py`** — rejestr zbierający reguły DET (od A)
    i LLM (nasze) po wspólnym interfejsie `Rule`.
-5. Prompty wsadowe 2–4: reguły `9+10+11`, `12a+12b+14`, `15+16`.
-6. **Reguły HYBRID 3 i 13** — potrzebują `RenderProbe` od osoby A.
-7. **`analyzer/stt.py`** — `faster-whisper`, `device="cpu"`, `compute_type="int8"`.
-8. **`analyzer/module3.py`** — shadow advisory (korzysta z resolvera osoby A).
-9. **`tools/evaluate.py`** — precision / recall / F1 / macierz pomyłek.
+4. Prompty wsadowe 2–4: reguły `9+10+11`, `12a+12b+14`, `15+16`.
+   Kopiuj strukturę z `batch_1.py` — `RULE_META` + `FAIL_MEANS_ABSENCE` i gotowe.
+5. **Reguły HYBRID 3 i 13** — potrzebują `RenderProbe` od osoby A.
+6. **`analyzer/stt.py`** — `faster-whisper`, `device="cpu"`, `compute_type="int8"`.
+7. **`analyzer/module3.py`** — shadow advisory (korzysta z resolvera osoby A).
+8. **`tools/evaluate.py`** — precision / recall / F1 / macierz pomyłek.
+
+### Weryfikacja cytatu — zabezpieczenie przed halucynacją
+
+`batch_1.py` sprawdza, czy cytat podany przez model **faktycznie występuje
+w materiale** (po normalizacji wielkości liter i białych znaków). Jeśli nie:
+
+- dla reguł **17 i 18** (`fail` twierdzi, że coś w materiale *jest*) —
+  `confidence` spada do 40%, cytat jest usuwany, a w `summary` ląduje adnotacja
+  o potrzebie weryfikacji ręcznej. Ustalenie zostaje, ale samo się wytłumia
+  w `risk_score`, bo `confidence` wchodzi do wzoru.
+- dla reguł **1 i 2** (`fail` oznacza, że czegoś *brakuje*) — brak cytatu jest
+  poprawny i nie obniża pewności. Lista takich reguł to `FAIL_MEANS_ABSENCE`.
+
+Dodawając kolejne prompty wsadowe, **zadeklaruj dla każdej reguły, czy jej
+`fail` oznacza obecność czy brak** — inaczej zabezpieczenie będzie karać
+poprawne ustalenia.
 
 ## Zasady, których trzymamy się w tym serwisie
 
