@@ -53,8 +53,10 @@ EXPOSE 8081
 # Sonda zdrowia wola GET /health na porcie 8081. Obraz slim nie ma curl,
 # wiec uzywamy stdlib (urllib). Kod wyjscia != 0 (wyjatek, np. polaczenie
 # odrzucone albo HTTP 4xx/5xx) oznacza `unhealthy`.
-# UWAGA: sam worker (`python -m analyzer.worker`) jeszcze nie uruchamia serwera
-# HTTP na 8081 - do czasu jego dodania kontener bedzie oznaczany jako unhealthy.
+# Worker (`python -m analyzer.worker`) uruchamia serwer /health w watku-demonie
+# PRZED wejsciem w blokujaca petle kolejki — patrz worker.py::_start_health_server.
+# Zgodnosci tego portu z health.HEALTH_PORT pilnuje test
+# tests/test_spojnosc.py::TestPortHealth.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8081/health', timeout=3)"
 

@@ -47,7 +47,21 @@ def _merge_meta() -> dict[str, tuple[str, int, str]]:
     return merged
 
 
-ALL_RULE_META: dict[str, tuple[str, int, str]] = _merge_meta()
+def _with_hybrid(meta: dict[str, tuple[str, int, str]]) -> dict[str, tuple[str, int, str]]:
+    """Dolacz reguly hybrydowe, ktore nie naleza do zadnego wsadu LLM.
+
+    Regula 3 laczy wykrycie semantyczne twierdzen o zyskach z POMIAREM
+    odleglosci do ostrzezenia (geometria RenderProbe, znaki albo sekundy),
+    wiec nie jest ani czystym wsadem LLM, ani regula DET osoby A.
+    """
+    from analyzer.rules_hybrid import RULE_3_META
+
+    if "3" in meta:
+        raise ValueError("Kolizja rule_id '3' miedzy wsadem LLM a regula hybrydowa")
+    return {**meta, "3": RULE_3_META}
+
+
+ALL_RULE_META: dict[str, tuple[str, int, str]] = _with_hybrid(_merge_meta())
 
 
 def _rule_sort_key(rule_id: str) -> tuple[int, str]:
@@ -56,12 +70,21 @@ def _rule_sort_key(rule_id: str) -> tuple[int, str]:
 
 
 def module2_runners(client: OllamaClient | None = None) -> tuple[RuleRunner, ...]:
-    """Runnery wszystkich czterech wsadow; `client` trafia do kazdego."""
+    """Runnery Modulu 2: cztery wsady LLM plus regula hybrydowa 3.
+
+    `client` trafia do kazdego wsadu. Regula 3 go nie potrzebuje — mierzy
+    odleglosc miedzy obietnica zysku a ostrzezeniem deterministycznie
+    (geometria RenderProbe, znaki albo sekundy transkrypcji), wiec dziala
+    takze przy padnietym modelu.
+    """
+    from analyzer.rules_hybrid import rule_3_runner
+
     runners: list[RuleRunner] = []
     for _module, fn in _BATCHES:
         runner = partial(fn, client=client)
         runner.__name__ = fn.__name__  # type: ignore[attr-defined]
         runners.append(runner)
+    runners.append(rule_3_runner)
     return tuple(runners)
 
 

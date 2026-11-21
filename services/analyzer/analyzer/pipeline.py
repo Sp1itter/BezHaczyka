@@ -2,11 +2,21 @@
 
 To serce serwisu. Sklada w jedna calosc etapy z par. 6.5 design doca:
 
-    ① brama zakresu        (scope_gate)
-    ② resolver podmiotow   (dane od osoby A, wstrzykiwane jako EntityResolution)
-    ③ router               (router)
-    ④ ewaluacja regul      (rejestr regul: DET od A + LLM nasze)
-    ⑤ scoring              (scoring)
+    ① transkrypcja         (stt — gdy sa media i brak transkryptu)
+    ② embedding + simhash  (musi widziec transkrypt)
+    ③ brama zakresu        (scope_gate)
+    ④ resolver podmiotow   (dane od osoby A, wstrzykiwane jako EntityResolution)
+    ⑤ router               (router)
+    ⑥ ewaluacja regul      (rejestr regul: DET od A + LLM nasze)
+    ⑦ scoring              (scoring)
+
+KOLEJNOSC NIE JEST DOWOLNA. Transkrypcja idzie PIERWSZA, przed brama zakresu
+i przed routerem, i NIE MOZE byc uzalezniona od modulu. To problem jajka i kury:
+modul wyznacza router, router czyta sygnaly z tekstu, a w reklamie wideo te
+sygnaly moga istniec WYLACZNIE w narracji. Gdybysmy transkrybowali tylko to,
+co trafilo do Modulu 1, reklama finfluencera obiecujaca zyski glosem nie mialaby
+w tekscie zadnego sygnalu, wiec router dalby R4 i nigdy nie dowiedzielibysmy sie,
+ze nalezalo ja przetranskrybowac.
     ⑥ Finding              (gotowy JSON do POST /findings)
 
 Reguly sa WSTRZYKIWANE, nie importowane na sztywno — dzieki temu potok
@@ -16,6 +26,7 @@ ruszania tego pliku.
 
 from __future__ import annotations
 
+import logging
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -30,6 +41,7 @@ from analyzer.contracts import (
     RegistryMatch,
     Relation,
     RuleResult,
+    Transcript,
     ScopeStatus,
     Verdict,
 )
@@ -41,6 +53,8 @@ from analyzer.scoring import risk_level, risk_score
 # Protocol z rules_llm.base, zeby potok nie zalezal od warstwy LLM.
 RuleLike = object
 RuleRunner = Callable[[AdDocument], list[RuleResult]]
+
+log = logging.getLogger(__name__)
 
 
 @dataclass
@@ -97,6 +111,12 @@ class AnalyzerConfig:
     # Klient do policzenia embeddingu, gdy dokument go nie ma. None = pomijamy.
     # Brak embeddingu to degradacja (dedup na samym simhashu), nie awaria.
     embed_client: object | None = None
+    # Producent transkryptu dla reklam z mediami. Wstrzykiwany, bo transkrypt
+    # moze pochodzic albo z naszego faster-whisper (analyzer.stt), albo
+    # od osoby A ze scrapera — potok nie musi wiedzieć skad.
+    # None = nie transkrybujemy (transcript zostaje None, reguly degraduja sie
+    # do not_applicable, nic sie nie wywraca).
+    transcriber: Callable[[AdDocument], Transcript | None] | None = None
 
 
 def analyze(
@@ -113,6 +133,11 @@ def analyze(
     """
     entities = entities or EntityResolution()
     config = config or AnalyzerConfig()
+
+    # --- ① transkrypcja -------------------------------------------------- #
+    # MUSI byc przed brama zakresu, embeddingiem i routerem: instrument,
+    # obietnica zysku albo rekomendacja moga wystapic tylko w narracji wideo.
+    _ensure_transcript(doc, config)
 
     # --- ② reprezentacja wektorowa -------------------------------------- #
     # Scraper oddaje dokument z `simhash` i `embedding` ustawionymi na null —
@@ -168,12 +193,45 @@ def analyze(
         modules=decision.modules,
         routing=decision.routing,
         risk_score=score,
-        risk_level=risk_level(score),
+        # Poziom liczymy z DWOCH sygnalow: proporcji naruszonych wymogow (score)
+        # oraz wagi najciezszego potwierdzonego naruszenia (results). Patrz
+        # scoring.risk_level — bez tego drugiego sygnalu powazne naruszenie
+        # rozcienczalo sie liczba regul, ktore material spelnia.
+        risk_level=risk_level(score, results),
         rule_results=results,
         entities=entities.to_entities(),
         status="triage" if decision.routing.rule == "R4" else "new",
         created_at=datetime.now(timezone.utc),
     )
+
+
+AUDIO_KINDS = ("video", "audio")
+
+
+def _ensure_transcript(doc: AdDocument, config: AnalyzerConfig) -> None:
+    """Dolicz transkrypt, gdy reklama ma media i jeszcze go nie ma.
+
+    Warunek jest MEDIALNY, nie modulowy — patrz docstring modulu.
+
+    Awaria transkrypcji NIE jest awaria analizy: transcript zostaje None,
+    reguly oparte na osi czasu zwracaja not_applicable z powodem, a `coverage`
+    pokazuje nadzorcy, ze material oceniono niepelnym zestawem. Lepiej ocenic
+    reklame z samego opisu niz nie ocenic jej wcale.
+    """
+    if doc.transcript is not None or config.transcriber is None:
+        return
+    if not any(m.kind in AUDIO_KINDS for m in doc.media):
+        return
+
+    try:
+        doc.transcript = config.transcriber(doc)
+    except Exception as exc:  # noqa: BLE001
+        log.warning(
+            "Transkrypcja dokumentu %s nieudana (%s: %s) — analizuje bez niej",
+            doc.id,
+            type(exc).__name__,
+            exc,
+        )
 
 
 def _ensure_vector_representation(doc: AdDocument, config: AnalyzerConfig) -> None:

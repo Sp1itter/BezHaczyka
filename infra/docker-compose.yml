@@ -1,0 +1,169 @@
+# InvestWatch - stos infrastrukturalny.
+#
+# UWAGA: ten plik jest NIEPRZETESTOWANY (autor nie mial Dockera na maszynie).
+# Patrz infra/README.md - lista rzeczy do sprawdzenia przy pierwszym starcie.
+#
+# Uruchamianie z katalogu infra/:
+#   cp .env.example .env
+#   docker compose up postgres valkey seaweedfs nginx      (same bazy, wystarczy do pracy nad API i frontem)
+#   docker compose up                                      (plus analyzer; wymaga natywnej Ollamy na hoscie)
+#   docker compose --profile full up                       (plus api i web, gdy juz istnieja)
+#
+# LICENCJE (par. 3.1 design doca): obrazy wylacznie permisywne i przypiete tagiem.
+# Obrazy z licencjami AGPL / SSPL sa zakazane - tools/check_compliance.py je odrzuca.
+# Zadnego `latest`.
+
+name: investwatch
+
+services:
+
+  # --- Postgres + pgvector (PostgreSQL License) --------------------------------
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # Skrypty z tego katalogu odpalaja sie TYLKO przy pierwszym starcie na pustym
+      # wolumenie. Zmiana init.sql wymaga `docker compose down -v` (kasuje dane!).
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      # Tylko localhost - baza nie wystaje poza maszyne dewelopera.
+      - "127.0.0.1:${POSTGRES_PORT}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks: [investwatch]
+
+  # --- Valkey (BSD-3-Clause): kolejka RQ + cache -------------------------------
+  # Fork Redisa pod Linux Foundation, API-kompatybilny (rq i redis-py dzialaja bez zmian).
+  # Obrazy Redisa w nowszych wersjach sa na licencjach SSPL / AGPL - nie uzywamy ich.
+  valkey:
+    image: valkey/valkey:8-alpine
+    volumes:
+      - valkeydata:/data
+    ports:
+      - "127.0.0.1:${VALKEY_PORT}:6379"
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks: [investwatch]
+
+  # --- SeaweedFS (Apache-2.0): magazyn obiektow z API S3 -----------------------
+  # Zamiennik dla obrazow AGPLv3 (patrz par. 3.1). Tryb `server -s3` to master +
+  # volume + filer + brama S3 w jednym procesie - wystarczy na demo.
+  seaweedfs:
+    image: chrislusf/seaweedfs:3.68
+    command: ["server", "-dir=/data", "-s3", "-s3.port=8333"]
+    volumes:
+      - seaweeddata:/data
+    ports:
+      - "127.0.0.1:${S3_PORT}:8333"
+    healthcheck:
+      # Master wystawia /cluster/status na 9333. Obraz jest oparty na alpine (busybox wget) -
+      # do potwierdzenia przy pierwszym starcie.
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:9333/cluster/status || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [investwatch]
+
+  # --- nginx (BSD-2-Clause): korpus demo offline -------------------------------
+  # Serwuje fixtures/demo-ads/, zeby demo nie zalezalo od wifi (anty-cel z par. 10).
+  nginx:
+    image: nginx:1.27-alpine
+    volumes:
+      - ../fixtures/demo-ads:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "127.0.0.1:${DEMO_CORPUS_PORT}:80"
+    networks: [investwatch]
+
+  # --- analyzer: worker analizy reklam (nasz obraz) ----------------------------
+  # OLLAMA NIE JEST SERWISEM - swiadoma decyzja architektoniczna.
+  # Ollama dziala NATYWNIE na hoscie (jedna komenda instalatora, sama obsluguje GPU),
+  # a kontener celuje w nia przez host.docker.internal:11434.
+  # Konteneryzacja Ollamy wymagalaby przepuszczania GPU (NVIDIA Container Toolkit +
+  # WSL2), a czlonkowie zespolu z kartami AMD/Intel i tak dostaliby tylko CPU, czyli
+  # kilkanascie razy wolniej. Modele (6,3 GB) zostaja w natywnym magazynie Ollamy,
+  # nigdy w warstwie obrazu.
+  analyzer:
+    build:
+      context: ../services/analyzer
+    depends_on:
+      postgres:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+    # Wymaga wczesniejszego `cp .env.example .env` — bez tego pliku compose
+    # odmowi startu. To pierwszy krok w README i nie da sie go pominac, bo
+    # pozostale serwisy i tak czytaja ${ZMIENNE} z tego samego pliku.
+    env_file: .env
+    environment:
+      # Nadpisanie, zeby adresy w kontenerze byly poprawne niezaleznie od .env.
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL}
+      VALKEY_URL: redis://valkey:6379/0
+      API_BASE_URL: http://api:8000
+    extra_hosts:
+      # Na Linuksie host.docker.internal nie istnieje domyslnie - mapujemy na bramke hosta.
+      # Na Docker Desktop (Windows/macOS) wpis jest niegrozny.
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      # Ta sama sonda co w Dockerfile. Worker uruchamia serwer /health w watku-demonie
+      # przed wejsciem w petle kolejki (worker.py::_start_health_server), a zgodnosci
+      # portu pilnuje test tests/test_spojnosc.py::TestPortHealth.
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8081/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+    networks: [investwatch]
+
+  # --- api (Osoba C) ------------------------------------------------------------
+  # ZDEFINIOWANY, ale w profilu `full`, zeby `docker compose up` NIE PADAL, dopoki
+  # serwis nie istnieje. Gdy Osoba C napisze services/api (z Dockerfile), wystarczy
+  # USUNAC linie `profiles` ponizej. Zalozenia: Dockerfile w ../services/api, port 8000.
+  api:
+    profiles: ["full"]
+    build:
+      context: ../services/api
+    depends_on:
+      postgres:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      VALKEY_URL: redis://valkey:6379/0
+      S3_ENDPOINT: http://seaweedfs:8333
+    ports:
+      - "127.0.0.1:${API_PORT}:8000"
+    networks: [investwatch]
+
+  # --- web (Osoba C) ------------------------------------------------------------
+  # Jak wyzej: po napisaniu services/web usun `profiles`. Zalozenia: Dockerfile w
+  # ../services/web, serwuje na porcie 80 w kontenerze (np. statyczny build Vite).
+  web:
+    profiles: ["full"]
+    build:
+      context: ../services/web
+    depends_on:
+      - api
+    ports:
+      - "127.0.0.1:${WEB_PORT}:80"
+    networks: [investwatch]
+
+networks:
+  investwatch:
+    name: investwatch
+
+volumes:
+  pgdata:
+  valkeydata:
+  seaweeddata:
