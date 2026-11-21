@@ -116,15 +116,26 @@ class DbStore:
     ) -> None:
         snapshot = document.model_dump(mode="json") if document is not None else None
 
-        def write(store, conn):
-            store.save_finding(conn, finding.model_dump(mode="json"), snapshot)
-            if summary is not None:  # kolumny z migracji 015; save_finding ich nie zna
-                conn.execute(
+        self._run(
+            f"Nie zapisano findingu {finding.id}",
+            lambda store, conn: store.save_finding(
+                conn, finding.model_dump(mode="json"), snapshot
+            ),
+        )
+        if summary is None:
+            return
+        # Osobna transakcja (kolumny z migracji 015; save_finding ich nie zna): blad
+        # podsumowania nie moze cofnac juz zapisanego findingu.
+        try:
+            self._run(
+                f"Nie zapisano podsumowania {finding.id}",
+                lambda store, conn: conn.execute(
                     "UPDATE findings SET summary = %s, summary_engine = %s WHERE id = %s",
                     (summary, summary_engine, finding.id),
-                )
-
-        self._run(f"Nie zapisano findingu {finding.id}", write)
+                ),
+            )
+        except StoreError as exc:
+            log.error("%s", exc)
 
     def previous(self, document_id: str) -> tuple[Finding, AdDocument] | None:
         """Ostatni zapisany Finding i migawka dokumentu z tamtego przebiegu."""
