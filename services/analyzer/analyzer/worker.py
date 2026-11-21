@@ -7,6 +7,7 @@ importowac takze bez tych bibliotek.
 
 from __future__ import annotations
 
+import argparse
 import logging
 import os
 from dataclasses import fields
@@ -96,18 +97,38 @@ def analyze_document(payload: dict) -> bool:
     return handle_job(payload, api=ApiClient()) is not None
 
 
-def main() -> None:
-    """Uruchom JEDEN worker RQ na kolejce q:gpu.
+def parse_args(argv: list[str] | None = None) -> str:
+    """Nazwa kolejki z argumentow wiersza polecen.
 
-    Dlaczego dokladnie jeden worker: karta ma 8 GB VRAM, a Bielik i Whisper
-    nie mieszcza sie w niej jednoczesnie. Pojedynczy worker szeregowuje
+    Flaga `--queue` istnieje, bo `pool.PoolExecutor` startuje workery wlasnie
+    tak: `python -m analyzer.worker --queue <nazwa>`. Bez niej autoskaler mogl
+    uruchomic wylacznie workery q:gpu, czyli nie dalby sie uzyc do kolejek
+    q:ingest i q:render.
+    """
+    parser = argparse.ArgumentParser(prog="analyzer.worker")
+    parser.add_argument(
+        "--queue",
+        default=QUEUE_NAME,
+        help=f"nazwa kolejki RQ do obslugi (domyslnie {QUEUE_NAME})",
+    )
+    return parser.parse_args(argv).queue
+
+
+def main(argv: list[str] | None = None) -> None:
+    """Uruchom worker RQ na wskazanej kolejce (domyslnie q:gpu).
+
+    Dlaczego na q:gpu dokladnie JEDEN worker: karta ma 8 GB VRAM, a Bielik
+    i Whisper nie mieszcza sie w niej jednoczesnie. Pojedynczy worker szereguje
     zadania i gwarantuje, ze modele nigdy nie walcza o pamiec. Drugi worker
-    na tej kolejce reaktywowalby dokladnie ten konflikt.
+    na TEJ kolejce reaktywowalby dokladnie ten konflikt — dlatego
+    `scaling.decide` przycina `gpu` do liczby endpointow Ollamy.
+    Kolejki CPU (q:ingest, q:render) skaluja sie swobodnie.
     """
     # Importy leniwe: rq i redis nie sa potrzebne do testow ani do importu modulu.
     from redis import Redis
     from rq import Queue, Worker
 
+    queue_name = parse_args(argv)
     logging.basicConfig(level=logging.INFO)
 
     # Serwer /health w watku-demonie, ZANIM wejdziemy w blokujaca petle workera.
@@ -116,8 +137,8 @@ def main() -> None:
     _start_health_server()
 
     conn = Redis.from_url(os.getenv("VALKEY_URL", DEFAULT_VALKEY_URL))
-    queue = Queue(QUEUE_NAME, connection=conn)
-    logging.info("Worker wystartowal na kolejce %s (jeden konsument)", QUEUE_NAME)
+    queue = Queue(queue_name, connection=conn)
+    logging.info("Worker wystartowal na kolejce %s", queue_name)
     Worker([queue], connection=conn).work()
 
 
