@@ -11,11 +11,14 @@ ale konfiguracja wewnetrznie SPRZECZNA to blad operatora - ScalingConfigError.
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 import yaml
+
+log = logging.getLogger(__name__)
 
 logger = logging.getLogger(__name__)
 
@@ -284,3 +287,98 @@ def scaling_payload(states: list[QueueState], config: ScalingConfig) -> dict:
             }
         )
     return {"executor": config.executor, "hard_max_total": config.hard_max_total, "queues": queues}
+
+
+# --------------------------------------------------------------------------- #
+# Odczyt stanu kolejek z Valkeya
+# --------------------------------------------------------------------------- #
+
+
+def read_queue_states(
+    config: ScalingConfig,
+    *,
+    backlog_reader: "Callable[[str], int] | None" = None,
+    worker_counter: "Callable[[str], int] | None" = None,
+) -> list[QueueState]:
+    """Stan kolejek do podania w `decide` i w /scaling.
+
+    `backlog` i `workers` czytamy z RQ, czyli sa PRAWDZIWE.
+
+    `idle_s` zostaje 0.0 i jest to swiadome: czas bezczynnosci kolejki wymaga
+    trwalego licznika, ktory utrzymuje PETLA ORKIESTRATORA — a ta jest poza
+    zakresem (wymaga dzialajacego Valkeya, czego nie da sie tu zweryfikowac,
+    patrz plan, sekcja "Poza zakresem"). Konsekwencja jest bezpieczna:
+    przy idle_s = 0 warunek skalowania W DOL nigdy nie jest spelniony, wiec
+    /scaling nie zaproponuje wygaszenia workera na podstawie danych,
+    ktorych nie ma. Skalowanie W GORE dziala w pelni, bo opiera sie na backlogu.
+
+    Czytniki sa wstrzykiwane, zeby testy nie potrzebowaly Valkeya.
+    Awaria odczytu pojedynczej kolejki daje dla niej zera, nie wyjatek —
+    /scaling nie moze padac, gdy kolejka nie odpowiada.
+    """
+    read_backlog = backlog_reader or _rq_backlog_reader()
+    count_workers = worker_counter or _rq_worker_counter()
+
+    states: list[QueueState] = []
+    for name in config.queues:
+        try:
+            backlog = int(read_backlog(name))
+        except Exception as exc:  # noqa: BLE001
+            log.warning("Nie udalo sie odczytac backlogu kolejki %s: %s", name, exc)
+            backlog = 0
+        try:
+            workers = int(count_workers(name))
+        except Exception as exc:  # noqa: BLE001
+            log.warning("Nie udalo sie policzyc workerow kolejki %s: %s", name, exc)
+            workers = 0
+        states.append(QueueState(name=name, backlog=backlog, workers=workers, idle_s=0.0))
+    return states
+
+
+def _connection():
+    """Polaczenie z Valkeyem. Import leniwy — modul musi dzialac bez redisa."""
+    import os
+
+    from redis import Redis
+
+    return Redis.from_url(os.getenv("VALKEY_URL", "redis://valkey:6379/0"))
+
+
+def _rq_backlog_reader() -> "Callable[[str], int]":
+    def _read(name: str) -> int:
+        from rq import Queue
+
+        return Queue(name, connection=_connection()).count
+
+    return _read
+
+
+def _rq_worker_counter() -> "Callable[[str], int]":
+    def _count(name: str) -> int:
+        from rq import Queue, Worker
+
+        conn = _connection()
+        queue = Queue(name, connection=conn)
+        return len(Worker.all(queue=queue))
+
+    return _count
+
+
+def make_valkey_state_provider(
+    config: ScalingConfig | None = None,
+) -> "Callable[[], list[QueueState]]":
+    """Dostawca stanu do podstawienia w `health.STATE_PROVIDER`.
+
+    Worker instaluje go u siebie przy starcie; domyslny dostawca w health.py
+    zwraca pusta liste, zeby /scaling dzialalo takze bez Valkeya (testy, demo).
+    """
+
+    def _provider() -> list[QueueState]:
+        cfg = config or load_scaling_config()
+        try:
+            return read_queue_states(cfg)
+        except Exception as exc:  # noqa: BLE001
+            log.warning("Odczyt stanu kolejek nieudany: %s", exc)
+            return []
+
+    return _provider
