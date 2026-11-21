@@ -8,6 +8,7 @@ scrapera tego nie widzi. Modul to czyste funkcje: bez bazy, bez modelu, bez siec
 from __future__ import annotations
 
 import uuid
+from dataclasses import dataclass
 from datetime import datetime, timezone
 
 from analyzer.contracts import (
@@ -206,6 +207,34 @@ def detect_change(
     return event(
         ChangeKind.TRESC_ZMIENIONA,
         "Tresc reklamy zostala istotnie zmieniona w stosunku do poprzedniej wersji.",
+    )
+
+
+@dataclass(frozen=True)
+class GateDecision:
+    analyze: bool
+    reason: str
+    kind: ChangeKind | None = None
+
+
+def should_analyze(previous_doc: AdDocument | None, current_doc: AdDocument) -> GateDecision:
+    """Brama idempotencji przed kolejka GPU.
+
+    Bez niej harmonogram co 15 minut wrzucalby na q:gpu materialy, ktore sie nie
+    zmienily; przy jednym workerze GPU i ok. 18 s na dokument zakorkowaloby to
+    kolejke i wyprodukowalo smietnik identycznych Findingow. Nie rzuca: brak
+    poprzednika to pierwsze zetkniecie, brak simhasha jest doliczany z tekstu.
+    """
+    if previous_doc is None:
+        return GateDecision(True, "pierwsze zetkniecie z materialem", None)
+
+    distance = hamming_distance(_simhash_int(previous_doc), _simhash_int(current_doc))
+    if distance == 0:
+        return GateDecision(False, "material bez zmian, podbijam last_seen", None)
+    return GateDecision(
+        True,
+        f"tresc zmieniona wzgledem poprzedniej wersji (odleglosc simhash {distance})",
+        None,
     )
 
 
