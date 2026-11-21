@@ -1,5 +1,0 @@
--r requirements.txt
-
-httpx==0.28.1           # BSD-3-Clause, klient TestClient
-pytest==9.2.0           # MIT
-ruff==0.17.6            # MIT

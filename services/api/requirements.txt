@@ -1,4 +1,0 @@
-# Serwis api: na razie stub GATE 1. Wersje PRZYPIETE (par. 5 specyfikacji).
-fastapi==0.165.0        # MIT
-uvicorn==0.54.0         # BSD-3-Clause
-pydantic==2.14.4        # MIT
