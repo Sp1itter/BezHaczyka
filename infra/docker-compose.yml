@@ -238,6 +238,8 @@ services:
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       GOLD_LABELS_PATH: /data/gold/labels.json
+      ALERT_POLL_S: ${ALERT_POLL_S:-3}
+      ALERT_LOOKBACK_S: ${ALERT_LOOKBACK_S:-3600}
     volumes:
       - ../fixtures/gold:/data/gold:ro
       # przyklady kontraktowe: docker compose exec api python -m api.seed --dir /data/contract-examples

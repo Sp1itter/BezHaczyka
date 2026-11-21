@@ -107,14 +107,42 @@ class DbStore:
         except (ValueError, ValidationError) as exc:
             raise StoreError(f"Niepoprawny dokument {document_id}: {exc}") from exc
 
-    def post_finding(self, finding: Finding, document: AdDocument | None = None) -> None:
+    def post_finding(
+        self,
+        finding: Finding,
+        document: AdDocument | None = None,
+        summary: str | None = None,
+        summary_engine: str | None = None,
+    ) -> None:
         snapshot = document.model_dump(mode="json") if document is not None else None
+
         self._run(
             f"Nie zapisano findingu {finding.id}",
             lambda store, conn: store.save_finding(
                 conn, finding.model_dump(mode="json"), snapshot
             ),
         )
+        if summary is not None:
+            self.save_summary(finding.id, summary, summary_engine)
+
+    def save_summary(
+        self, finding_id: str, summary: str | None, summary_engine: str | None
+    ) -> None:
+        """Zapis (albo wyczyszczenie, gdy None) podsumowania findingu.
+
+        Osobna transakcja (kolumny z migracji 015): blad nie cofa zapisanego findingu
+        i nie leci wyzej.
+        """
+        try:
+            self._run(
+                f"Nie zapisano podsumowania {finding_id}",
+                lambda store, conn: conn.execute(
+                    "UPDATE findings SET summary = %s, summary_engine = %s WHERE id = %s",
+                    (summary, summary_engine if summary is not None else None, finding_id),
+                ),
+            )
+        except StoreError as exc:
+            log.error("%s", exc)
 
     def previous(self, document_id: str) -> tuple[Finding, AdDocument] | None:
         """Ostatni zapisany Finding i migawka dokumentu z tamtego przebiegu."""
