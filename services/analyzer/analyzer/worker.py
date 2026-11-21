@@ -191,18 +191,24 @@ def handle_job(
         except ApiError as exc:
             log.warning("Brak poprzedniego findingu %s: %s", document_id, exc)
 
-    summary, summary_engine = _make_summary(finding, doc)
-
     try:
         if hasattr(api, "save_vectors"):
             api.save_vectors(doc)
         if hasattr(api, "previous"):
-            api.post_finding(finding, doc, summary=summary, summary_engine=summary_engine)
+            api.post_finding(finding, doc)
         else:
             api.post_finding(finding)
     except ApiError as exc:
         log.error("Zapis wyniku dla %s nieudany: %s", document_id, exc)
         return None
+
+    # Finding jest juz zapisany (widoczny, alert moze isc); podsumowanie dopiero teraz.
+    if hasattr(api, "save_summary"):
+        try:
+            summary, summary_engine = _make_summary(finding, doc)
+            api.save_summary(finding.id, summary, summary_engine)
+        except Exception as exc:  # podsumowanie nigdy nie psuje zapisanego findingu
+            log.error("Podsumowanie %s nieudane: %s", finding.id, exc)
 
     if previous is not None and hasattr(api, "save_change_event"):
         prev_finding, prev_doc = previous

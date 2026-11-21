@@ -276,6 +276,7 @@ def test_dbstore_summary_failure_keeps_finding(pg_conn, monkeypatch):
 class FakeStore:
     def __init__(self):
         self.posted = []
+        self.events = []
 
     def get_document(self, document_id):
         return AdDocument.model_validate(DOC)
@@ -287,6 +288,10 @@ class FakeStore:
         pass
 
     def post_finding(self, finding, document=None, summary=None, summary_engine=None):
+        self.events.append("post_finding")
+
+    def save_summary(self, finding_id, summary, summary_engine):
+        self.events.append("save_summary")
         self.posted.append((summary, summary_engine))
 
 
@@ -295,6 +300,32 @@ def test_worker_saves_summary():
     assert handle_job({"document_id": DOC_ID}, api=store) is not None
     summary, engine = store.posted[0]
     assert engine == "template" and summary
+
+
+def test_worker_posts_finding_before_summary(monkeypatch):
+    store = FakeStore()
+    import analyzer.worker as w
+
+    orig = w.build_summary
+
+    def spy(*a, **k):
+        store.events.append("compute")
+        return orig(*a, **k)
+
+    monkeypatch.setattr(w, "build_summary", spy)
+    handle_job({"document_id": DOC_ID}, api=store)
+    assert store.events == ["post_finding", "compute", "save_summary"]
+
+
+def test_worker_summary_write_failure_keeps_finding():
+    store = FakeStore()
+
+    def boom(*a, **k):
+        raise RuntimeError("boom")
+
+    store.save_summary = boom
+    assert handle_job({"document_id": DOC_ID}, api=store) is not None
+    assert store.events == ["post_finding"]
 
 
 def test_worker_summary_disabled(monkeypatch):
@@ -368,3 +399,14 @@ def test_dbstore_post_finding_writes_summary(pg_conn):
     DbStore(conn=pg_conn).post_finding(f, None, summary="Tekst reguła 3.", summary_engine="llm")
     row = pg_conn.execute("SELECT summary, summary_engine FROM findings").fetchone()
     assert row == {"summary": "Tekst reguła 3.", "summary_engine": "llm"}
+
+
+def test_dbstore_save_summary_none_clears_old(pg_conn):
+    from analyzer.db_store import DbStore
+
+    f = _finding(FAILS)
+    store = DbStore(conn=pg_conn)
+    store.post_finding(f, None, summary="Stare.", summary_engine="llm")
+    store.save_summary(f.id, None, None)
+    row = pg_conn.execute("SELECT summary, summary_engine FROM findings").fetchone()
+    assert row == {"summary": None, "summary_engine": None}
