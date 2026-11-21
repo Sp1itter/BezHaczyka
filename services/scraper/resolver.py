@@ -67,8 +67,7 @@ _DISCLOSURE_PATTERNS = (
     r"(?<!\w)lokowani\w*\s+produkt\w*",
     r"(?<!\w)post\w*\s+sponsorowan\w*",
     r"(?<!\w)affiliate\s+(?:link|links|disclosure|disclaimer|program|partner)(?!\w)",
-    r"(?<!\w)sponsored(?!\w)",
-    r"(?<!\w)paid\s+(?:promotion|partnership|sponsorship)(?!\w)",
+    r"(?<!\w)paid\s+(?:partnership|sponsorship)(?!\w)",
     r"(?<!\w)partner\s+links?(?!\w)",
     r"(?<!\w)referral\s+(?:link|code)s?(?!\w)",
     r"(?<!\w)this\s+video\s+is\s+sponsored(?!\w)",
@@ -82,6 +81,9 @@ _DISCLOSURE_PATTERNS = (
     r"[\[(]\s*reklama\s*[\])]",
 )
 _DISCLOSURE_RE = re.compile("|".join(_DISCLOSURE_PATTERNS))
+# Frazy, ktore po zaprzeczeniu ("not sponsored by", "nie ... paid promotion") nie sa ujawnieniem.
+_NEGATABLE_RE = re.compile(r"(?<![\w#])(?:sponsored|paid\s+promotion)(?!\w)")
+_NEGATION_RE = re.compile(r"(?<!\w)(?:not|no|never|nie|isn'?t|aren'?t|wasn'?t|without)(?!\w)")
 # "Reklama" jako cala pierwsza linia albo przed separatorem (nie "Reklama XTB - czy warto?").
 _AD_LINE_RE = re.compile(r"[\[(]?\s*reklama\s*(?:$|[:|\])\-\u2013\u2014])")
 
@@ -130,6 +132,7 @@ class Firm:
     handles: set[str]
     source: str = "curated"  # knf: tylko dokladne dopasowanie nazwy
     active: bool = True
+    register: str | None = None
 
 
 @dataclass
@@ -176,6 +179,7 @@ class Registry:
                 handles={_handle_key(h) for h in r.get("handles") or [] if h.strip()},
                 source="knf" if from_knf else "curated",
                 active=r.get("active", True) is not False,
+                register=r.get("register"),
             ))
         return cls(firms, list(rows), frozenset(agent_keys))
 
@@ -233,7 +237,7 @@ class Registry:
                 found.append(Match(firm, EXACT, _SCORE[EXACT], surface_form(text, exact[1]), None, padded.count(f" {exact[1]} ")))
             elif firm.source != "knf" and (fz := self._fuzzy(firm, words, grams)) is not None:
                 found.append(fz)
-        found.sort(key=lambda m: (m.kind, m.score, m.weight, len(m.name_in_ad)), reverse=True)
+        found.sort(key=lambda m: (m.kind, m.score, m.firm.active, m.weight, len(m.name_in_ad)), reverse=True)
         return found
 
     # --------------------------------------------------------- publikujacy --
@@ -289,10 +293,18 @@ class Registry:
 # ------------------------------------------------------------------------ API --
 
 
+def _negated(folded: str, start: int) -> bool:
+    """Czy w ~4 slowach przed pozycja jest zaprzeczenie."""
+    before = re.findall(r"[\w']+", folded[max(0, start - 60):start])[-4:]
+    return any(_NEGATION_RE.fullmatch(w) for w in before)
+
+
 def has_disclosure(text: str) -> bool:
     folded = _fold(text or "")
     first_line = next((ln for ln in folded.splitlines() if ln.strip()), "")
-    return bool(_DISCLOSURE_RE.search(folded) or _AD_LINE_RE.match(first_line.strip()))
+    if _DISCLOSURE_RE.search(folded) or _AD_LINE_RE.match(first_line.strip()):
+        return True
+    return any(not _negated(folded, m.start()) for m in _NEGATABLE_RE.finditer(folded))
 
 
 def _is_affiliate(url: str) -> bool:
@@ -316,6 +328,13 @@ def find_affiliate_link(urls: list[str], firm: Firm | None) -> str | None:
 def document_text(doc: AdDocument) -> str:
     transcript = doc.transcript.text if doc.transcript else ""
     return "\n".join(p for p in (doc.title, doc.text, transcript) if p)
+
+
+def _inactive_reason(firm: Firm) -> str | None:
+    """Tylko rejestr cofniete_zezwolenia oznacza cofniete zezwolenie; reszta nieaktywnych to koniec dzialalnosci."""
+    if firm.active:
+        return None
+    return "cofniete_zezwolenie" if firm.register == "cofniete_zezwolenia" else "zakonczona_dzialalnosc"
 
 
 def resolve(doc: AdDocument, registry: Registry) -> dict:
@@ -350,6 +369,7 @@ def resolve(doc: AdDocument, registry: Registry) -> dict:
         "publisher_relation_basis": basis,
         "firm_is_authorized": best is not None and best.firm.active,
         "firm_license_active": best.firm.active if best else None,
+        "inactive_reason": _inactive_reason(best.firm) if best else None,
         "mentions_authorized_firm": best is not None,
         "publisher_name": (publisher.display_name or publisher.handle) if publisher else None,
         "firm_name_in_ad": best.name_in_ad if best else None,

@@ -418,7 +418,8 @@ class PostgresStore(SqlStore):
                        flag: str | None = None, since: datetime | None = None,
                        limit: int = 200, offset: int = 0) -> tuple[list[dict[str, Any]], int]:
         cols = {r["column_name"] for r in self._execute(
-            "SELECT column_name FROM information_schema.columns WHERE table_name = 'module1_report'")}
+            "SELECT column_name FROM information_schema.columns WHERE table_name = 'module1_report'"
+            " AND table_schema = current_schema()")}
         if not cols:
             raise ReportUnavailable("Brak widoku module1_report - uruchom migracje casedb")
         where, params = [], []
@@ -453,7 +454,7 @@ class PostgresStore(SqlStore):
     def module1_columns(self) -> list[str]:
         rows = self._execute(
             "SELECT column_name FROM information_schema.columns WHERE table_name = 'module1_report'"
-            " ORDER BY ordinal_position")
+            " AND table_schema = current_schema() ORDER BY ordinal_position")
         if not rows:
             raise ReportUnavailable("Brak widoku module1_report - uruchom migracje casedb")
         return [r["column_name"] for r in rows]

@@ -306,6 +306,7 @@ def test_report_module1_flags_campaign_screenshot(conn):
                                  entity_resolution={"publisher_relation": "official", "disclosure_found": True,
                                                     "mentions_authorized_firm": True, "registry_knf_id": "K2",
                                                     "firm_license_active": False,
+                                                    "inactive_reason": "cofniete_zezwolenie",
                                                     "affiliate_without_disclosure": True})
     store.add_asset(conn, a, store.Asset(kind="link", uri="https://x"))
     store.add_asset(conn, a, store.Asset(kind="screenshot", uri="s3://b/a.png"))
@@ -316,6 +317,26 @@ def test_report_module1_flags_campaign_screenshot(conn):
     assert rows[a]["screenshot_uri"] == "s3://b/a.png" and rows[b]["screenshot_uri"] is None
     assert rows[o]["m1_flags"] == ["link_afiliacyjny_bez_ujawnienia", "cofniete_zezwolenie", "firma_zagraniczna"]
     assert "podmiot_trzeci_bez_ujawnienia" not in rows[o]["m1_flags"]
+
+
+def test_report_module1_inactive_reason_flags(conn):
+    store.load_registry(conn, [{"knf_id": "K1", "name": "Firma SA", "country": "PL", "aliases": [],
+                                "domains": [], "handles": []}])
+
+    def add(i, **er):
+        cid, _ = store.record_document(
+            conn, _doc(id=str(uuid.uuid4()), url=f"https://x.pl/{i}", source="www", text=f"t{i}", screenshots={}),
+            entity_resolution={"publisher_relation": "official", "disclosure_found": True,
+                               "mentions_authorized_firm": True, "registry_knf_id": "K1", **er})
+        return cid
+
+    ok = add(1, firm_license_active=True, inactive_reason=None)
+    rev = add(2, firm_license_active=False, inactive_reason="cofniete_zezwolenie")
+    ended = add(3, firm_license_active=False, inactive_reason="zakonczona_dzialalnosc")
+    rows = {r["case_id"]: r for r in store.report_module1(conn)}
+    assert rows[ok]["m1_flags"] == []
+    assert rows[rev]["m1_flags"] == ["cofniete_zezwolenie"]
+    assert rows[ended]["m1_flags"] == ["zakonczona_dzialalnosc"]
 
 
 def test_cli_init_and_report(conn, tmp_path: Path, monkeypatch):

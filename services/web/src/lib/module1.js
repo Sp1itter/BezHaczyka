@@ -4,6 +4,7 @@ export const FLAGS = {
   link_afiliacyjny_bez_ujawnienia: "link afiliacyjny bez ujawnienia",
   cofniete_zezwolenie: "cofnięte zezwolenie",
   firma_zagraniczna: "firma zagraniczna",
+  zakonczona_dzialalnosc: "zakończona działalność",
 };
 
 export const flagLabel = (f) => FLAGS[f] || f;

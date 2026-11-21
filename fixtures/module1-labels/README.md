@@ -22,6 +22,11 @@ i bez wglądu w jego logikę ani w `cases.entity_resolution`. Data: 2026-11-21, 
 Nazwy firm w `firm` sprawdzono tylko względem tabeli `authorized_entities` (rejestr, nie wynik resolvera).
 Przypadki graniczne: emitent ETP Virtune (nie jest w rejestrze).
 
+Etykiety nadał subagent AI według rubryki, nie człowiek. Wzorce ujawnień EN/HU dopisano po obejrzeniu pominięć
+na tym samym zbiorze, więc precyzja i czułość ujawnień na nim są „in-sample” i optymistyczne. Wyrywkowa kontrola
+15 przypadków w bazie dała precyzję 14/15; jedno fałszywe trafienie to negacja „not sponsored by” (poprawione
+w kolejnej poprawce: `sponsored` / `paid promotion` po zaprzeczeniu nie liczą się jako ujawnienie).
+
 ## Użycie
 
     python services/scraper/tools/eval_module1.py --db postgresql://... --out wynik.json

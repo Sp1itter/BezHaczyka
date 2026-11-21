@@ -106,3 +106,22 @@ def test_sync_registry_from_knf(conn):
     assert by["Polski Dom Maklerski S.A."]["country"] == "PL"
     assert by["Upadly Dom SA"]["active"] is False
     assert store.knf_agent_keys(conn) == {"jan kowalski"}
+
+
+def test_sync_skips_inactive_duplicate_of_active(conn):
+    from casedb import store
+
+    knf.load_snapshot(conn, [
+        _snap("zfi_bez_oddzialu", "Conotoxia Ltd"),
+        _snap("dane_historyczne", "Conotoxia Ltd"),
+        _snap("dane_historyczne", "Tylko Historyczny SA"),
+    ])
+    # wpis historyczny z wczesniejszej synchronizacji jest sprzatany
+    import hashlib
+    kid = "KNF-dane_historyczne-" + hashlib.sha1(knf.name_key("Conotoxia Ltd").encode()).hexdigest()[:10]
+    conn.execute("INSERT INTO authorized_entities (knf_id, name, normalized_name, source, active, register)"
+                 " VALUES (%s, 'Conotoxia Ltd', 'conotoxia', 'knf', false, 'dane_historyczne')", (kid,))
+    assert store.sync_registry_from_knf(conn) == 2
+    by = {(e["name"], e["register"]): e for e in store.registry_entries(conn)}
+    assert ("Conotoxia Ltd", "zfi_bez_oddzialu") in by and ("Conotoxia Ltd", "dane_historyczne") not in by
+    assert by[("Tylko Historyczny SA", "dane_historyczne")]["active"] is False

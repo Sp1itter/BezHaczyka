@@ -99,19 +99,43 @@ def test_csv_exports_all_rows_beyond_page(pg) -> None:
 
 def test_flag_filter(pg) -> None:
     client, conn = pg
-    # brak kolumny m1_flags -> 400
+    # stary widok bez m1_flags -> 400
+    conn.execute("DROP VIEW IF EXISTS module1_report")
+    conn.execute("CREATE VIEW module1_report AS SELECT case_id, source, last_seen_at FROM cases")
+    conn.commit()
     assert client.get("/reports/module1?flag=x").status_code == 400
-    # widok zastepczy z m1_flags (kolumna na koncu)
-    conn.execute("ALTER VIEW module1_report RENAME TO module1_report_base")
-    conn.execute(
-        "CREATE VIEW module1_report AS SELECT b.*, CASE WHEN b.source = 'facebook'"
-        " THEN ARRAY['no_disclosure','a']::text[] ELSE ARRAY[]::text[] END AS m1_flags"
-        " FROM module1_report_base b"
-    )
+    # przywrocenie prawdziwego widoku (najnowsza migracja) i flag z wyniku resolvera
+    conn.execute("DROP VIEW module1_report")
+    from pathlib import Path
+
+    import casedb
+
+    conn.execute((Path(casedb.__file__).parent / "migrations" / "013_module1_flags_v3.sql").read_text("utf-8"))
+    conn.execute("UPDATE cases SET entity_resolution = entity_resolution || '{\"disclosure_found\": false}'"
+                 " WHERE source = 'facebook'")
     conn.commit()
-    assert client.get("/reports/module1?flag=no_disclosure").json()["total"] == 1
+    assert client.get("/reports/module1?flag=podmiot_trzeci_bez_ujawnienia").json()["total"] == 2
     assert client.get("/reports/module1?flag=nope").json()["total"] == 0
-    csv_text = client.get("/reports/module1.csv?flag=no_disclosure").content.decode("utf-8-sig")
-    assert "no_disclosure;a" in csv_text
-    conn.execute("DROP VIEW module1_report, module1_report_base")
+    csv_text = client.get("/reports/module1.csv?flag=podmiot_trzeci_bez_ujawnienia").content.decode("utf-8-sig")
+    assert "podmiot_trzeci_bez_ujawnienia" in csv_text
+
+
+def test_csv_formula_injection_neutralised(pg) -> None:
+    client, conn = pg
+    cid = str(uuid.uuid4())
+    conn.execute(
+        "INSERT INTO cases (case_id, source, source_item_id, url, author_name, entity_resolution)"
+        " VALUES (%s, 'www', 'inj', 'https://z.example.invalid/1', %s, %s::jsonb)",
+        (cid, "+48 Finfluencer", '{"publisher_relation": "third_party"}'),
+    )
+    conn.execute("INSERT INTO case_content (case_id, kind, seq, body) VALUES (%s, 'text', 0, %s)",
+                 (cid, '=HYPERLINK("x")'))
     conn.commit()
+    import csv as _csv
+    import io
+
+    text = client.get("/reports/module1.csv?source=www").content.decode("utf-8-sig")
+    rows = list(_csv.DictReader(io.StringIO(text)))
+    row = next(r for r in rows if r["case_id"] == cid)
+    assert row["tresc"] == "'=HYPERLINK(\"x\")" and row["advertiser_name"] == "'+48 Finfluencer"
+    assert not any(v[:1] in "=+-@" for r in rows for v in r.values() if v)

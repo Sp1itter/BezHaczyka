@@ -265,3 +265,34 @@ def test_affiliate_without_disclosure(reg):
     assert r2["disclosure_found"] and r2["affiliate_without_disclosure"] is False
     r3 = resolve(doc("Zaloz konto w XTB.", handle="blog.example", display_name="Blog"), reg)
     assert r3["affiliate_without_disclosure"] is False
+
+
+def _firm(kid, name, register, active):
+    return {"knf_id": kid, "name": name, "aliases": [], "domains": [], "handles": [], "source": "knf",
+            "active": active, "register": register}
+
+
+def test_active_firm_beats_historical_duplicate_and_inactive_reason():
+    reg = Registry.from_rows([
+        _firm("KNF-dane_historyczne-aaa", "Conotoxia Trading Ltd", "dane_historyczne", False),
+        _firm("KNF-zfi_bez_oddzialu-zzz", "Conotoxia Trading Ltd", "zfi_bez_oddzialu", True),
+        _firm("KNF-cofniete_zezwolenia-bbb", "Upadly Dom Maklerski", "cofniete_zezwolenia", False),
+        _firm("KNF-dane_historyczne-ccc", "Zamkniety Broker Capital", "dane_historyczne", False),
+    ])
+    r = resolve(doc("Konto w Conotoxia Trading Ltd polecam."), reg)
+    assert r["registry_knf_id"] == "KNF-zfi_bez_oddzialu-zzz"
+    assert r["firm_license_active"] is True and r["inactive_reason"] is None
+    r = resolve(doc("Upadly Dom Maklerski obiecuje."), reg)
+    assert r["inactive_reason"] == "cofniete_zezwolenie"
+    r = resolve(doc("Zamkniety Broker Capital obiecuje."), reg)
+    assert r["inactive_reason"] == "zakonczona_dzialalnosc"
+
+
+def test_disclosure_negation():
+    from resolver import has_disclosure
+
+    assert not has_disclosure("this video is in no way sponsored by eToro")
+    assert not has_disclosure("This is not sponsored by anyone")
+    assert not has_disclosure("To nie jest paid promotion")
+    assert has_disclosure("sponsored by eToro")
+    assert has_disclosure("Includes paid promotion. Not financial advice.")
