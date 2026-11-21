@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
+from pathlib import Path
 
 import httpx
 import pytest
@@ -139,8 +140,16 @@ def test_health_ollama_down_is_degraded_not_fatal():
 
 
 def test_worker_imports_without_rq():
+    """Modul worker.py musi importowac sie bez rq i redis (importy leniwe).
+
+    `cwd` podajemy JAWNIE: bez tego podproces dziedziczyl katalog roboczy
+    wolajacego i test przechodzil tylko wtedy, gdy pytest odpalono z
+    services/analyzer. Z katalogu glownego repo padal na ModuleNotFoundError,
+    co uderzyloby w kazdego, kto uruchamia testy inaczej niz my (osoba C, CI).
+    """
     code = (
         "import sys; sys.modules['rq']=None; sys.modules['redis']=None;"
         "import analyzer.worker"
     )
-    subprocess.run([sys.executable, "-c", code], check=True)
+    analyzer_root = Path(__file__).resolve().parents[1]
+    subprocess.run([sys.executable, "-c", code], check=True, cwd=analyzer_root)

@@ -110,6 +110,69 @@ class TestNieZglaszaFalszywychAlarmow:
         assert cc.check_pinned_versions([f]) == []
 
 
+class TestCelowScrapowania:
+    """Rozroznienie, ktorego checker pierwotnie nie mial i zglaszal scraper
+    osoby A jako naruszenie.
+
+    "On-premise" z par. 5 specyfikacji znaczy brak zewnetrznych API modeli
+    i hostowanych zamiennikow naszych komponentow — NIE "nigdy nie dotykaj
+    internetu". Produktem jest monitor tresci w internecie, wiec scraper musi
+    siegac do serwisow, ktore monitoruje, a rejestr KNF jest wprost wskazany
+    w zalacznikach do zadania jako zrodlo danych.
+    """
+
+    @pytest.mark.parametrize(
+        "host",
+        [
+            "https://www.youtube.com/watch?v=abc",
+            "https://www.facebook.com/ads/library/?id=1",
+            "https://www.instagram.com/p/abc/",
+            "https://www.tiktok.com/@konto/video/1",
+            "https://www.knf.gov.pl/podmioty/rejestr",
+        ],
+    )
+    def test_cele_scrapowania_i_rejestr_knf_sa_dozwolone(
+        self, tmp_path: Path, host: str
+    ) -> None:
+        f = _file(tmp_path, "src.py", f'URL = "{host}"')
+        assert cc.check_external_hosts([f]) == []
+
+    @pytest.mark.parametrize(
+        "host",
+        [
+            "https://broker.example/oferta",
+            "https://sub.broker.example/x",
+            "https://cos.invalid/y",
+            "https://host.test/z",
+        ],
+    )
+    def test_domeny_zarezerwowane_sa_dozwolone(self, tmp_path: Path, host: str) -> None:
+        """RFC 2606 / 6761 — nigdy nie wskazuja prawdziwej uslugi, wiec
+        fixtures testowe nie potrzebuja markerow."""
+        f = _file(tmp_path, "test_x.py", f'URL = "{host}"')
+        assert cc.check_external_hosts([f]) == []
+
+    @pytest.mark.parametrize(
+        "host",
+        [
+            "https://jakis-losowy-serwis.com/api",
+            "https://tracker.example.org/pixel",
+            "https://my-vps.hetzner.cloud/infer",
+        ],
+    )
+    def test_obcy_adres_NADAL_jest_zglaszany(self, tmp_path: Path, host: str) -> None:
+        """Straz musi zostac uzyteczna — rozluznienie dotyczy tylko jawnie
+        zadeklarowanych zrodel, nie wszystkiego."""
+        f = _file(tmp_path, "src.py", f'URL = "{host}"')
+        assert cc.check_external_hosts([f]), f"{host} powinien byc zglaszany"
+
+    def test_lista_celow_jest_jawna_i_skonczona(self) -> None:
+        """Lista celow scrapowania jest zarazem dokumentacja monitorowanych
+        zrodel — nie moze stac sie workiem bez dna."""
+        assert len(cc.SCRAPING_TARGETS) < 30
+        assert all("." in t for t in cc.SCRAPING_TARGETS)
+
+
 class TestMechanizmuWyjatkow:
     """Wyjatki sa furtka, wiec musza byc przetestowane dokladniej niz reszta."""
 

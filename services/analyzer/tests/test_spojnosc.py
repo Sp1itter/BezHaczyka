@@ -198,6 +198,34 @@ class TestPowtarzalnosciModelu:
         assert "seed" in przechwycone["options"]
 
 
+class TestZgodnosciKolejkiMiedzySerwisami:
+    """Regresja na bombe integracyjna znaleziona przy inwentaryzacji.
+
+    Analyzer mial rq==1.16.2, scraper rq==2.9.1, a oba serwisy nadaja i odbieraja
+    na TYCH SAMYCH kolejkach Valkeya. RQ zmienilo format zadan miedzy 1.x i 2.x,
+    wiec zadanie nadane przez scraper moglo byc nieodczytywalne dla naszego
+    workera. Detonowaloby to w momencie wlaczenia harmonogramu.
+    """
+
+    def _wersja(self, req: Path, pakiet: str) -> str | None:
+        if not req.exists():
+            return None
+        m = re.search(rf"^{pakiet}==([\w.]+)", req.read_text(encoding="utf-8"), re.M)
+        return m.group(1) if m else None
+
+    @pytest.mark.parametrize("pakiet", ["rq", "redis"])
+    def test_wersje_kolejki_identyczne_w_obu_serwisach(self, pakiet: str) -> None:
+        nasza = self._wersja(ANALYZER_ROOT / "requirements.txt", pakiet)
+        scraper_req = ANALYZER_ROOT.parent / "scraper" / "requirements.txt"
+        ich = self._wersja(scraper_req, pakiet)
+        if ich is None:
+            pytest.skip("brak requirements scrapera")
+        assert nasza == ich, (
+            f"{pakiet}: analyzer ma {nasza}, scraper {ich}. Oba serwisy uzywaja "
+            "tych samych kolejek — rozjechane wersje RQ psuja odczyt zadan."
+        )
+
+
 class TestZaleznosci:
     def test_redis_jest_przypiety_jawnie(self) -> None:
         """rq ciagnie redis tranzytywnie, ale zasada weryfikowalnego lancucha
