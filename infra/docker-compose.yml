@@ -245,6 +245,27 @@ services:
       - "127.0.0.1:${WEB_PORT}:8080"
     networks: [investwatch]
 
+  # --- dashboard: panel nadzorcy (React, nginx 8080) + mock API/Socket.io ------
+  # Placeholder do czasu podpiecia bazy. API_UPSTREAM=http://api:8000 przelacza na services/api.
+  dashboard-mock:
+    build:
+      context: ../services/dashboard
+      dockerfile: Dockerfile.mock
+    restart: unless-stopped
+    networks: [investwatch]
+
+  dashboard:
+    build:
+      context: ../services/dashboard
+    depends_on:
+      - dashboard-mock
+    environment:
+      API_UPSTREAM: ${DASHBOARD_API_UPSTREAM:-http://dashboard-mock:4000}
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${DASHBOARD_PORT:-7080}:8080"
+    networks: [investwatch]
+
   # --- ollama (opcjonalnie, CPU): profil `ollama`, port nieopublikowany --------
   ollama:
     image: ollama/ollama:0.5.4
