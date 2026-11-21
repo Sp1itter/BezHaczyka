@@ -2,7 +2,7 @@ import { RiskBadge } from "../common/Badge.jsx";
 import StatusSelect from "./StatusSelect.jsx";
 import { AssigneeSelect } from "./Assignee.jsx";
 import ReviewActions, { AiSuggestion } from "./ReviewActions.jsx";
-import { MODULE, SOURCE, fmtDate } from "../../lib/labels.js";
+import { MODULE, fmtDate, publisherName, sourceLabel } from "../../lib/labels.js";
 
 const VERDICT = { fail: "naruszenie", pass: "OK", not_applicable: "n/d", uncertain: "niepewne" };
 
@@ -22,8 +22,8 @@ export default function FindingDetail({ finding: f, onUpdate, onReview, onAssign
       </div>
       <dl className="kv">
         <dt>Tytuł</dt><dd>{f.document?.title}</dd>
-        <dt>Źródło</dt><dd>{SOURCE[f.document?.source]} · <a href={f.document?.url} target="_blank" rel="noreferrer">{f.document?.url}</a></dd>
-        <dt>Publikujący</dt><dd>{f.document?.publisher}</dd>
+        <dt>Źródło</dt><dd>{sourceLabel(f.document?.source)} · <a href={f.document?.url} target="_blank" rel="noreferrer">{f.document?.url}</a></dd>
+        <dt>Publikujący</dt><dd>{publisherName(f.document)}</dd>
         <dt>Wykryto</dt><dd>{fmtDate(f.created_at)}</dd>
         <dt>Moduły</dt><dd>{f.modules.map((m) => MODULE[m]).join(", ")}</dd>
         <dt>Routing</dt><dd>{f.routing?.rule} · {f.routing?.reason}</dd>

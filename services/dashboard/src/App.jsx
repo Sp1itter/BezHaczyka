@@ -3,6 +3,7 @@ import Sidebar from "./components/layout/Sidebar.jsx";
 import TopBar, { RANGES } from "./components/layout/TopBar.jsx";
 import FilterBar from "./components/layout/FilterBar.jsx";
 import Flyout from "./components/common/Flyout.jsx";
+import ErrorBoundary from "./components/common/ErrorBoundary.jsx";
 import Toasts from "./components/common/Toasts.jsx";
 import FindingDetail from "./components/findings/FindingDetail.jsx";
 import Dashboard from "./views/Dashboard.jsx";
@@ -53,7 +54,8 @@ export default function App() {
     () =>
       connectAlerts({
         onState: setLive,
-        onHigh: (a) => {
+        onHigh: (raw) => {
+          const a = { received_at: new Date().toISOString(), ...raw };
           setFeed((f) => [a, ...f].slice(0, 50));
           setToasts((t) => [a, ...t].slice(0, 3));
           setTimeout(() => setToasts((t) => t.filter((x) => x.finding_id !== a.finding_id)), 10000);
@@ -93,13 +95,17 @@ export default function App() {
           <FilterBar groups={FILTER_GROUPS} value={filters} onChange={setFilters} onClear={() => setFilters({})} />
         )}
         <div className="content">
+          <ErrorBoundary resetKey={view + reloadKey}>
           <View query={query} reloadKey={reloadKey} onOpen={open} onUpdate={update}
             live={live} feed={feed} threshold={threshold} onThreshold={setThreshold}
             currentUser={currentUser} onReview={review} onAssign={assign} onGoCalibration={() => setView("calibration")} />
+          </ErrorBoundary>
         </div>
       </main>
       <Flyout open={!!selected} title="Szczegóły rekordu" onClose={() => setSelected(null)}>
-        <FindingDetail finding={selected} onUpdate={update} onReview={review} onAssign={assign} currentUser={currentUser} />
+        <ErrorBoundary resetKey={selected?.id}>
+          <FindingDetail finding={selected} onUpdate={update} onReview={review} onAssign={assign} currentUser={currentUser} />
+        </ErrorBoundary>
       </Flyout>
       <Toasts items={toasts} onOpen={(id) => { open(id); setToasts((t) => t.filter((x) => x.finding_id !== id)); }}
         onDismiss={(id) => setToasts((t) => t.filter((x) => x.finding_id !== id))} />

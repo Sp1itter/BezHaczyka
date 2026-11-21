@@ -2,6 +2,8 @@
 // Dzieki temu panel dziala na obecnym services/api (bez /stats/trend i filtrow dat/list)
 // oraz na mocku. Przy duzych wolumenach przeniesc to do SQL (patrz README, [DB-1], [DB-5]).
 
+import { publisherName } from "./labels.js";
+
 const asList = (v) => (v == null || v === "" ? [] : Array.isArray(v) ? v.map(String) : [String(v)]);
 
 // Rekord zweryfikowany = jest decyzja czlowieka (review) albo status koncowy.
@@ -20,7 +22,7 @@ export function applyFilters(items, q = {}) {
     (q.min_score == null || f.risk_score >= Number(q.min_score)) &&
     (q.reviewed == null || String(isReviewed(f)) === String(q.reviewed)) &&
     (!text ||
-      [f.document?.title, f.document?.publisher, f.routing?.reason, f.entities?.investment_firm?.name_in_ad]
+      [f.document?.title, publisherName(f.document), f.routing?.reason, f.entities?.investment_firm?.name_in_ad]
         .join(" ").toLowerCase().includes(text)));
 }
 

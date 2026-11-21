@@ -7,7 +7,16 @@ export const STATUS = {
   confirmed: "Potwierdzone",
   dismissed: "Odrzucone",
 };
-export const SOURCE = { youtube: "YouTube", facebook: "Facebook", www: "WWW" };
+export const SOURCE = { youtube: "YouTube", facebook: "Facebook", instagram: "Instagram", www: "WWW" };
+export const sourceLabel = (s) => SOURCE[s] || s || "—";
+
+// document.publisher w services/api to obiekt {handle, display_name, profile_url, ...}, w mocku tekst.
+export const publisherName = (doc) => {
+  const p = doc?.publisher;
+  if (!p) return "";
+  if (typeof p === "string") return p;
+  return p.display_name || p.handle || p.name || "";
+};
 export const MODULE = { 1: "M1 · Podmioty", 2: "M2 · Treść", 3: "M3 · Rejestr KNF" };
 export const ASSIGNED_BY = { ai: "AI", human: "człowiek" };
 export const DECISION = { confirmed: "Potwierdzone", dismissed: "Odrzucone" };

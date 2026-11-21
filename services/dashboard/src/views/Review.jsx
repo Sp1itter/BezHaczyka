@@ -5,7 +5,7 @@ import ReviewActions, { AiSuggestion } from "../components/findings/ReviewAction
 import { AssigneeSelect } from "../components/findings/Assignee.jsx";
 import { api } from "../api/client.js";
 import { useApi } from "../hooks/useApi.js";
-import { SOURCE, fmtDate } from "../lib/labels.js";
+import { fmtDate, publisherName, sourceLabel } from "../lib/labels.js";
 
 // Kolejka weryfikacji: wszystko z wynikiem >= progu z Kalibracji, bez decyzji czlowieka.
 // Model zaweza prace (score, sugestia), ale potwierdzenie i przypisanie zatwierdza czlowiek.
@@ -42,7 +42,7 @@ export default function Review({ query, reloadKey, threshold, currentUser, onOpe
                   <td><RiskBadge level={f.risk_level} score={f.risk_score} /></td>
                   <td>
                     <div className="cell-title">{f.document?.title}</div>
-                    <div className="muted">{SOURCE[f.document?.source]} · {f.document?.publisher}</div>
+                    <div className="muted">{sourceLabel(f.document?.source)} · {publisherName(f.document)}</div>
                   </td>
                   <td><AiSuggestion suggestion={f.ai_suggestion} /></td>
                   <td><AssigneeSelect finding={f} onAssign={onAssign} /></td>
