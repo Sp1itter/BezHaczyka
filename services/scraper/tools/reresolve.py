@@ -37,12 +37,12 @@ def summarize(changes: list[tuple[dict | None, dict]]) -> dict:
     }
 
 
-def run(conn, *, source: str | None = None, dry_run: bool = False) -> dict:
+def run(conn, *, source: str | None = None, dry_run: bool = False, registry=None) -> dict:
     from contracts import AdDocument
     from psycopg.types.json import Jsonb
     from resolver import Registry, resolve
 
-    registry = Registry.from_db(conn, force=True)
+    registry = registry or Registry.from_db(conn, force=True)
     sql = "SELECT case_id, raw, entity_resolution FROM cases WHERE raw IS NOT NULL"
     params: tuple = ()
     if source:
@@ -54,16 +54,16 @@ def run(conn, *, source: str | None = None, dry_run: bool = False) -> dict:
     with conn.transaction():
         for r in rows:
             try:
-                doc = AdDocument.model_validate(r["raw"])
-            except Exception:  # noqa: BLE001 - zepsuty dokument nie zatrzymuje calej partii
+                with conn.transaction():  # SAVEPOINT: blad jednego przypadku nie psuje reszty
+                    new = resolve(AdDocument.model_validate(r["raw"]), registry)
+                    if not dry_run:
+                        merged = {**(r["entity_resolution"] or {}), **new}
+                        conn.execute("UPDATE cases SET entity_resolution = %s WHERE case_id = %s",
+                                     (Jsonb(merged), r["case_id"]))
+            except Exception:  # noqa: BLE001 - zly przypadek jest liczony i pomijany
                 skipped += 1
                 continue
-            new = resolve(doc, registry)
             changes.append((r["entity_resolution"], new))
-            if not dry_run:
-                merged = {**(r["entity_resolution"] or {}), **new}
-                conn.execute("UPDATE cases SET entity_resolution = %s WHERE case_id = %s",
-                             (Jsonb(merged), r["case_id"]))
     out = summarize(changes)
     out["skipped_invalid"] = skipped
     out["dry_run"] = dry_run

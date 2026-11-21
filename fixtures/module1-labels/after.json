@@ -2,11 +2,11 @@
   "n": 40,
   "relation_accuracy": 0.875,
   "disclosure_precision": 1.0,
-  "disclosure_recall": 0.1667,
+  "disclosure_recall": 1.0,
   "disclosure_counts": {
-    "tp": 2,
+    "tp": 12,
     "fp": 0,
-    "fn": 10
+    "fn": 0
   },
   "firm_accuracy": 0.8846,
   "firm_evaluated": 26,
@@ -36,46 +36,10 @@
       "got": "XTB S.A."
     },
     {
-      "case_id": "76252705-eba5-5800-a9dd-055329b4ddc5",
-      "field": "disclosure",
-      "expected": true,
-      "got": false
-    },
-    {
-      "case_id": "88b79787-d025-5a78-95bb-aef4543f7955",
-      "field": "disclosure",
-      "expected": true,
-      "got": false
-    },
-    {
-      "case_id": "b5c9dfae-4f20-5478-b9f3-29df12c090d4",
-      "field": "disclosure",
-      "expected": true,
-      "got": false
-    },
-    {
-      "case_id": "154a5e45-8a8e-532c-8397-83fd66fbf18f",
-      "field": "disclosure",
-      "expected": true,
-      "got": false
-    },
-    {
-      "case_id": "18827d5f-8b21-5a0a-bbda-dec7684d298f",
-      "field": "disclosure",
-      "expected": true,
-      "got": false
-    },
-    {
       "case_id": "18827d5f-8b21-5a0a-bbda-dec7684d298f",
       "field": "firm",
       "expected": "Lightyear Europe AS",
       "got": "Trading 212 Markets Ltd"
-    },
-    {
-      "case_id": "bbcf59c2-b14f-5e81-b520-e5d1cbd55445",
-      "field": "disclosure",
-      "expected": true,
-      "got": false
     },
     {
       "case_id": "3e5fb7b3-6e74-56c6-9482-d8e69daef1e7",
@@ -90,34 +54,10 @@
       "got": "third_party"
     },
     {
-      "case_id": "ad4e2215-bfd5-53a1-a9ad-7cf3328b2742",
-      "field": "disclosure",
-      "expected": true,
-      "got": false
-    },
-    {
-      "case_id": "77362fe8-e0df-5d73-8cd3-1b6d67826916",
-      "field": "disclosure",
-      "expected": true,
-      "got": false
-    },
-    {
       "case_id": "cfcb5a4a-b155-57ad-a4ea-aec978d18c35",
       "field": "relation",
       "expected": "unknown",
       "got": "third_party"
-    },
-    {
-      "case_id": "cfcb5a4a-b155-57ad-a4ea-aec978d18c35",
-      "field": "disclosure",
-      "expected": true,
-      "got": false
-    },
-    {
-      "case_id": "d291a8bc-50c1-5b59-8364-d20c24e251ca",
-      "field": "disclosure",
-      "expected": true,
-      "got": false
     }
   ]
 }

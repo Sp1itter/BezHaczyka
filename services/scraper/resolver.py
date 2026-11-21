@@ -40,6 +40,10 @@ def knf_name_matchable(norm: str) -> bool:
     """Nazwa ze snapshotu nadaje sie do dokladnego dopasowania w tekscie."""
     return len(norm) >= KNF_MIN_LEN and any(
         t not in GENERIC_TOKENS and len(t) >= KNF_DISTINCT_LEN for t in norm.split())
+# Slowa w nazwie strony swiadczace o stronie fanow/spolecznosci, a nie o kanale firmy.
+FAN_TOKENS = frozenset(
+    "fan fans club klub community spolecznosc opinie opinia tips porady poradnik news grupa group"
+    " forum unofficial nieoficjalny nieoficjalna".split())
 FUZZY_MAX_WORDS = 20000
 
 # Priorytet trafienia: domena > dokladna nazwa > fuzzy.
@@ -50,27 +54,36 @@ _FUZZY_CAP = 0.94
 URL_RE = re.compile(r"(?:https?://|www\.)[^\s<>\"'\\]+", re.IGNORECASE)
 _TRAIL = ".,;:!?)]}>\"'"
 
-DISCLOSURE_PHRASES = (
-    "#reklama", "#wspolpraca", "#ad", "#sponsored", "wspolpraca reklamowa",
-    "material sponsorowany", "partnerem odcinka", "material promocyjny",
-    "lokowanie produktu", "post sponsorowany",
-    "link afiliacyjny", "linki afiliacyjne", "link partnerski", "linki partnerskie",
-    "link polecajacy", "kod polecajacy", "kod rabatowy", "kod promocyjny",
-    "wspolpraca platna", "platna wspolpraca", "platne partnerstwo", "we wspolpracy z",
-    "odcinek powstal we wspolpracy", "sponsorem odcinka", "sponsor odcinka",
-    "partnerem materialu", "material reklamowy", "paid partnership",
-    "#wspolpracareklamowa", "#partner", "#sponsorowane",
+# Wzorce ujawnien na tekscie po `_fold` (rdzenie: dowolna odmiana ostatniego slowa i link/kod).
+_DISCLOSURE_PATTERNS = (
+    r"(?<!\w)link\w*\s+(?:partnersk|afiliacyjn|polecajac|referencyjn)\w*",
+    r"(?<!\w)kod\w*\s+(?:polecajac|rabatow|promocyjn|referencyjn)\w*",
+    r"(?<!\w)wspolprac\w*\s+(?:reklamow|platn|komercyjn)\w*",
+    r"(?<!\w)(?:platn|odplatn)\w*\s+(?:wspolprac|partnerstw)\w*",
+    r"(?<!\w)we\s+wspolpracy\s+z(?!\w)",
+    r"(?<!\w)material\w*\s+(?:sponsorowan|reklamow|promocyjn)\w*",
+    r"(?<!\w)sponsor\w*\s+(?:odcink|material|filmu|tego)\w*",
+    r"(?<!\w)partner\w*\s+(?:odcink|material|filmu)\w*",
+    r"(?<!\w)lokowani\w*\s+produkt\w*",
+    r"(?<!\w)post\w*\s+sponsorowan\w*",
+    r"(?<!\w)affiliate\s+(?:link|links|disclosure|disclaimer|program|partner)(?!\w)",
+    r"(?<!\w)sponsored(?!\w)",
+    r"(?<!\w)paid\s+(?:promotion|partnership|sponsorship)(?!\w)",
+    r"(?<!\w)partner\s+links?(?!\w)",
+    r"(?<!\w)referral\s+(?:link|code)s?(?!\w)",
+    r"(?<!\w)this\s+video\s+is\s+sponsored(?!\w)",
+    r"(?<!\w)includes\s+paid\s+promotion(?!\w)",
+    r"(?<!\w)commission\s+(?:if|when|at\s+no)(?!\w)",
+    r"(?<!\w)fizetett\s+(?:reklam|hirdetes|egyuttmukodes)\w*",
+    # hashtagi
+    r"(?<![\w#])#(?:reklama|wspolprac|hirdetes)\w*",
+    r"(?<![\w#])#(?:sponsorowane|partner|ad|sponsored)(?!\w)",
+    # "reklama" w znacznikach [reklama] / (reklama)
+    r"[\[(]\s*reklama\s*[\])]",
 )
-# Hashtag zaczynajacy sie od #reklama (np. #reklamaxtb) oraz "reklama" w znacznikach.
-_HASHTAG_AD = r"(?<![\w#])#reklama\w*"
-_DISCLOSURE_RE = re.compile(
-    "|".join(
-        [(r"(?<![\w#])" if p.startswith("#") else r"(?<!\w)")
-         + r"\s+".join(re.escape(w) for w in p.split()) + r"(?!\w)"
-         for p in DISCLOSURE_PHRASES] + [_HASHTAG_AD, r"[\[(]\s*reklama\s*[\])]"]
-    )
-)
-_AD_WORD_RE = re.compile(r"(?<![\w#])reklama(?!\w)")  # tylko w pierwszej linii
+_DISCLOSURE_RE = re.compile("|".join(_DISCLOSURE_PATTERNS))
+# "Reklama" jako cala pierwsza linia albo przed separatorem (nie "Reklama XTB - czy warto?").
+_AD_LINE_RE = re.compile(r"[\[(]?\s*reklama\s*(?:$|[:|\])\-\u2013\u2014])")
 
 AFFILIATE_PARAMS = frozenset(
     {"ref", "aff", "affiliate", "partner", "utm_campaign", "utm_source", "promo", "code", "coupon"}
@@ -227,8 +240,12 @@ class Registry:
 
     def match_publisher(self, publisher: Any) -> Firm | None:
         """Firma z rejestru, ktora jest tym publikujacym (domena, handle albo nazwa wyswietlana)."""
+        return self.match_publisher_basis(publisher)[0]
+
+    def match_publisher_basis(self, publisher: Any) -> tuple[Firm | None, str]:
+        """(firma, podstawa): domain | handle | name_exact | name_prefix | none."""
         if publisher is None:
-            return None
+            return None, "none"
         handle = publisher.handle or ""
         profile = publisher.profile_url or ""
         hosts = {h for h in (host_of(profile), host_of(handle) if "." in handle else "") if h}
@@ -240,15 +257,19 @@ class Registry:
         display = normalize_name(publisher.display_name or "")
         for firm in self.firms:
             if any(_on_domain(h, d) for h in hosts for d in firm.domains):
-                return firm
+                return firm, "domain"
             if keys & firm.handles:
-                return firm
+                return firm, "handle"
             if display and any(display == norm for _, norm in firm.names):
-                return firm
-        return self._display_prefix(display)
+                return firm, "name_exact"
+        firm = self._display_prefix(display)
+        return (firm, "name_prefix") if firm else (None, "none")
 
     def _display_prefix(self, display: str) -> Firm | None:
-        """Nazwa wyswietlana zaczyna sie od aliasu firmy (np. "XTB Online Investing"); najdluzszy alias."""
+        """Nazwa wyswietlana zaczyna sie od aliasu firmy (np. "XTB Online Investing"); najdluzszy alias.
+
+        Strony fanow/spolecznosci ("XTB Fan Club") nie sa oficjalne - patrz FAN_TOKENS.
+        """
         if not display:
             return None
         padded = display + " "
@@ -259,7 +280,10 @@ class Registry:
             for _, norm in firm.names:
                 if len(norm) >= MIN_NAME_LEN and padded.startswith(norm + " ") and (best is None or len(norm) > best[0]):
                     best = (len(norm), firm)
-        return best[1] if best else None
+        if best is None:
+            return None
+        rest = display[best[0]:].split()
+        return None if any(t in FAN_TOKENS for t in rest) else best[1]
 
 
 # ------------------------------------------------------------------------ API --
@@ -268,7 +292,7 @@ class Registry:
 def has_disclosure(text: str) -> bool:
     folded = _fold(text or "")
     first_line = next((ln for ln in folded.splitlines() if ln.strip()), "")
-    return bool(_DISCLOSURE_RE.search(folded) or _AD_WORD_RE.search(first_line))
+    return bool(_DISCLOSURE_RE.search(folded) or _AD_LINE_RE.match(first_line.strip()))
 
 
 def _is_affiliate(url: str) -> bool:
@@ -298,7 +322,7 @@ def resolve(doc: AdDocument, registry: Registry) -> dict:
     """Pola EntityResolution (patrz docs/MODUL1-ARCHITEKTURA.md) dla jednego dokumentu."""
     text = document_text(doc)
     publisher = doc.publisher
-    publisher_firm = registry.match_publisher(publisher)
+    publisher_firm, basis = registry.match_publisher_basis(publisher)
     mentions = registry.mentions(text)
     best = mentions[0] if mentions else None
     if publisher_firm is not None:
@@ -323,6 +347,7 @@ def resolve(doc: AdDocument, registry: Registry) -> dict:
     return {
         "publisher_relation": relation,
         "publisher_is_authorized": publisher_authorized,
+        "publisher_relation_basis": basis,
         "firm_is_authorized": best is not None and best.firm.active,
         "firm_license_active": best.firm.active if best else None,
         "mentions_authorized_firm": best is not None,
