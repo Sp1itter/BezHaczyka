@@ -8,25 +8,93 @@ Podzial na kolejki:
 Globalny RateLimiter w Valkey obejmuje OBA rodzaje zadan — 4 + 2 workery
 dziela jeden budzet zapytan do Meta.
 
-Przekazanie do analyzera: przez NAZWE funkcji (string), bez importu z innego
-serwisu (par. 5 — zero importow miedzy serwisami):
-    SCRAPER_OUTPUT_QUEUE=q:gpu
-    SCRAPER_OUTPUT_FUNC=analyzer.jobs.analyze_document
+Przekazanie do analyzera wg docs/INTEGRACJA.md:
+  1. `POST {API_BASE_URL}/documents` z pelnym AdDocument (API zapisuje dokument),
+  2. zadanie `analyzer.worker.analyze_document` w kolejce q:gpu z MINIMALNYM
+     payloadem `{document_id, enqueued_at, det_results}`. Analyzer czyta tresc
+     z API (`GET /documents/{id}`), a gotowe wyniki regul DET 4-8 dostaje w zadaniu.
+Funkcja analyzera jest podana jako string — zero importow miedzy serwisami (par. 5).
 """
 
 from __future__ import annotations
 
+import json
 import os
+import urllib.error
+import urllib.request
+from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Any
 
+from contracts import AdDocument
 from sources.facebook import FacebookAdsSource, FacebookConfig
+from sources.facebook_rules import facebook_det_results
 from sources.meta_json import ad_id_from_url
 from state import CircuitBreaker, NodeCache, RateLimiter, SeenSet
 from storage import blob_store_from_env
 
 INGEST_QUEUE = "q:ingest"
 RENDER_QUEUE = "q:render"
+ANALYSIS_QUEUE = "q:gpu"
+ANALYZE_FUNC = "analyzer.worker.analyze_document"
+DEFAULT_API_URL = "http://api:8000"
+
+
+class ApiError(RuntimeError):
+    """API odrzucilo dokument albo jest nieosiagalne. Zadanie RQ ma wtedy PASC
+    (i zostac ponowione), a nie po cichu nie wyslac nic do analyzera."""
+
+
+def api_base_url() -> str:
+    return os.getenv("API_BASE_URL", DEFAULT_API_URL).rstrip("/")
+
+
+def post_document(
+    doc: AdDocument,
+    base_url: str | None = None,
+    timeout_s: float = 30,
+    opener: Callable[..., Any] = urllib.request.urlopen,
+) -> str:
+    """`POST /documents`. Zwraca id dokumentu potwierdzone przez API."""
+    url = f"{(base_url or api_base_url())}/documents"
+    body = json.dumps(doc.model_dump(mode="json"), ensure_ascii=False).encode("utf-8")
+    req = urllib.request.Request(
+        url, data=body, method="POST", headers={"Content-Type": "application/json; charset=utf-8"}
+    )
+    try:
+        with opener(req, timeout=timeout_s) as resp:
+            status = resp.status
+            raw = resp.read()
+    except (urllib.error.URLError, OSError) as exc:
+        raise ApiError(f"POST {url} nieudany: {exc}") from exc
+    if status not in (200, 201):
+        raise ApiError(f"POST {url} zwrocil {status}")
+    try:
+        returned = json.loads(raw or b"{}").get("id")
+    except (ValueError, AttributeError):
+        returned = None
+    return str(returned or doc.id)
+
+
+def det_results_for(doc: AdDocument) -> list[dict]:
+    """Wyniki regul DET 4-8 dla zadania q:gpu (JSON gotowy do walidacji RuleResult)."""
+    if doc.source == "facebook":
+        return [r.model_dump(mode="json") for r in facebook_det_results(doc)]
+    return []  # pozostale zrodla: rules_det/ (w toku)
+
+
+def build_analysis_payload(document_id: str, det_results: list[dict], now: datetime | None = None) -> dict:
+    """Kontrakt zadania z docs/INTEGRACJA.md („Co A wrzuca do kolejki”)."""
+    stamp = (now or datetime.now(UTC)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return {"document_id": document_id, "enqueued_at": stamp, "det_results": det_results}
+
+
+def hand_off(doc: AdDocument, queue: Any, poster: Callable[[AdDocument], str] = post_document) -> dict:
+    """Zapis w API + zadanie dla analyzera. Zwraca wyslany payload."""
+    document_id = poster(doc)
+    payload = build_analysis_payload(document_id, det_results_for(doc))
+    queue.enqueue(ANALYZE_FUNC, payload, job_timeout=600)
+    return payload
 
 
 def _redis() -> Any:
@@ -66,16 +134,16 @@ def discover_job(query: str) -> int:
 
 
 def fetch_job(url: str) -> dict:
-    """q:render — pelny AdDocument. Wynik zadania = JSON zgodny z kontraktem par. 6.1."""
+    """q:render — pelny AdDocument, zapis w API i zadanie dla analyzera.
+
+    Wynik zadania RQ = AdDocument jako JSON (kontrakt par. 6.1).
+    """
+    from rq import Queue
+
     redis = _redis()
     doc = build_facebook_source(redis).fetch(url)
-    payload = doc.model_dump(mode="json")
-    out_queue, out_func = os.getenv("SCRAPER_OUTPUT_QUEUE"), os.getenv("SCRAPER_OUTPUT_FUNC")
-    if out_queue and out_func:
-        from rq import Queue
-
-        Queue(out_queue, connection=redis).enqueue(out_func, payload)
-    return payload
+    hand_off(doc, Queue(ANALYSIS_QUEUE, connection=redis))
+    return doc.model_dump(mode="json")
 
 
 def schedule_facebook(scheduler: Any, queries: list[str] | None = None, interval_min: int | None = None) -> int:

@@ -42,7 +42,7 @@ Decyzje dla reguł DET (konsumuje `rules_det`):
 | `SCRAPER_PROXY` | – | jedno opcjonalne proxy (bez rotacji) |
 | `S3_ENDPOINT`, `S3_ACCESS_KEY`, `S3_SECRET_KEY` | – | SeaweedFS; bez tych zmiennych pliki trafiają do `SCRAPER_DATA_DIR` |
 | `VALKEY_URL` | `redis://valkey:6379/0` | kolejki i stan |
-| `SCRAPER_OUTPUT_QUEUE` / `SCRAPER_OUTPUT_FUNC` | – | przekazanie dokumentu do analyzera przez nazwę funkcji, bez importu |
+| `API_BASE_URL` | `http://api:8000` | `fetch_job` zapisuje tu dokument (`POST /documents`), potem wrzuca zadanie `analyzer.worker.analyze_document` do `q:gpu` (`docs/INTEGRACJA.md`) |
 
 ## Korpus demo (nagrać wieczorem przed demo)
 
