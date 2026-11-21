@@ -2,74 +2,103 @@
   "version": 1,
   "items": [
     {
-      "id": "demo-001",
-      "source": "fixtures/demo-ads/demo-001.html",
+      "id": "1416188807395560",
+      "source": "fixtures/demo-ads/facebook/1416188807395560/",
+      "score": 42.1,
+      "coverage": 0.462,
+      "has_render_probe": false,
+      "failed_rules": [
+        "1",
+        "2",
+        "3"
+      ],
       "is_violation": true,
-      "note": "ostrzezenie o ryzyku 7 px przy tresci 16 px, ukryte w sekcji details",
-      "rule_labels": {"4": "fail", "7": "fail", "2": "pass"}
+      "note": "Reklama inwestycji w nieruchomosc z obietnica zysku: 'Szacowany zwrot nawet do 9% w skali roku' i 'potencjal dochodu z najmu od pierwszego miesiaca', bez jakiegokolwiek ostrzezenia o ryzyku i bez oznaczenia charakteru reklamy. Ocena wylacznie z tekstu."
     },
     {
-      "id": "demo-002",
-      "source": "fixtures/demo-ads/demo-002.html",
-      "is_violation": true,
-      "note": "ostrzezenie o ryzyku w stopce, ciemnoszary tekst na ciemnym tle",
-      "rule_labels": {"5": "fail", "6": "fail"}
-    },
-    {
-      "id": "demo-003",
-      "source": "fixtures/demo-ads/demo-003.html",
-      "is_violation": true,
-      "note": "nadzor KNF przedstawiony jako argument bezpieczenstwa inwestycji",
-      "rule_labels": {"18": "fail", "2": "pass"}
-    },
-    {
-      "id": "demo-004",
-      "source": "fixtures/demo-ads/demo-004.html",
-      "is_violation": true,
-      "note": "prognoza zysku 15 proc. rocznie bez zadnego ostrzezenia",
-      "rule_labels": {"15": "fail"}
-    },
-    {
-      "id": "demo-005",
-      "source": "fixtures/demo-ads/demo-005.html",
-      "is_violation": true,
-      "note": "wyniki historyczne eksponowane bez zastrzezenia, ze nie sa wiarygodnym wskaznikiem",
-      "rule_labels": {"14": "fail", "13": "fail"}
-    },
-    {
-      "id": "demo-006",
-      "source": "fixtures/demo-ads/demo-006.html",
-      "is_violation": true,
-      "note": "brak oznaczenia reklamy przy wspolpracy z podmiotem trzecim",
-      "rule_labels": {"2": "fail"}
-    },
-    {
-      "id": "demo-007",
-      "source": "fixtures/demo-ads/demo-007.html",
-      "is_violation": true,
-      "note": "ostrzezenie widoczne dopiero po rozwinieciu akordeonu",
-      "rule_labels": {"7": "fail", "3": "fail"}
-    },
-    {
-      "id": "demo-008",
-      "source": "fixtures/demo-ads/demo-008.html",
+      "id": "1685589429005115",
+      "source": "fixtures/demo-ads/facebook/1685589429005115/",
+      "score": 16.9,
+      "coverage": 0.308,
+      "has_render_probe": false,
+      "failed_rules": [
+        "2"
+      ],
       "is_violation": false,
-      "note": "material czysty: oznaczenie reklamy, ostrzezenie 12 px, brak naruszen",
-      "rule_labels": {"2": "pass", "4": "pass", "5": "pass", "6": "pass", "7": "pass", "18": "pass"}
+      "note": "Zaproszenie do zakupu apartamentu w kurorcie ('zainwestowac i zaczac odpoczywac'), ale bez obiecywanych stop zwrotu, prognoz ani liczb. Brak obietnicy zysku = brak wymogu ostrzezenia o ryzyku w tym materiale. Reklama wideo: transkrypcji nie mamy, narracja moze zawierac obietnice, ktorych tu nie widac."
     },
     {
-      "id": "demo-009",
-      "source": "fixtures/demo-ads/demo-009.html",
+      "id": "1688659872622573",
+      "source": "fixtures/demo-ads/facebook/1688659872622573/",
+      "score": 30.8,
+      "coverage": 0.462,
+      "has_render_probe": false,
+      "failed_rules": [
+        "1",
+        "3"
+      ],
       "is_violation": false,
-      "note": "material czysty z zastrzezeniem o indywidualnej sytuacji podatkowej klienta",
-      "rule_labels": {"16": "pass", "2": "pass", "4": "pass"}
+      "note": "Edukacyjny webinar o perspektywach gieldy, trzy scenariusze (bazowy, optymistyczny, negatywny), bez obietnicy zysku i bez gwarancji; 'z planem, a nie z nadzieja' to przeciwienstwo obietnicy. Reklama wideo bez transkrypcji i bez geometrii - ocena tylko z tekstu."
     },
     {
-      "id": "demo-010",
-      "source": "fixtures/demo-ads/demo-010.html",
+      "id": "1700487841682444",
+      "source": "fixtures/demo-ads/facebook/1700487841682444/",
+      "score": 30.8,
+      "coverage": 0.462,
+      "has_render_probe": false,
+      "failed_rules": [
+        "1",
+        "3"
+      ],
+      "is_violation": false,
+      "note": "Ta sama tresc co 1688659872622573 (inna kreacja tego samego webinaru Squaber): edukacja bez obietnicy zysku, scenariusze w tym negatywny. Wideo bez transkrypcji - ocena tylko z tekstu."
+    },
+    {
+      "id": "28815441858041693",
+      "source": "fixtures/demo-ads/facebook/28815441858041693/",
+      "score": 26.8,
+      "coverage": 0.385,
+      "has_render_probe": false,
+      "failed_rules": [
+        "1",
+        "2"
+      ],
+      "is_violation": false,
+      "note": "Montaz basenow: material poza zakresem instrumentow finansowych, brak obietnic zysku z inwestycji. 'Inwestycja' uzyte w sensie wydatku konsumenckiego. Zastrzezenie: 'ani jednej reklamacji' to twierdzenie marketingowe, ale nie dotyczy informacji o ryzyku."
+    },
+    {
+      "id": "675484101807418",
+      "source": "fixtures/demo-ads/facebook/675484101807418/",
+      "score": 0.0,
+      "coverage": 0.462,
+      "has_render_probe": false,
+      "failed_rules": [],
       "is_violation": true,
-      "note": "kontrast ostrzezenia ponizej 4.5 wedlug WCAG, tlo graficzne zmierzone",
-      "rule_labels": {"5": "fail", "4": "pass"}
+      "note": "Wywiad z osobami publicznymi o tym, 'jak nasi Klienci zarabiaja na apartamentach', zestawiony z pytaniem o 'ryzykowne aktywa, np. kryptowaluty' (sugestia, ze nieruchomosci takie nie sa), bez zadnego ostrzezenia o ryzyku i bez oznaczenia wspolpracy. Ocena z tekstu opisu; zawartosci wideo (wywiadu) nie widzimy, wiec etykieta jest ostrozna."
+    },
+    {
+      "id": "912810501476495",
+      "source": "fixtures/demo-ads/facebook/912810501476495/",
+      "score": 25.0,
+      "coverage": 0.444,
+      "has_render_probe": true,
+      "failed_rules": [
+        "2",
+        "7",
+        "9"
+      ],
+      "is_violation": true,
+      "note": "Ostrzezenie JEST ('Inwestowanie w kryptoaktywa wiaze sie z wysokim ryzykiem'), ale zaczyna sie na znaku 258 tresci glownej, za progiem ok. 125 znakow, po ktorym feed Meta ucina tekst przyciskiem 'Zobacz wiecej' - ostrzezenie jest schowane za kliknieciem. Przypadek graniczny: to heurystyka feedu (pewnosc 0.6), nie pomiar; w geometrii renderu ostrzezenie jest wysoko (13% wysokosci kreacji). Jedyna reklama z pelnym RenderProbe."
+    },
+    {
+      "id": "986443020999266",
+      "source": "fixtures/demo-ads/facebook/986443020999266/",
+      "score": 0.0,
+      "coverage": 0.0,
+      "has_render_probe": false,
+      "failed_rules": [],
+      "is_violation": false,
+      "note": "Oferta dzialek inwestycyjnych dla przedsiebiorcow w strefie ekonomicznej (ulgi podatkowe do 60% kosztow): to oferta B2B nieruchomosci i ulg, nie produkt inwestycyjny dla klienta detalicznego, bez obietnicy stopy zwrotu. Wideo bez transkrypcji."
     }
   ]
 }

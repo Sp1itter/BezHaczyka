@@ -168,7 +168,11 @@ def analyze(
         modules=decision.modules,
         routing=decision.routing,
         risk_score=score,
-        risk_level=risk_level(score),
+        # Poziom liczymy z DWOCH sygnalow: proporcji naruszonych wymogow (score)
+        # oraz wagi najciezszego potwierdzonego naruszenia (results). Patrz
+        # scoring.risk_level — bez tego drugiego sygnalu powazne naruszenie
+        # rozcienczalo sie liczba regul, ktore material spelnia.
+        risk_level=risk_level(score, results),
         rule_results=results,
         entities=entities.to_entities(),
         status="triage" if decision.routing.rule == "R4" else "new",
