@@ -21,6 +21,7 @@ from analyzer.contracts import (
     Verdict,
 )
 from analyzer.llm import LlmError, OllamaClient, load_prompt
+from analyzer.rules_llm.guards import apply_guards
 
 # rule_id -> (nazwa, severity, podstawa prawna)
 RuleMeta = Mapping[str, tuple[str, int, str]]
@@ -208,4 +209,5 @@ def evaluate_batch(
             results.append(
                 _build_result(rule_id, entry, material, rule_meta, fail_means_absence)
             )
-    return results
+    # Straznicy: obiektywne elementy rozstrzygamy w kodzie po odpowiedzi modelu.
+    return apply_guards(results, material, rule_meta)

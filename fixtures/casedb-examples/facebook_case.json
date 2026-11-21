@@ -1,0 +1,420 @@
+{
+  "case_id": "d9aeb3e7-35d2-5336-81a8-ee5b7e7396ba",
+  "source": "facebook",
+  "url": "https://example.invalid/ads/library/?id=912810501476495",
+  "status": "new",
+  "metadata": {
+    "title": "Virtune Staked Solana ETP",
+    "author_name": "Virtune",
+    "author_url": "https://example.invalid/100084703352186/",
+    "lang": "pl",
+    "fetched_at": "2026-11-21T14:01:53.137224Z",
+    "_przyklad": "PRZYKLAD - opakowany fixture kontraktu, nie prawdziwy eksport"
+  },
+  "content": {
+    "title": [
+      {
+        "seq": 0,
+        "body": "Virtune Staked Solana ETP"
+      }
+    ],
+    "text": [
+      {
+        "seq": 0,
+        "body": "Nowość! Już teraz możliwe jest inwestowanie w Solanę w podobny sposób jak zakup akcji. Virtune Staked Solana ETP jest notowany na Giełdzie Papierów Wartościowych w Warszawie, z obrotem w PLN. Dostępny w XTB, BOŚ oraz Alior Banku. Inwestowanie w kryptoaktywa wiąże się z wysokim ryzykiem. Kapitał narażony na ryzyko.\nVirtune Staked Solana ETP\nvirtune.com\nhttps://example.invalid/product/solana"
+      }
+    ]
+  },
+  "assets": [
+    {
+      "kind": "html",
+      "label": null,
+      "uri": "s3://raw/d9aeb3e7-35d2-5336-81a8-ee5b7e7396ba.html",
+      "mime": "text/html"
+    }
+  ],
+  "ai_results": {},
+  "raw": {
+    "id": "d9aeb3e7-35d2-5336-81a8-ee5b7e7396ba",
+    "source": "facebook",
+    "url": "https://example.invalid/ads/library/?id=912810501476495",
+    "fetched_at": "2026-11-21T14:01:53.137224Z",
+    "publisher": {
+      "handle": null,
+      "display_name": "Virtune",
+      "profile_url": "https://example.invalid/100084703352186/",
+      "is_official_firm_channel": false
+    },
+    "lang": "pl",
+    "title": "Virtune Staked Solana ETP",
+    "text": "Nowość! Już teraz możliwe jest inwestowanie w Solanę w podobny sposób jak zakup akcji. Virtune Staked Solana ETP jest notowany na Giełdzie Papierów Wartościowych w Warszawie, z obrotem w PLN. Dostępny w XTB, BOŚ oraz Alior Banku. Inwestowanie w kryptoaktywa wiąże się z wysokim ryzykiem. Kapitał narażony na ryzyko.\nVirtune Staked Solana ETP\nvirtune.com\nhttps://example.invalid/product/solana",
+    "html_path": "s3://raw/d9aeb3e7-35d2-5336-81a8-ee5b7e7396ba.html",
+    "screenshots": {
+      "desktop": "s3://shots/d9aeb3e7-35d2-5336-81a8-ee5b7e7396ba-1920.png",
+      "mobile": "s3://shots/d9aeb3e7-35d2-5336-81a8-ee5b7e7396ba-390.png"
+    },
+    "media": [],
+    "transcript": null,
+    "render_probe": {
+      "viewports": {
+        "desktop": {
+          "dominant_font_px": 12.0,
+          "page_height_px": 3637.0,
+          "nodes": [
+            {
+              "text": "Virtune",
+              "font_px": 14.0,
+              "font_weight": 700,
+              "color": "#262626",
+              "background_effective": "#ffffff",
+              "background_source": "ancestor:div:nth-of-type(2)>div:nth-of-type(1)>div:nth-of-type(2)>div:nth-of-type(2)>div>div>div>div",
+              "background_confidence": "resolved",
+              "contrast_ratio": 15.08,
+              "bbox": {
+                "x": 773.0,
+                "y": 424.1,
+                "w": 48.0,
+                "h": 16.0
+              },
+              "visible": true,
+              "clipped": false,
+              "behind_interaction": "link",
+              "collapsed_evidence": "a[href]",
+              "dom_path": "div>div:nth-of-type(1)>div>div>div>div>a>span",
+              "in_footer": false
+            },
+            {
+              "text": "Sponsorowane",
+              "font_px": 12.0,
+              "font_weight": 600,
+              "color": "#737373",
+              "background_effective": "#ffffff",
+              "background_source": "ancestor:div:nth-of-type(2)>div:nth-of-type(1)>div:nth-of-type(2)>div:nth-of-type(2)>div>div>div>div",
+              "background_confidence": "resolved",
+              "contrast_ratio": 4.76,
+              "bbox": {
+                "x": 773.0,
+                "y": 443.1,
+                "w": 86.0,
+                "h": 14.0
+              },
+              "visible": true,
+              "clipped": false,
+              "behind_interaction": null,
+              "collapsed_evidence": null,
+              "dom_path": "div>div>div>span>div>div>span:nth-of-type(1)>strong",
+              "in_footer": false
+            },
+            {
+              "text": "Nowość! Już teraz możliwe jest inwestowanie w Solanę w podobny sposób jak zakup akcji. Virtune Staked Solana ETP jest notowany na Giełdzie Papierów Wartościowych w Warszawie, z obrotem w PLN. Dostępny w XTB, BOŚ oraz Alior Banku. Inwestowanie w kryptoaktywa wiąże się z wysokim ryzykiem. Kapitał narażony na ryzyko.",
+              "font_px": 12.0,
+              "font_weight": 400,
+              "color": "#262626",
+              "background_effective": "#ffffff",
+              "background_source": "ancestor:div:nth-of-type(2)>div:nth-of-type(1)>div:nth-of-type(2)>div:nth-of-type(2)>div>div>div>div",
+              "background_confidence": "resolved",
+              "contrast_ratio": 15.08,
+              "bbox": {
+                "x": 737.0,
+                "y": 467.1,
+                "w": 437.3,
+                "h": 78.0
+              },
+              "visible": true,
+              "clipped": false,
+              "behind_interaction": null,
+              "collapsed_evidence": null,
+              "dom_path": "div:nth-of-type(2)>div>div>span>div>div>div>span",
+              "in_footer": false
+            },
+            {
+              "text": "Virtune Staked Solana ETP",
+              "font_px": 10.0,
+              "font_weight": 400,
+              "color": "#1c1e21",
+              "background_effective": "#ffffff",
+              "background_source": "ancestor:div>div>div>div>div:nth-of-type(2)>div>a>div:nth-of-type(2)",
+              "background_confidence": "resolved",
+              "contrast_ratio": 16.71,
+              "bbox": {
+                "x": 725.0,
+                "y": 749.1,
+                "w": 121.6,
+                "h": 11.0
+              },
+              "visible": true,
+              "clipped": false,
+              "behind_interaction": null,
+              "collapsed_evidence": null,
+              "dom_path": "div:nth-of-type(2)>div>a>div:nth-of-type(2)>div:nth-of-type(1)>div:nth-of-type(2)>div>div",
+              "in_footer": false
+            },
+            {
+              "text": "Learn More",
+              "font_px": 14.0,
+              "font_weight": 400,
+              "color": "#242424",
+              "background_effective": "#f2f2f2",
+              "background_source": "ancestor:div>div:nth-of-type(2)>div>a>div:nth-of-type(2)>div:nth-of-type(2)>div>div",
+              "background_confidence": "resolved",
+              "contrast_ratio": 13.84,
+              "bbox": {
+                "x": 1107.4,
+                "y": 747.1,
+                "w": 71.6,
+                "h": 16.0
+              },
+              "visible": true,
+              "clipped": false,
+              "behind_interaction": null,
+              "collapsed_evidence": null,
+              "dom_path": "div:nth-of-type(2)>div:nth-of-type(2)>div>div>span>div>div>div",
+              "in_footer": false
+            }
+          ]
+        },
+        "tablet": {
+          "dominant_font_px": 12.0,
+          "page_height_px": 7012.0,
+          "nodes": [
+            {
+              "text": "Virtune",
+              "font_px": 14.0,
+              "font_weight": 700,
+              "color": "#262626",
+              "background_effective": "#ffffff",
+              "background_source": "ancestor:div:nth-of-type(2)>div:nth-of-type(1)>div:nth-of-type(2)>div:nth-of-type(2)>div>div>div>div",
+              "background_confidence": "resolved",
+              "contrast_ratio": 15.08,
+              "bbox": {
+                "x": 173.0,
+                "y": 424.1,
+                "w": 48.0,
+                "h": 16.0
+              },
+              "visible": true,
+              "clipped": false,
+              "behind_interaction": "link",
+              "collapsed_evidence": "a[href]",
+              "dom_path": "div>div:nth-of-type(1)>div>div>div>div>a>span",
+              "in_footer": false
+            },
+            {
+              "text": "Sponsorowane",
+              "font_px": 12.0,
+              "font_weight": 600,
+              "color": "#737373",
+              "background_effective": "#ffffff",
+              "background_source": "ancestor:div:nth-of-type(2)>div:nth-of-type(1)>div:nth-of-type(2)>div:nth-of-type(2)>div>div>div>div",
+              "background_confidence": "resolved",
+              "contrast_ratio": 4.76,
+              "bbox": {
+                "x": 173.0,
+                "y": 443.1,
+                "w": 86.0,
+                "h": 14.0
+              },
+              "visible": true,
+              "clipped": false,
+              "behind_interaction": null,
+              "collapsed_evidence": null,
+              "dom_path": "div>div>div>span>div>div>span:nth-of-type(1)>strong",
+              "in_footer": false
+            },
+            {
+              "text": "Nowość! Już teraz możliwe jest inwestowanie w Solanę w podobny sposób jak zakup akcji. Virtune Staked Solana ETP jest notowany na Giełdzie Papierów Wartościowych w Warszawie, z obrotem w PLN. Dostępny w XTB, BOŚ oraz Alior Banku. Inwestowanie w kryptoaktywa wiąże się z wysokim ryzykiem. Kapitał narażony na ryzyko.",
+              "font_px": 12.0,
+              "font_weight": 400,
+              "color": "#262626",
+              "background_effective": "#ffffff",
+              "background_source": "ancestor:div:nth-of-type(2)>div:nth-of-type(1)>div:nth-of-type(2)>div:nth-of-type(2)>div>div>div>div",
+              "background_confidence": "resolved",
+              "contrast_ratio": 15.08,
+              "bbox": {
+                "x": 137.0,
+                "y": 467.1,
+                "w": 512.3,
+                "h": 62.0
+              },
+              "visible": true,
+              "clipped": true,
+              "behind_interaction": null,
+              "collapsed_evidence": null,
+              "dom_path": "div:nth-of-type(2)>div>div>span>div>div>div>span",
+              "in_footer": false
+            },
+            {
+              "text": "Virtune Staked Solana ETP",
+              "font_px": 10.0,
+              "font_weight": 400,
+              "color": "#1c1e21",
+              "background_effective": "#ffffff",
+              "background_source": "ancestor:div>div>div>div>div:nth-of-type(2)>div>a>div:nth-of-type(2)",
+              "background_confidence": "resolved",
+              "contrast_ratio": 16.71,
+              "bbox": {
+                "x": 125.0,
+                "y": 733.1,
+                "w": 121.6,
+                "h": 11.0
+              },
+              "visible": true,
+              "clipped": false,
+              "behind_interaction": null,
+              "collapsed_evidence": null,
+              "dom_path": "div:nth-of-type(2)>div>a>div:nth-of-type(2)>div:nth-of-type(1)>div:nth-of-type(2)>div>div",
+              "in_footer": false
+            },
+            {
+              "text": "Learn More",
+              "font_px": 14.0,
+              "font_weight": 400,
+              "color": "#242424",
+              "background_effective": "#f2f2f2",
+              "background_source": "ancestor:div>div:nth-of-type(2)>div>a>div:nth-of-type(2)>div:nth-of-type(2)>div>div",
+              "background_confidence": "resolved",
+              "contrast_ratio": 13.84,
+              "bbox": {
+                "x": 571.4,
+                "y": 731.1,
+                "w": 71.6,
+                "h": 16.0
+              },
+              "visible": true,
+              "clipped": false,
+              "behind_interaction": null,
+              "collapsed_evidence": null,
+              "dom_path": "div:nth-of-type(2)>div:nth-of-type(2)>div>div>span>div>div>div",
+              "in_footer": false
+            }
+          ]
+        },
+        "mobile": {
+          "dominant_font_px": 12.0,
+          "page_height_px": 13289.0,
+          "nodes": [
+            {
+              "text": "Virtune",
+              "font_px": 14.0,
+              "font_weight": 700,
+              "color": "#262626",
+              "background_effective": "#ffffff",
+              "background_source": "ancestor:div:nth-of-type(2)>div:nth-of-type(1)>div:nth-of-type(2)>div:nth-of-type(2)>div>div>div>div",
+              "background_confidence": "resolved",
+              "contrast_ratio": 15.08,
+              "bbox": {
+                "x": 97.0,
+                "y": 424.1,
+                "w": 48.0,
+                "h": 16.0
+              },
+              "visible": true,
+              "clipped": false,
+              "behind_interaction": "link",
+              "collapsed_evidence": "a[href]",
+              "dom_path": "div>div:nth-of-type(1)>div>div>div>div>a>span",
+              "in_footer": false
+            },
+            {
+              "text": "Sponsorowane",
+              "font_px": 12.0,
+              "font_weight": 600,
+              "color": "#737373",
+              "background_effective": "#ffffff",
+              "background_source": "ancestor:div:nth-of-type(2)>div:nth-of-type(1)>div:nth-of-type(2)>div:nth-of-type(2)>div>div>div>div",
+              "background_confidence": "resolved",
+              "contrast_ratio": 4.76,
+              "bbox": {
+                "x": 97.0,
+                "y": 443.1,
+                "w": 86.0,
+                "h": 14.0
+              },
+              "visible": true,
+              "clipped": false,
+              "behind_interaction": null,
+              "collapsed_evidence": null,
+              "dom_path": "div>div>div>span>div>div>span:nth-of-type(1)>strong",
+              "in_footer": false
+            },
+            {
+              "text": "Nowość! Już teraz możliwe jest inwestowanie w Solanę w podobny sposób jak zakup akcji. Virtune Staked Solana ETP jest notowany na Giełdzie Papierów Wartościowych w Warszawie, z obrotem w PLN. Dostępny w XTB, BOŚ oraz Alior Banku. Inwestowanie w kryptoaktywa wiąże się z wysokim ryzykiem. Kapitał narażony na ryzyko.",
+              "font_px": 12.0,
+              "font_weight": 400,
+              "color": "#262626",
+              "background_effective": "#ffffff",
+              "background_source": "ancestor:div:nth-of-type(2)>div:nth-of-type(1)>div:nth-of-type(2)>div:nth-of-type(2)>div>div>div>div",
+              "background_confidence": "resolved",
+              "contrast_ratio": 15.08,
+              "bbox": {
+                "x": 61.0,
+                "y": 467.1,
+                "w": 282.5,
+                "h": 110.0
+              },
+              "visible": true,
+              "clipped": false,
+              "behind_interaction": null,
+              "collapsed_evidence": null,
+              "dom_path": "div:nth-of-type(2)>div>div>span>div>div>div>span",
+              "in_footer": false
+            },
+            {
+              "text": "Virtune Staked Solana ETP",
+              "font_px": 10.0,
+              "font_weight": 400,
+              "color": "#1c1e21",
+              "background_effective": "#ffffff",
+              "background_source": "ancestor:div>div>div>div>div:nth-of-type(2)>div>a>div:nth-of-type(2)",
+              "background_confidence": "resolved",
+              "contrast_ratio": 16.71,
+              "bbox": {
+                "x": 49.0,
+                "y": 781.1,
+                "w": 121.6,
+                "h": 11.0
+              },
+              "visible": true,
+              "clipped": false,
+              "behind_interaction": null,
+              "collapsed_evidence": null,
+              "dom_path": "div:nth-of-type(2)>div>a>div:nth-of-type(2)>div:nth-of-type(1)>div:nth-of-type(2)>div>div",
+              "in_footer": false
+            },
+            {
+              "text": "Learn More",
+              "font_px": 14.0,
+              "font_weight": 400,
+              "color": "#242424",
+              "background_effective": "#f2f2f2",
+              "background_source": "ancestor:div>div:nth-of-type(2)>div>a>div:nth-of-type(2)>div:nth-of-type(2)>div>div",
+              "background_confidence": "resolved",
+              "contrast_ratio": 13.84,
+              "bbox": {
+                "x": 269.4,
+                "y": 779.1,
+                "w": 71.6,
+                "h": 16.0
+              },
+              "visible": true,
+              "clipped": false,
+              "behind_interaction": null,
+              "collapsed_evidence": null,
+              "dom_path": "div:nth-of-type(2)>div:nth-of-type(2)>div>div>span>div>div>div",
+              "in_footer": false
+            }
+          ]
+        }
+      }
+    },
+    "simhash": null,
+    "scope": {
+      "status": "uncertain",
+      "instrument_wrapper": null,
+      "underlying": null,
+      "legal_basis": null,
+      "tags": [],
+      "reason": null
+    }
+  }
+}

@@ -1,0 +1,564 @@
+{
+ "synthetic": true,
+ "holdout": true,
+ "cases": [
+  {
+   "id": "h2-01",
+   "opis": "Długi landing CFD: 'podwój kapitał', brak jakiegokolwiek ostrzeżenia.",
+   "expected": {
+    "1": "pass",
+    "2": "pass",
+    "3": "fail",
+    "9": "not_applicable",
+    "10": "not_applicable",
+    "17": "pass"
+   },
+   "doc": {
+    "id": "h2-01",
+    "source": "web",
+    "url": "https://example.invalid/omega-cfd",
+    "fetched_at": "2026-11-20T10:00:00Z",
+    "publisher": {
+     "handle": null,
+     "display_name": "Fikcyjny Dom Maklerski Omega S.A.",
+     "profile_url": null,
+     "is_official_firm_channel": true
+    },
+    "lang": "pl",
+    "title": "Omega Trader - Twoja droga do wolności",
+    "text": "MATERIAŁ MARKETINGOWY\n\nOmega Trader od Fikcyjnego Domu Maklerskiego Omega S.A.\n\nPodwój kapitał w 12 miesięcy z kontraktami CFD na indeksy giełdowe.\n\nDlaczego Omega Trader?\n- platforma dostępna 24/7, zlecenia w 0,2 sekundy,\n- dźwignia do 1:30 na wybranych instrumentach,\n- konto demo za darmo, wypłaty w 24 godziny.\n\nNasi klienci zaczynają od 1000 zł i już po roku cieszą się dwa razy większym saldem. Ty też możesz! Otwórz konto w 5 minut i zacznij zarabiać już dziś.\n\nJak zacząć?\n1. Zarejestruj się.\n2. Wpłać pierwsze środki.\n3. Otwórz pierwszą pozycję CFD i patrz, jak rośnie Twój kapitał.\n\nKontakt: kontakt@omega.example.invalid. (c) Fikcyjny Dom Maklerski Omega S.A.",
+    "scope": {
+     "status": "in_scope",
+     "instrument_wrapper": "instrument finansowy",
+     "underlying": null,
+     "tags": []
+    }
+   }
+  },
+  {
+   "id": "h2-02",
+   "opis": "Krótki post z emoji, influencer: prognoza +30% bez ostrzeżenia, brak nazwy firmy i oznaczenia reklamy.",
+   "expected": {
+    "1": "fail",
+    "2": "fail",
+    "3": "fail",
+    "15": "fail",
+    "17": "pass",
+    "18": "pass"
+   },
+   "doc": {
+    "id": "h2-02",
+    "source": "instagram",
+    "url": "https://example.invalid/post-zeta",
+    "fetched_at": "2026-11-20T10:00:00Z",
+    "publisher": {
+     "handle": null,
+     "display_name": "Kuba Inwestuje",
+     "profile_url": null,
+     "is_official_firm_channel": false
+    },
+    "lang": "pl",
+    "title": null,
+    "text": "🚀🚀 Moja pozycja w akcjach Fikcyjnej Spółki Zeta rośnie z dnia na dzień! Kolejne +30% do końca roku, to pewniak 💸💸 Kto wchodzi ze mną? Link do platformy w bio 👆 #akcje #zarabiaj #giełda",
+    "scope": {
+     "status": "in_scope",
+     "instrument_wrapper": "instrument finansowy",
+     "underlying": null,
+     "tags": []
+    }
+   }
+  },
+  {
+   "id": "h2-03",
+   "opis": "Pułapka: opis podcastu ze 'stabilnym dochodem pasywnym', ale ostrzeżenie wprost obok, po polsku, zrozumiale; oznaczenie reklamy.",
+   "expected": {
+    "1": "pass",
+    "2": "pass",
+    "3": "pass",
+    "9": "pass",
+    "10": "pass",
+    "18": "pass"
+   },
+   "doc": {
+    "id": "h2-03",
+    "source": "podcast",
+    "url": "https://example.invalid/podcast-sigma",
+    "fetched_at": "2026-11-20T10:00:00Z",
+    "publisher": {
+     "handle": null,
+     "display_name": "Fikcyjne TFI Sigma S.A.",
+     "profile_url": null,
+     "is_official_firm_channel": true
+    },
+    "lang": "pl",
+    "title": "Odcinek 42: Dochód pasywny z obligacji",
+    "text": "REKLAMA. Odcinek 42 podcastu \"Kapitał w praktyce\", prezentowany przez Fikcyjne TFI Sigma S.A.\n\nW tym odcinku rozmawiamy o tym, jak fundusz Sigma Obligacje Korporacyjne może dawać stabilny dochód pasywny w postaci regularnych wypłat. Pamiętaj jednak: inwestowanie w fundusze wiąże się z ryzykiem, możesz stracić część lub całość wpłaconych pieniędzy, a wysokość wypłat nie jest gwarantowana i może się zmieniać. Zanim zainwestujesz, przeczytaj dokument KID dostępny na https://sigma.example.invalid/kid.\n\nW odcinku: czym są obligacje korporacyjne, jak działa wypłata dochodu, jak dobrać horyzont inwestycyjny.",
+    "scope": {
+     "status": "in_scope",
+     "instrument_wrapper": "instrument finansowy",
+     "underlying": null,
+     "tags": []
+    }
+   }
+  },
+  {
+   "id": "h2-04",
+   "opis": "Mail: '8,5% w skali roku' z obligacji, brak ryzyka; podatek bez zastrzeżeń.",
+   "expected": {
+    "1": "pass",
+    "2": "pass",
+    "3": "fail",
+    "16": "fail",
+    "18": "pass"
+   },
+   "doc": {
+    "id": "h2-04",
+    "source": "email",
+    "url": "https://example.invalid/mail-kappa",
+    "fetched_at": "2026-11-20T10:00:00Z",
+    "publisher": {
+     "handle": null,
+     "display_name": "Fikcyjny Dom Maklerski Kappa S.A.",
+     "profile_url": null,
+     "is_official_firm_channel": true
+    },
+    "lang": "pl",
+    "title": "Oferta obligacji 8,5%",
+    "text": "Wiadomość marketingowa\n\nTemat: 8,5% w skali roku - nowa seria obligacji Kappa\n\nDzień dobry,\n\nFikcyjny Dom Maklerski Kappa S.A. zaprasza do objęcia nowej serii obligacji korporacyjnych. Oprocentowanie: 8,5% w skali roku, wypłacane co kwartał. To prosty sposób na pewny zysk, którego nie da Ci żadna lokata!\n\nBonus: odsetki z tych obligacji są wolne od podatku, więc cała kwota trafia prosto do Twojej kieszeni.\n\nZapisy do 30 listopada: https://kappa.example.invalid/obligacje\n\nPozdrawiamy,\nZespół Kappa",
+    "scope": {
+     "status": "in_scope",
+     "instrument_wrapper": "instrument finansowy",
+     "underlying": null,
+     "tags": []
+    }
+   }
+  },
+  {
+   "id": "h2-05",
+   "opis": "Landing ETF: wyniki z 3 lat bez źródła i okresu referencyjnego, bez ostrzeżeń o walucie, opłatach i wiarygodności.",
+   "expected": {
+    "1": "pass",
+    "2": "pass",
+    "12a": "fail",
+    "12b": "fail",
+    "14": "fail",
+    "17": "pass"
+   },
+   "doc": {
+    "id": "h2-05",
+    "source": "web",
+    "url": "https://example.invalid/etf-lambda",
+    "fetched_at": "2026-11-20T10:00:00Z",
+    "publisher": {
+     "handle": null,
+     "display_name": "Fikcyjny Dom Maklerski Lambda S.A.",
+     "profile_url": null,
+     "is_official_firm_channel": true
+    },
+    "lang": "pl",
+    "title": "ETF Lambda Global USD",
+    "text": "Reklama\n\nETF Lambda Global USD oferowany przez Fikcyjny Dom Maklerski Lambda S.A.\n\nNasze wyniki mówią same za siebie:\n- ostatnie 3 lata: +45%,\n- w tym najlepszy kwartał: +12,4%,\n- lepiej niż większość funduszy w naszej kategorii.\n\nETF notowany w dolarach amerykańskich, inwestuj już dziś na https://lambda.example.invalid/etf.",
+    "scope": {
+     "status": "in_scope",
+     "instrument_wrapper": "instrument finansowy",
+     "underlying": null,
+     "tags": []
+    }
+   }
+  },
+  {
+   "id": "h2-06",
+   "opis": "Pułapka bez naruszeń: pełna tabela 5 lat (2021-2025), źródło, waluta, opłaty i zastrzeżenie o wiarygodności.",
+   "expected": {
+    "1": "pass",
+    "2": "pass",
+    "12a": "pass",
+    "12b": "pass",
+    "14": "pass",
+    "15": "not_applicable"
+   },
+   "doc": {
+    "id": "h2-06",
+    "source": "web",
+    "url": "https://example.invalid/tfi-beta",
+    "fetched_at": "2026-11-20T10:00:00Z",
+    "publisher": {
+     "handle": null,
+     "display_name": "Fikcyjne TFI Beta S.A.",
+     "profile_url": null,
+     "is_official_firm_channel": true
+    },
+    "lang": "pl",
+    "title": "Fundusz Beta Akcji - wyniki",
+    "text": "Materiał reklamowy Fikcyjnego TFI Beta S.A.\n\nFundusz Beta Akcji Globalnych - stopy zwrotu w kolejnych latach kalendarzowych (pełne okresy 12-miesięczne):\n2021: +14,2%\n2022: -11,8%\n2023: +17,5%\n2024: +9,1%\n2025: +6,3%\n\nŹródło: Fikcyjne TFI Beta S.A., dane na 31.12.2025, wycena w PLN, wyniki po uwzględnieniu opłaty za zarządzanie (1,2% rocznie); opłata wstępna 2% pomniejsza wynik klienta. Fundusz inwestuje w aktywa denominowane w walutach obcych, więc zmiany kursów walut mogą zwiększać lub zmniejszać zwrot. Wyniki osiągnięte w przeszłości nie są wiarygodnym wskaźnikiem wyników przyszłych.",
+    "scope": {
+     "status": "in_scope",
+     "instrument_wrapper": "instrument finansowy",
+     "underlying": null,
+     "tags": []
+    }
+   }
+  },
+  {
+   "id": "h2-07",
+   "opis": "Opis filmu: porównanie z lokatami i funduszem konkurencji bez źródła i założeń.",
+   "expected": {
+    "1": "pass",
+    "2": "pass",
+    "3": "fail",
+    "11": "fail",
+    "17": "pass",
+    "18": "pass"
+   },
+   "doc": {
+    "id": "h2-07",
+    "source": "youtube",
+    "url": "https://example.invalid/yt-lambda",
+    "fetched_at": "2026-11-20T10:00:00Z",
+    "publisher": {
+     "handle": null,
+     "display_name": "Fikcyjny Dom Maklerski Lambda S.A.",
+     "profile_url": null,
+     "is_official_firm_channel": true
+    },
+    "lang": "pl",
+    "title": "Lambda vs reszta świata",
+    "text": "Reklama. W tym filmie Fikcyjny Dom Maklerski Lambda S.A. pokazuje, dlaczego nasz fundusz Lambda Dynamiczny jest najlepszy: daje wyższy zwrot niż lokaty bankowe i znacznie wyższy niż fundusz Alfa Konkurent. Zdecyduj sam, gdzie lepiej ulokować pieniądze! Zapisz się: https://lambda.example.invalid/fundusz",
+    "scope": {
+     "status": "in_scope",
+     "instrument_wrapper": "instrument finansowy",
+     "underlying": null,
+     "tags": []
+    }
+   }
+  },
+  {
+   "id": "h2-08",
+   "opis": "Pułapka bez naruszeń: porównanie kosztów ETF z benchmarkiem, źródło i założenia podane; brak twierdzeń o zyskach.",
+   "expected": {
+    "1": "pass",
+    "2": "pass",
+    "3": "not_applicable",
+    "11": "pass",
+    "12a": "not_applicable",
+    "14": "not_applicable"
+   },
+   "doc": {
+    "id": "h2-08",
+    "source": "web",
+    "url": "https://example.invalid/etf-koszty",
+    "fetched_at": "2026-11-20T10:00:00Z",
+    "publisher": {
+     "handle": null,
+     "display_name": "Fikcyjny Dom Maklerski Omega S.A.",
+     "profile_url": null,
+     "is_official_firm_channel": true
+    },
+    "lang": "pl",
+    "title": "Porównanie kosztów ETF",
+    "text": "Materiał marketingowy. Fikcyjny Dom Maklerski Omega S.A. porównuje roczne koszty ETF Omega World (TER 0,20%) z przeciętnym funduszem aktywnym w kategorii akcji globalnych (średnia opłata 1,85%). Założenia: inwestycja 10 000 zł, brak zmiany opłat w czasie, horyzont 10 lat, koszt transakcyjny pominięty. Źródło danych: Fikcyjny Serwis Danych, https://dane.example.invalid, stan na 30.09.2026. Przy tych założeniach różnica w opłatach to ok. 1,65 pkt proc. rocznie.",
+    "scope": {
+     "status": "in_scope",
+     "instrument_wrapper": "instrument finansowy",
+     "underlying": null,
+     "tags": []
+    }
+   }
+  },
+  {
+   "id": "h2-09",
+   "opis": "Prognoza wzrostu z ostrzeżeniem wyłącznie po angielsku (w polskim przekazie).",
+   "expected": {
+    "1": "pass",
+    "2": "pass",
+    "3": "pass",
+    "9": "pass",
+    "10": "fail",
+    "15": "pass"
+   },
+   "doc": {
+    "id": "h2-09",
+    "source": "youtube",
+    "url": "https://example.invalid/yt-prognoza",
+    "fetched_at": "2026-11-20T10:00:00Z",
+    "publisher": {
+     "handle": null,
+     "display_name": "Fikcyjny Dom Maklerski Omega S.A.",
+     "profile_url": null,
+     "is_official_firm_channel": true
+    },
+    "lang": "pl",
+    "title": "Prognoza WIG na 2027",
+    "text": "Materiał reklamowy Fikcyjnego Domu Maklerskiego Omega S.A. Nasi analitycy prognozują, że indeks WIG wzrośnie do końca 2027 roku o około 25%, a kontrakty terminowe Omega Futures pozwolą Ci na tym skorzystać. Warning: this forecast is not a reliable indicator of future performance. Investing involves risk, you may lose part or all of your capital.",
+    "scope": {
+     "status": "in_scope",
+     "instrument_wrapper": "instrument finansowy",
+     "underlying": null,
+     "tags": []
+    }
+   }
+  },
+  {
+   "id": "h2-10",
+   "opis": "Landing CFD: dźwignia i zyski, ostrzeżenie tylko w żargonie prawniczym, niezrozumiałe dla laika.",
+   "expected": {
+    "1": "pass",
+    "2": "pass",
+    "3": "fail",
+    "9": "fail",
+    "10": "pass",
+    "17": "pass"
+   },
+   "doc": {
+    "id": "h2-10",
+    "source": "web",
+    "url": "https://example.invalid/cfd-zargon",
+    "fetched_at": "2026-11-20T10:00:00Z",
+    "publisher": {
+     "handle": null,
+     "display_name": "Fikcyjny Dom Maklerski Kappa S.A.",
+     "profile_url": null,
+     "is_official_firm_channel": true
+    },
+    "lang": "pl",
+    "title": "Kappa CFD",
+    "text": "Reklama. Zarabiaj na wzrostach i spadkach z Kappa CFD, ofertą Fikcyjnego Domu Maklerskiego Kappa S.A.!\n\nInformacja prawna: instrumenty pochodne OTC charakteryzują się ryzykiem wynikającym z dźwigni, ryzykiem kontrapartii, ryzykiem luki cenowej oraz ryzykiem rolowania pozycji zgodnie z § 4 ust. 2 Regulaminu świadczenia usług, co może skutkować efektami ekspozycji niekorzystnymi z perspektywy bilansu kontrahenta.",
+    "scope": {
+     "status": "in_scope",
+     "instrument_wrapper": "instrument finansowy",
+     "underlying": null,
+     "tags": []
+    }
+   }
+  },
+  {
+   "id": "h2-11",
+   "opis": "Mail o IKZE: oszczędność podatkowa bez zastrzeżenia o sytuacji indywidualnej i możliwej zmianie.",
+   "expected": {
+    "1": "pass",
+    "2": "pass",
+    "3": "not_applicable",
+    "16": "fail",
+    "17": "pass"
+   },
+   "doc": {
+    "id": "h2-11",
+    "source": "email",
+    "url": "https://example.invalid/mail-ikze",
+    "fetched_at": "2026-11-20T10:00:00Z",
+    "publisher": {
+     "handle": null,
+     "display_name": "Fikcyjne TFI Gamma S.A.",
+     "profile_url": null,
+     "is_official_firm_channel": true
+    },
+    "lang": "pl",
+    "title": "IKZE z Gamma",
+    "text": "Wiadomość reklamowa od Fikcyjnego TFI Gamma S.A.\n\nOtwórz IKZE w funduszach Gamma i odlicz wpłaty od podatku. Zaoszczędzisz nawet 1800 zł rocznie! Limit wpłat na 2026 rok jest ogłoszony, więc nie czekaj do grudnia: https://gamma.example.invalid/ikze",
+    "scope": {
+     "status": "in_scope",
+     "instrument_wrapper": "instrument finansowy",
+     "underlying": null,
+     "tags": []
+    }
+   }
+  },
+  {
+   "id": "h2-12",
+   "opis": "Komentarz influencera udający opinię prywatną ('to nie reklama'), choć z kodem promocyjnym; zastrzeżenie podatkowe i ostrzeżenie poprawne.",
+   "expected": {
+    "1": "pass",
+    "2": "fail",
+    "3": "pass",
+    "9": "pass",
+    "10": "pass",
+    "16": "pass"
+   },
+   "doc": {
+    "id": "h2-12",
+    "source": "tiktok",
+    "url": "https://example.invalid/komentarz-sigma",
+    "fetched_at": "2026-11-20T10:00:00Z",
+    "publisher": {
+     "handle": null,
+     "display_name": "Ola o Pieniądzach",
+     "profile_url": null,
+     "is_official_firm_channel": false
+    },
+    "lang": "pl",
+    "title": null,
+    "text": "To nie jest reklama, tylko moja szczera opinia 😉 Od roku inwestuję w Sigma Obligacje Korporacyjne od Fikcyjnego TFI Sigma S.A. i liczę na solidny dochód, ale pamiętaj: możesz też stracić część wpłaconych pieniędzy. Podatek od zysków zależy od Twojej indywidualnej sytuacji podatkowej i przepisy mogą się zmienić. Kod OLA10 daje zniżkę na opłatę wstępną: https://sigma.example.invalid/ola",
+    "scope": {
+     "status": "in_scope",
+     "instrument_wrapper": "instrument finansowy",
+     "underlying": null,
+     "tags": []
+    }
+   }
+  },
+  {
+   "id": "h2-13",
+   "opis": "Pułapka: neutralna wzmianka o zezwoleniu KNF (numer), bez sugestii aprobaty i bez twierdzeń o zyskach; brak porównań.",
+   "expected": {
+    "1": "pass",
+    "2": "pass",
+    "3": "not_applicable",
+    "11": "not_applicable",
+    "17": "pass",
+    "18": "pass"
+   },
+   "doc": {
+    "id": "h2-13",
+    "source": "web",
+    "url": "https://example.invalid/omega-o-nas",
+    "fetched_at": "2026-11-20T10:00:00Z",
+    "publisher": {
+     "handle": null,
+     "display_name": "Fikcyjny Dom Maklerski Omega S.A.",
+     "profile_url": null,
+     "is_official_firm_channel": true
+    },
+    "lang": "pl",
+    "title": "O nas",
+    "text": "Materiał informacyjno-reklamowy. Fikcyjny Dom Maklerski Omega S.A. prowadzi działalność maklerską na podstawie zezwolenia Komisji Nadzoru Finansowego nr DDM/123/2019. Oferujemy rachunki maklerskie, obrót akcjami i obligacjami oraz ETF. Siedziba: ul. Przykładowa 1, Warszawa. https://omega.example.invalid/o-nas",
+    "scope": {
+     "status": "in_scope",
+     "instrument_wrapper": "instrument finansowy",
+     "underlying": null,
+     "tags": []
+    }
+   }
+  },
+  {
+   "id": "h2-14",
+   "opis": "Fundusz 'zatwierdzony przez KNF' jako gwarancja jakości i bezpieczeństwa plus 'stabilny dochód' bez ostrzeżenia.",
+   "expected": {
+    "1": "pass",
+    "2": "pass",
+    "3": "fail",
+    "17": "fail",
+    "18": "fail"
+   },
+   "doc": {
+    "id": "h2-14",
+    "source": "web",
+    "url": "https://example.invalid/gamma-knf",
+    "fetched_at": "2026-11-20T10:00:00Z",
+    "publisher": {
+     "handle": null,
+     "display_name": "Fikcyjne TFI Gamma S.A.",
+     "profile_url": null,
+     "is_official_firm_channel": true
+    },
+    "lang": "pl",
+    "title": "Gamma Stabilny Dochód",
+    "text": "Reklama. Fundusz Gamma Stabilny Dochód Fikcyjnego TFI Gamma S.A. został zatwierdzony przez KNF - to gwarancja jakości i bezpieczeństwa Twoich pieniędzy. Zyskaj stabilny dochód pasywny każdego miesiąca, bez zmartwień. https://gamma.example.invalid/dochod",
+    "scope": {
+     "status": "in_scope",
+     "instrument_wrapper": "instrument finansowy",
+     "underlying": null,
+     "tags": []
+    }
+   }
+  },
+  {
+   "id": "h2-15",
+   "opis": "Krótki komentarz: nadzór KNF nad firmą jako argument bezpieczeństwa (bez sugestii aprobaty produktu).",
+   "expected": {
+    "1": "pass",
+    "2": "pass",
+    "3": "not_applicable",
+    "9": "not_applicable",
+    "17": "pass",
+    "18": "fail"
+   },
+   "doc": {
+    "id": "h2-15",
+    "source": "facebook",
+    "url": "https://example.invalid/post-kappa-nadzor",
+    "fetched_at": "2026-11-20T10:00:00Z",
+    "publisher": {
+     "handle": null,
+     "display_name": "Fikcyjny Dom Maklerski Kappa S.A.",
+     "profile_url": null,
+     "is_official_firm_channel": true
+    },
+    "lang": "pl",
+    "title": null,
+    "text": "#reklama Inwestuj bez obaw! Fikcyjny Dom Maklerski Kappa S.A. jest pod nadzorem KNF, więc Twoje pieniądze na rachunku maklerskim są bezpieczne 🔒 Otwórz konto: https://kappa.example.invalid/konto",
+    "scope": {
+     "status": "in_scope",
+     "instrument_wrapper": "instrument finansowy",
+     "underlying": null,
+     "tags": []
+    }
+   }
+  },
+  {
+   "id": "h2-16",
+   "opis": "Post z emoji z historycznymi wynikami 2 lat bez źródła, zastrzeżeń i nazwy firmy; sugestia dalszych zysków.",
+   "expected": {
+    "1": "fail",
+    "2": "fail",
+    "3": "fail",
+    "12a": "fail",
+    "12b": "fail",
+    "14": "fail"
+   },
+   "doc": {
+    "id": "h2-16",
+    "source": "instagram",
+    "url": "https://example.invalid/post-historia",
+    "fetched_at": "2026-11-20T10:00:00Z",
+    "publisher": {
+     "handle": null,
+     "display_name": "Marek Giełdowy",
+     "profile_url": null,
+     "is_official_firm_channel": false
+    },
+    "lang": "pl",
+    "title": null,
+    "text": "📈 2023: +21%, 2024: +18% na funduszu akcji! Kto nie kupił, ten płacze 😭 W 2025 znów będzie na plusie, wchodźcie zanim będzie za późno 🔥 #fundusze #inwestowanie",
+    "scope": {
+     "status": "in_scope",
+     "instrument_wrapper": "instrument finansowy",
+     "underlying": null,
+     "tags": []
+    }
+   }
+  },
+  {
+   "id": "h2-17",
+   "opis": "Pułapka bez naruszeń: długi landing z pełnymi danymi hist. 5 lat, waluta, opłaty, wiarygodność, podatek z zastrzeżeniem i neutralnym nadzorem KNF.",
+   "expected": {
+    "12a": "pass",
+    "12b": "pass",
+    "14": "pass",
+    "16": "pass",
+    "17": "pass",
+    "18": "pass"
+   },
+   "doc": {
+    "id": "h2-17",
+    "source": "web",
+    "url": "https://example.invalid/tfi-delta-pelny",
+    "fetched_at": "2026-11-20T10:00:00Z",
+    "publisher": {
+     "handle": null,
+     "display_name": "Fikcyjne TFI Delta S.A.",
+     "profile_url": null,
+     "is_official_firm_channel": true
+    },
+    "lang": "pl",
+    "title": "Delta Obligacji Globalnych",
+    "text": "Reklama. Fikcyjne TFI Delta S.A. przedstawia fundusz Delta Obligacji Globalnych.\n\nStopy zwrotu za pełne lata kalendarzowe: 2021: -3,1%; 2022: -8,7%; 2023: +7,9%; 2024: +5,2%; 2025: +4,4%. Źródło: Fikcyjne TFI Delta S.A., dane na 31.12.2025, wyniki w PLN po odjęciu opłaty zarządczej 0,9% rocznie; opłaty i prowizje obniżają wynik inwestora. Fundusz lokuje w obligacje w walutach obcych, więc zmiana kursów walut może wpłynąć na zwrot. Wyniki z przeszłości nie są wiarygodnym wskaźnikiem wyników przyszłych.\n\nPodatek: sposób opodatkowania zależy od indywidualnej sytuacji podatkowej inwestora i może ulec zmianie.\n\nTFI Delta działa na podstawie zezwolenia KNF, co nie oznacza oceny ani rekomendacji funduszu przez organ nadzoru. Inwestowanie wiąże się z ryzykiem utraty kapitału. https://delta.example.invalid",
+    "scope": {
+     "status": "in_scope",
+     "instrument_wrapper": "instrument finansowy",
+     "underlying": null,
+     "tags": []
+    }
+   }
+  }
+ ]
+}

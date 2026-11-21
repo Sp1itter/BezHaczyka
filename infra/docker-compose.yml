@@ -143,37 +143,34 @@ services:
     networks: [investwatch]
 
   # --- api (Osoba C) ------------------------------------------------------------
-  # ZDEFINIOWANY, ale w profilu `full`, zeby `docker compose up` NIE PADAL, dopoki
-  # serwis nie istnieje. Gdy Osoba C napisze services/api (z Dockerfile), wystarczy
-  # USUNAC linie `profiles` ponizej. Zalozenia: Dockerfile w ../services/api, port 8000.
+  # FastAPI: POST/GET /documents, POST/GET /findings, PATCH status, /stats,
+  # /calibration, WS /ws/alerts. Tabele `documents`/`findings` tworzy init.sql.
   api:
-    profiles: ["full"]
     build:
       context: ../services/api
     depends_on:
       postgres:
         condition: service_healthy
-      valkey:
-        condition: service_healthy
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
-      VALKEY_URL: redis://valkey:6379/0
-      S3_ENDPOINT: http://seaweedfs:8333
+      GOLD_LABELS_PATH: /data/gold/labels.json
+    volumes:
+      - ../fixtures/gold:/data/gold:ro
+      # przyklady kontraktowe: docker compose exec api python -m api.seed --dir /data/contract-examples
+      - ../fixtures/contract-examples:/data/contract-examples:ro
     ports:
       - "127.0.0.1:${API_PORT}:8000"
     networks: [investwatch]
 
   # --- web (Osoba C) ------------------------------------------------------------
-  # Jak wyzej: po napisaniu services/web usun `profiles`. Zalozenia: Dockerfile w
-  # ../services/web, serwuje na porcie 80 w kontenerze (np. statyczny build Vite).
+  # Statyczny build Vite + nginx (nie-root, port 8080 w kontenerze), proxy /api i /ws -> api.
   web:
-    profiles: ["full"]
     build:
       context: ../services/web
     depends_on:
       - api
     ports:
-      - "127.0.0.1:${WEB_PORT}:80"
+      - "127.0.0.1:${WEB_PORT}:8080"
     networks: [investwatch]
 
 networks:

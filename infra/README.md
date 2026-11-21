@@ -1,6 +1,9 @@
 # infra - punkt startowy dla Osoby C (API + dashboard)
 
-> **UWAGA: ten stos jest NIEPRZETESTOWANY.** Autor nie miał Dockera na swojej
+> **Zweryfikowane 21.11 (Docker Desktop 29.9.3 + WSL2): postgres, api, web.** Pozostałe
+> serwisy (valkey, seaweedfs, nginx, analyzer, casedb) nadal czekają na pierwsze uruchomienie.
+>
+> **Pierwotna uwaga: ten stos był NIEPRZETESTOWANY.** Autor nie miał Dockera na swojej
 > maszynie, więc `docker-compose.yml`, `init.sql` i `nginx.conf` nigdy nie zostały
 > uruchomione. Sprawdzono tylko składnię YAML i zgodność licencyjną
 > (`tools/check_compliance.py`). Lista rzeczy do sprawdzenia jest na końcu.
@@ -18,9 +21,9 @@ Bielika, Ollamy ani pobierania 6,3 GB modeli. Dostajesz: Postgres+pgvector
 (`localhost:5432`, schemat z `init.sql`), Valkey (`6379`), SeaweedFS S3 (`8333`)
 i korpus demo jako statyczne pliki (`http://localhost:8080/`).
 
-Gdy napiszesz `services/api` i `services/web` (każdy z `Dockerfile`), usuń linie
-`profiles: ["full"]` w `docker-compose.yml` - wtedy zwykłe `docker compose up` je poda.
-Przyjęte założenia: `api` słucha na 8000, `web` na 80, Dockerfile w `services/api` i `services/web`.
+`api` i `web` są w compose bez profilu, więc zwykłe `docker compose up` je poda:
+API na `localhost:${API_PORT}` (8000), dashboard na `localhost:${WEB_PORT}` (8090).
+Praca bez Dockera (SQLite + vite): `services/api/README.md`, `services/web/README.md`.
 
 ## Budowanie na kontrakcie bez uruchamiania analizy
 
@@ -56,11 +59,11 @@ przez `host.docker.internal:11434`. Potrzebna tylko osobie uruchamiającej analy
 
 ## Do sprawdzenia przy pierwszym starcie (nic z tego nie było uruchomione)
 
-- [ ] `docker compose config` przechodzi bez błędów i ostrzeżeń o brakujących zmiennych.
-- [ ] `init.sql` się wykonał: `\dt` w psql pokazuje `documents`, `findings`, `authorized_entities`;
+- [x] `docker compose config` przechodzi bez błędów i ostrzeżeń o brakujących zmiennych.
+- [x] `init.sql` się wykonał: `\dt` w psql pokazuje `documents`, `findings`, `authorized_entities`;
       `CREATE EXTENSION vector` nie padł. Pamiętaj: init działa tylko na PUSTYM wolumenie
       (po zmianie `docker compose down -v`).
-- [ ] Indeks ivfflat zbudował się na pustej tabeli; po załadowaniu danych rozważ `REINDEX`.
+- [x] Indeks ivfflat zbudował się na pustej tabeli; po załadowaniu danych rozważ `REINDEX`.
 - [ ] Healthcheck SeaweedFS (`wget` na `:9333/cluster/status`) działa w tym obrazie; jeśli
       brak `wget`, popraw lub usuń healthcheck.
 - [ ] Zapis i odczyt przez S3 na `localhost:8333` działa (tryb `server -s3`, bez
@@ -74,5 +77,7 @@ przez `host.docker.internal:11434`. Potrzebna tylko osobie uruchamiającej analy
       sprawdź, czy port 8081 nie jest zajęty na hoście.
 - [ ] `host.docker.internal:11434` osiągalny z kontenera (Linux: wymaga wpisu `extra_hosts`;
       Ollama musi słuchać na adresie dostępnym z kontenera, np. `OLLAMA_HOST=0.0.0.0`).
-- [ ] Analyzer wysyła do `http://api:8000` - dopóki `api` jest w profilu `full`, to adres nieosiągalny.
-- [ ] Wolne porty 5432, 6379, 8333, 8080, 8000, 3000 na hoście.
+- [ ] Analyzer wysyła do `http://api:8000` - `api` jest już w compose; sprawdź `POST /findings` z workera.
+- [x] `api` łączy się z Postgresem (`/health` zwraca `"db": true`, `"dialect": "postgresql"`); testy API przechodzą na Postgresie (`TEST_DATABASE_URL`).
+- [x] Dashboard na `localhost:8090` łączy się z `/ws/alerts` przez nginx (pill „alerty na żywo”).
+- [ ] Wolne porty 5432, 6379, 8333, 8080, 8000, 8090 na hoście (port 3000 bywa zarezerwowany przez Hyper-V — `netsh interface ipv4 show excludedportrange protocol=tcp`).
