@@ -9,7 +9,7 @@
     "web": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node --test src/lib/calibration.test.js src/lib/query.test.js src/lib/module1.test.js"
+    "test": "node --test src/lib/calibration.test.js src/lib/query.test.js src/lib/module1.test.js src/lib/sort.test.js src/lib/evidence.test.js src/lib/detail.test.js"
   },
   "dependencies": {
     "react": "18.3.1",
