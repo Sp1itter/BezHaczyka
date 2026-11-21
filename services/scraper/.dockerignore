@@ -5,3 +5,6 @@ youtube
 data
 *.pyc
 .pytest_cache
+tools
+Dockerfile
+.dockerignore

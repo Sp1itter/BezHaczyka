@@ -80,7 +80,10 @@ scheduler odtwarza offline korpus FB (bez internetu). `FB_MODE=auto` włącza ż
 Status i logi: `docker compose ps`, `docker compose logs -f analyzer`.
 Schemat bazy tworzy `infra/init.sql` tylko na pustym wolumenie. Opcjonalnie dane przykładowe:
 `docker compose exec api python -m api.seed --dir /data/contract-examples`.
-Bez Ollamy na hoście: `docker compose --profile ollama up -d` i `OLLAMA_BASE_URL=http://ollama:11434` w `.env`.
+Bez Ollamy na hoście:
+1. w `infra/.env` ustaw `OLLAMA_BASE_URL=http://ollama:11434`,
+2. `docker compose --profile ollama up -d --build`,
+3. `docker compose exec ollama ollama pull SpeakLeash/bielik-4.5b-v3.0-instruct:Q8_0` oraz `docker compose exec ollama ollama pull bge-m3`.
 Opis serwisów: `infra/README.md`.
 
 ## Po `git pull`
@@ -92,7 +95,8 @@ Komendy z katalogu `infra/`.
 | `services/<x>/**` | `docker compose up -d --build <x>` (scraper = `scraper-ingest scraper-render scheduler`) |
 | `infra/docker-compose.yml` | `docker compose up -d --build --remove-orphans` |
 | `infra/.env.example` | porównaj ze swoim `.env`, dopisz nowe zmienne, potem `docker compose up -d` |
-| `infra/init.sql` lub migracje | `docker compose down -v && docker compose up -d --build` (**kasuje dane**) |
+| `infra/init.sql` | `docker compose down -v`, potem `docker compose up -d --build` (**UWAGA: kasuje dane**) |
+| `services/casedb/casedb/migrations/**` | `docker compose up -d --build casedb` (migracje przyrostowe, dane zostają) |
 | nie wiesz | `docker compose up -d --build` (przebuduje tylko zmienione) |
 
 Praca nad UI z hot reload: `cd services/web && npm ci && npm run dev` (Vite :5173, API z Dockera :8000, CORS ustawiony).
