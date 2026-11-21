@@ -6,11 +6,14 @@ Stan na 21.11.2026, branch `feat/facebook-ads-source`.
 
 | Co | Ścieżka |
 |---|---|
-| Złoty `AdDocument` z replayu nagrania | `fixtures/contract-examples/facebook_ad_document.json`, na razie tylko lokalnie (patrz „Otwarte”) |
+| Złoty `AdDocument` (przykład kontraktowy po sanityzacji) | `fixtures/contract-examples/facebook_ad_document.json` |
+| Niesanityzowane źródło złotego dokumentu | `fixtures/demo-ads/facebook/912810501476495/` |
 | `RuleResult` reguł 4–8 dla tej reklamy (§6.3) | `fixtures/contract-examples/rule_result_facebook.json` |
 | Korpus offline | `fixtures/demo-ads/facebook/<ad_archive_id>/page.html` i `node.json.gz` |
 | Generator obu JSON-ów | `services/scraper/tools/gen_facebook_examples.py` |
 | Reguły 4–8 dla źródła facebook | `services/scraper/sources/facebook_rules.py`, funkcja `facebook_det_results(doc)` |
+
+Złoty dokument powstaje z replayu reklamy 912810501476495 (Virtune). Generator zamienia host każdego adresu `http(s)` na `example.invalid` i zostawia ścieżkę oraz parametry, więc `url` ma postać `https://example.invalid/ads/library/?id=912810501476495`, a link w `text` zachowuje `utm_*`. Wymaga tego `tools/check_compliance.py`. Kształt i pozostałe wartości są takie jak w nagraniu. Ponowne uruchomienie generatora też zapisze wersję zsanityzowaną.
 
 ## Osoba B (analyzer)
 
@@ -55,6 +58,5 @@ Git przechowuje tylko `page.html` i `node.json.gz`, razem ok. 29 MB. Pliki `vide
 
 ## Otwarte
 
-- Złoty `AdDocument` nie jest w commicie. `tools/check_compliance.py` zgłasza w nim trzy adresy z nagranego materiału: URL reklamy, profil i link docelowy reklamodawcy. JSON nie przyjmuje markera `compliance:allow`.
 - `duration_s` ma wartość `null`, bo lokalnie brakuje `ffprobe`. W kontenerze z ffmpeg pole się wypełni.
 - Dla fraz „zarządzanie majątkiem” i „CFD” discover zwrócił 0 reklam. Nie sprawdziłem, czy w PL nie ma aktywnych reklam, czy Meta pokazała inny wariant strony wyników; kolejne zapytania obciążałyby Meta.
