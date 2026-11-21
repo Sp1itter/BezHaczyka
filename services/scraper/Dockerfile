@@ -39,6 +39,9 @@ COPY scraper/contracts.py scraper/jobs.py scraper/media.py scraper/net.py scrape
      scraper/worker_main.py scraper/scheduler_main.py ./
 COPY scraper/sources/ ./sources/
 COPY scraper/render/ ./render/
+# rules_det: reguly DET 4-8 liczone przed wyslaniem do analyzera (jobs._enqueue_analysis).
+# Bez tej linii kazdy nowy/zmieniony przypadek konczyl sie ModuleNotFoundError i nie trafial do q:gpu.
+COPY scraper/rules_det/ ./rules_det/
 # reresolve: ponowne rozwiazanie przypadkow po zmianie resolvera/rejestru (python tools/reresolve.py).
 COPY scraper/tools/reresolve.py ./tools/reresolve.py
 
