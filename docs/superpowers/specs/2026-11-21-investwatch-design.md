@@ -243,9 +243,19 @@ investwatch/
 ```
 
 Każdy serwis ma własny `Dockerfile`, własne zależności i da się go uruchomić osobno.
-Komunikacja wyłącznie przez Valkey (kolejka zadań) i Postgres (stan) — brak importów
-między serwisami. Reguły DET żyją w `scraper/rules_det/`, reguły LLM w `analyzer/rules_llm/`,
-a wspólny jest tylko interfejs `Rule` — dzięki temu dwie osoby nie edytują tych samych plików.
+Komunikacja wyłącznie przez Valkey (kolejka zadań) i Postgres (stan) — **brak importów
+między serwisami, także brak katalogu `services/common/`**. Każdy serwis ma `build:`
+wskazujący wyłącznie na swój katalog, więc Dockerfile nie może sięgnąć po `../`.
+
+Reguły DET żyją w `scraper/rules_det/`, reguły LLM w `analyzer/rules_llm/`, a interfejs
+`Rule` jest w obu **zduplikowany** (~15 linii), nie współdzielony. Wspólnym modułem byłoby
+to wygodniejsze, ale wymusiłoby `context: .` w `docker-compose.yml` — cały repozytorium
+jako kontekst budowania każdego obrazu — co jest wolne i łamie wymóg separacji lekkich
+serwisów ze specyfikacji §5. Źródłem prawdy dla kształtu `RuleResult` jest §6.3 tego
+dokumentu, a przed rozjechaniem się kopii chroni test kontraktowy: oba serwisy walidują
+swoje wyniki przeciw `fixtures/contract-examples/rule_result.json`.
+
+Efekt uboczny jest pożądany: A i B nie edytują tych samych plików przez całą noc.
 
 ---
 

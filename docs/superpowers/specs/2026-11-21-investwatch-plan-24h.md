@@ -77,7 +77,7 @@ python -c "from faster_whisper import WhisperModel; WhisperModel('medium', compu
 
 # Osoba A, uruchom OD RAZU:
 playwright install chromium
-docker pull postgres:16 nginx:alpine
+docker pull nginx:alpine
 docker pull valkey/valkey:8-alpine          # BSD-3, NIE redis:7 (SSPL)
 docker pull chrislusf/seaweedfs:latest      # Apache-2.0, NIE minio (AGPLv3)
 docker pull pgvector/pgvector:pg16          # obraz postgresa z pgvector w komplecie
@@ -92,7 +92,16 @@ docker pull pgvector/pgvector:pg16          # obraz postgresa z pgvector w kompl
       dla `AdDocument`, `RenderProbe`, `RuleResult`, `Finding`, `scope`. **To jest kontrakt.**
 - [ ] **A i B razem, 5 minut:** ustalcie sygnaturę interfejsu `Rule`. Reguły DET pisze A,
       reguły LLM pisze B, ale rejestr zbiera jedne i drugie — jeśli interfejs się rozjedzie,
-      integracja o 19:00 padnie. Zapiszcie go w `services/common/rule.py` i nie ruszajcie.
+      integracja o 19:00 padnie.
+      **Interfejs jest DUPLIKOWANY, nie współdzielony:** `services/scraper/rules_det/base.py`
+      i `services/analyzer/rules_llm/base.py` zawierają identyczną, ~15-linijkową kopię.
+      Żadnego `services/common/` — wspólny moduł wymusiłby `context: .` w compose, czyli
+      cały repozytorium jako kontekst budowania każdego obrazu (wolne buildy, `fixtures/`
+      i `node_modules` w kontekście) i złamałby wymóg separacji serwisów ze specyfikacji §5.
+      **Źródłem prawdy jest §6.3 design doca**, a przed rozjechaniem się kopii chroni
+      test kontraktowy: oba serwisy walidują swoje `RuleResult` przeciw
+      `fixtures/contract-examples/rule_result.json`. Piętnaście linii duplikatu jest tańsze
+      niż sprzęganie buildów.
 - [ ] **Wszyscy:** 10 min na przeczytanie sekcji 6 i 7 design doca. Pytania zadajemy teraz,
       nie o 20:00.
 
