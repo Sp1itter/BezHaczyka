@@ -97,3 +97,8 @@ h4 { margin: 16px 0 8px; font-size: 13px; }
 .btn.dismiss { padding: 4px 10px; font-size: 12px; }
 .ai-suggestion { font-size: 11px; font-weight: 500; padding: 2px 6px; border-radius: 3px; background: rgba(169,135,209,.2); color: #c7aef0; margin-left: 6px; white-space: nowrap; }
 .decision { background: var(--panel-2); border: 1px solid var(--border); border-radius: 6px; padding: 4px 12px 12px; margin-bottom: 16px; }
+.review-select { padding: 4px 6px; font-size: 12px; max-width: 280px; }
+.review-done { font-size: 12px; }
+.badge.verdict-confirmed { background: #e7664c; } .badge.verdict-dismissed { background: #8b93a3; }
+.btn.take { background: #36a2ef22; border-color: var(--accent); color: var(--accent); margin: 0 6px 0 0; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }

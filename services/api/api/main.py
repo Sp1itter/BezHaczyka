@@ -4,6 +4,7 @@ Kontrakt przeplywu: docs/INTEGRACJA.md.
 - scraper (A)  -> POST /documents
 - analyzer (B) -> GET /documents/{id}, POST /findings
 - web (C)      -> GET /findings, GET /stats, GET /calibration, PATCH /findings/{id}, WS /ws/alerts
+- dashboard    -> jw. + GET /findings/{id}/events, GET /review-labels (ocena i przypisanie przez czlowieka)
 
 API NIE przelicza progow ryzyka — `risk_level` liczy analyzer. `high` to sygnal
 do broadcastu WebSocket.
@@ -28,11 +29,12 @@ from typing import Any, Literal
 from fastapi import FastAPI, HTTPException, Query, Response, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
 
 from api.contracts import AdDocument, Finding
-from api.store import FindingFilter, FlagsUnavailable, InvalidId, ReportUnavailable, SqlStore, open_store
+from api.review import ReviewLabel, labels_payload, verdict_for
+from api.store import UNSET, FindingFilter, FlagsUnavailable, InvalidId, ReportUnavailable, SqlStore, open_store
 
 log = logging.getLogger("api")
 
@@ -45,8 +47,23 @@ CSV_MAX_ROWS = 50000  # twardy limit eksportu CSV
 Status = Literal["new", "in_review", "confirmed", "dismissed", "triage"]
 
 
-class StatusPatch(BaseModel):
-    status: Status
+class ReviewIn(BaseModel):
+    label: ReviewLabel
+    note: str | None = Field(None, max_length=2000)
+
+
+class FindingPatch(BaseModel):
+    """PATCH /findings/{id}. Stary klient (web) wysyla samo {status}.
+
+    - assignee: przypisanie/przejecie ("Zajmuje sie") przez czlowieka; null zwalnia.
+    - review: ocena czlowieka; status wynika z etykiety (confirmed/dismissed).
+    - actor: zalogowany analityk; wymagany przy review.
+    """
+
+    status: Status | None = None
+    assignee: str | None = Field(None, max_length=120)
+    actor: str | None = Field(None, max_length=120)
+    review: ReviewIn | None = None
 
 
 class AlertHub:
@@ -199,10 +216,39 @@ def create_app(store: SqlStore | None = None, gold_path: Path | None = None) -> 
         return f
 
     @app.patch("/findings/{finding_id}")
-    async def patch_finding(finding_id: str, body: StatusPatch) -> dict[str, Any]:
-        if not await run_in_threadpool(st().update_status, finding_id, body.status):
+    async def patch_finding(finding_id: str, body: FindingPatch) -> dict[str, Any]:
+        review = None
+        if body.review is not None:
+            if not body.actor:
+                raise HTTPException(422, "Ocena wymaga osoby (actor) - decyzje podejmuje czlowiek")
+            review = {"decision": verdict_for(body.review.label), "label": body.review.label,
+                      "note": body.review.note}
+        if body.status is None and review is None and "assignee" not in body.model_fields_set:
+            raise HTTPException(422, "Podaj status, assignee lub review")
+        ok = await run_in_threadpool(
+            lambda: st().update_finding(
+                finding_id,
+                actor=body.actor,
+                status=body.status,
+                assignee=body.assignee if "assignee" in body.model_fields_set else UNSET,
+                review=review,
+            )
+        )
+        if not ok:
             raise HTTPException(404, f"Brak findingu {finding_id}")
-        return {"id": finding_id, "status": body.status}
+        f = await run_in_threadpool(st().get_finding, finding_id)
+        f["coverage"] = coverage(f["rule_results"])
+        return f
+
+    @app.get("/findings/{finding_id}/events")
+    async def finding_events(finding_id: str) -> dict[str, Any]:
+        if await run_in_threadpool(st().get_finding, finding_id) is None:
+            raise HTTPException(404, f"Brak findingu {finding_id}")
+        return {"items": await run_in_threadpool(st().list_events, finding_id)}
+
+    @app.get("/review-labels")
+    async def review_labels() -> dict[str, Any]:
+        return {"items": labels_payload()}
 
     # --- agregaty dla wykresow --------------------------------------------------
     @app.get("/stats")
