@@ -55,3 +55,6 @@ models/
 # --- System ---
 .DS_Store
 Thumbs.db
+
+# --- Pliki blokady Worda/Excela (powstaja, gdy dokument jest otwarty) ---
+~$*
