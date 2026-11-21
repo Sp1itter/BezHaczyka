@@ -399,3 +399,12 @@ def test_firm_authorized_regression():
     assert EntityResolution(firm_is_authorized=True).to_entities().investment_firm.is_authorized
     # wpis w rejestrze KNF = zezwolenie
     assert EntityResolution(registry_knf_id="DM-1").to_entities().investment_firm.is_authorized
+
+
+def test_revoked_firm_is_not_authorized():
+    revoked = EntityResolution(registry_knf_id="K1", firm_is_authorized=False, firm_license_active=False)
+    assert revoked.to_entities().investment_firm.is_authorized is False
+    old = EntityResolution(registry_knf_id="K1")  # stary payload bez firm_license_active
+    assert old.to_entities().investment_firm.is_authorized is True
+    active = EntityResolution(registry_knf_id="K1", firm_is_authorized=True, firm_license_active=True)
+    assert active.to_entities().investment_firm.is_authorized is True

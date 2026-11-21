@@ -115,8 +115,11 @@ def main(argv: list[str] | None = None) -> int:
             applied = db.migrate(conn)
             n = store.load_registry(conn, registry.read_registry_csv(registry.packaged_registry_path()))
             conn.commit()
+            knf.load_snapshot(conn, knf.read_snapshot(knf.DEFAULT_SNAPSHOT))
+            k = store.sync_registry_from_knf(conn)
+            conn.commit()
             print("zastosowano: " + (", ".join(applied) or "nic (schemat aktualny)")
-                  + f"; rejestr KNF: {n} wierszy", file=sys.stderr)
+                  + f"; rejestr KNF: {n} wierszy, ze snapshotu: {k}", file=sys.stderr)
         elif args.cmd == "load-registry":
             path = args.file or registry.packaged_registry_path()
             n = store.load_registry(conn, registry.read_registry_csv(path))

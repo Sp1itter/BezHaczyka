@@ -64,6 +64,8 @@ ALLOWED_HOSTS = {
     "nginx",
     "analyzer",
     "scraper",
+    "dashboard",
+    "dashboard-mock",
     # atrapy w testach i przykladach
     "fake",
     "example.invalid",
