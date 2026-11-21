@@ -303,3 +303,46 @@ class Finding(BaseModel):
     knn_score: float | None = None
     status: Literal["new", "in_review", "confirmed", "dismissed", "triage"] = "new"
     created_at: datetime
+
+
+# --------------------------------------------------------------------------- #
+# ChangeEvent — zdarzenie nadzorcze z porownania dwoch przebiegow
+# (design harmonogramu, par. 10). Dopisane na koncu, istniejace modele bez zmian.
+# --------------------------------------------------------------------------- #
+
+
+class ChangeKind(str, Enum):
+    OSTRZEZENIE_USUNIETE = "OSTRZEZENIE_USUNIETE"
+    OSTRZEZENIE_DODANE = "OSTRZEZENIE_DODANE"
+    ESKALACJA_RYZYKA = "ESKALACJA_RYZYKA"
+    NOWY_WARIANT_KAMPANII = "NOWY_WARIANT_KAMPANII"
+    TRESC_ZMIENIONA = "TRESC_ZMIENIONA"
+    REKLAMA_ZNIKNELA = "REKLAMA_ZNIKNELA"
+
+
+class RuleDiff(BaseModel):
+    rule_id: str
+    from_verdict: Verdict
+    to_verdict: Verdict
+
+
+class ChangeSimilarity(BaseModel):
+    simhash_distance: int | None = None
+    cosine: float | None = None
+
+
+class ChangeEvent(BaseModel):
+    """`summary` jest zdaniem po polsku POKAZYWANYM nadzorcy (jak `routing.reason`)."""
+
+    id: str
+    document_id: str
+    ad_archive_id: str | None = None
+    kind: ChangeKind
+    detected_at: datetime
+    previous_finding_id: str
+    current_finding_id: str | None = None
+    rule_diff: list[RuleDiff] = Field(default_factory=list)
+    similarity: ChangeSimilarity = Field(default_factory=ChangeSimilarity)
+    risk_level_from: RiskLevel | None = None
+    risk_level_to: RiskLevel | None = None
+    summary: str

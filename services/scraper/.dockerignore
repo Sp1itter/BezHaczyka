@@ -1,0 +1,7 @@
+.venv
+__pycache__
+tests
+youtube
+data
+*.pyc
+.pytest_cache

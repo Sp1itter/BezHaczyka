@@ -8,3 +8,4 @@ boto3==1.44.9           # Apache-2.0   — SeaweedFS po S3 API
 rq==2.9.1               # BSD-2-Clause — kolejki q:ingest / q:render (rq-scheduler 0.14 wymaga rq>=2)
 redis==8.1.0            # MIT          — klient Valkey (BSD-3); to klient, nie serwer Redis
 yt-dlp==2026.10.26      # Unlicense    — wideo: tylko fallback, gdy brak bezposredniego mp4
+rq-scheduler==0.14      # MIT          — CronJob Modulu 1 (scheduler_main.py)
