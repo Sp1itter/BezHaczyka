@@ -154,9 +154,20 @@ def test_knf_exact_only_no_fuzzy():
 
 def test_knf_short_name_skipped():
     reg = Registry.from_rows(KNF_ROWS)
-    assert {f.name for f in reg.firms} == {"Zagraniczny Broker Capital Markets", "Upadly Dom Inwestycyjny", "Ab Xy"}
+    assert {f.name for f in reg.firms} == {"Zagraniczny Broker Capital Markets", "Upadly Dom Inwestycyjny"}
     r = resolve(doc("Zeta to grecka litera."), reg)
     assert r["registry_knf_id"] is None
+
+
+def test_knf_generic_names_skipped():
+    names = ["Go Markets", "Man Europe", "Mind Money", "IG Europe", "CFI Markets", "Trading 212 Markets",
+             "Lightyear Europe", "Revolut Securities Europe"]
+    rows = [{"knf_id": f"KNF-x-{i}", "name": n, "aliases": [], "domains": [], "handles": [], "source": "knf",
+             "active": True} for i, n in enumerate(names)]
+    reg = Registry.from_rows(rows)
+    assert {f.name for f in reg.firms} == {"Lightyear Europe", "Revolut Securities Europe"}
+    assert resolve(doc("Go markets and man europe in mind money."), reg)["registry_knf_id"] is None
+    assert resolve(doc("Konto w Lightyear Europe."), reg)["registry_knf_id"] == "KNF-x-6"
 
 
 def test_inactive_firm_is_not_authorized():

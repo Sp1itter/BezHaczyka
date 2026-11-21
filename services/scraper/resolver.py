@@ -26,7 +26,20 @@ CACHE_TTL_S = 600
 MIN_NAME_LEN = 3  # krotsze aliasy ("DM", "ab") daja same falszywe trafienia
 FUZZY_MIN_LEN = 8  # fuzzy tylko dla dluzszych nazw
 FUZZY_CUTOFF = 90
-KNF_MIN_LEN = 6  # nazwy ze snapshotu: >= 6 znakow albo >= 2 slowa
+KNF_MIN_LEN = 8  # nazwy ze snapshotu: lacznie >= 8 znakow i slowo wyrozniajace
+KNF_DISTINCT_LEN = 5
+# Ogolne slowa finansowo-korporacyjne: same nie wyrozniaja firmy w zwyklym tekscie.
+GENERIC_TOKENS = frozenset(
+    "markets market europe european capital group money tech trade trading trader invest investment"
+    " investments inwestycje finance financial finanse global international partners securities asset"
+    " assets management wealth fund funds fundusz bank broker brokers online services solutions holding"
+    " holdings consulting advisors advisory company polska poland the and co de of".split())
+
+
+def knf_name_matchable(norm: str) -> bool:
+    """Nazwa ze snapshotu nadaje sie do dokladnego dopasowania w tekscie."""
+    return len(norm) >= KNF_MIN_LEN and any(
+        t not in GENERIC_TOKENS and len(t) >= KNF_DISTINCT_LEN for t in norm.split())
 FUZZY_MAX_WORDS = 20000
 
 # Priorytet trafienia: domena > dokladna nazwa > fuzzy.
@@ -128,8 +141,8 @@ class Registry:
             names: dict[str, str] = {}
             for raw in [name, *(r.get("aliases") or [])]:
                 norm = r.get("normalized_name") if raw == name and r.get("normalized_name") else normalize_name(raw)
-                if from_knf and len(norm) < KNF_MIN_LEN and len(norm.split()) < 2:
-                    continue  # zbyt krotka nazwa ze snapshotu - same falszywe trafienia
+                if from_knf and not knf_name_matchable(norm):
+                    continue  # zbyt ogolna nazwa ze snapshotu - same falszywe trafienia
                 if len(norm) >= MIN_NAME_LEN:
                     names.setdefault(norm, raw.strip())
             if from_knf and not names:
