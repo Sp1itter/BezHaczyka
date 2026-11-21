@@ -245,3 +245,16 @@ class TestProporcjonalnosciCzcionki:
     def test_proximity_geometrii_niesie_czcionki(self):
         p = measure_geometry(_doc([self._n(ZYSK, 310, 32), self._n(RYZYKO, 360, 9)]))
         assert p.profit_font_px == 32 and p.risk_font_px == 9
+
+
+class TestWykluczeniaObietnicyZysku:
+    def test_zastrzezenie_nie_jest_obietnica_zysku(self):
+        doc = _doc(nodes=None, text="Jestesmy pod nadzorem KNF, co nie oznacza gwarancji zysku.")
+        assert measure_text(doc) is None
+
+    def test_stawka_podatku_nie_jest_obietnica_zysku(self):
+        doc = _doc(nodes=None, text="Podatek od zyskow kapitalowych z ETF wynosi obecnie 19%.")
+        assert measure_text(doc) is None
+
+    def test_prawdziwa_obietnica_nadal_wykryta(self):
+        assert measure_text(_doc(nodes=None, text="Bez ryzyka zarobisz 10%")) is not None

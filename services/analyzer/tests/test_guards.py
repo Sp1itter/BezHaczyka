@@ -237,3 +237,80 @@ def test_14_z_zastrzezeniem_zostaje_pass(text):
 def test_14_fail_modelu_nie_jest_zmieniany():
     text = "Wyniki historyczne nie stanowią wiarygodnego wskaźnika przyszłych wyników."
     assert _run("14", Verdict.FAIL, text).verdict is Verdict.FAIL
+
+
+# ---- reguly 17 i 18: warunek wstepny "odwolanie do organu nadzoru" -------- #
+# Regresja z prawdziwego korpusu FB: Bielik dal fail 18 ("powoluje sie na
+# nadzor KNF") dla reklamy apartamentu i ETP, w ktorych nie ma slowa o nadzorze.
+
+
+@pytest.mark.parametrize("rule_id", ["17", "18"])
+@pytest.mark.parametrize("text", [
+    "To Twoj czas, zeby zainwestowac i zaczac odpoczywac nad Baltykiem.",
+    "Virtune Staked Solana ETP jest notowany na GPW. Kapital narazony na ryzyko.",
+])
+def test_bez_odwolania_do_nadzoru_17_i_18_daja_pass(rule_id, text):
+    """Brak odwolania do KNF SPELNIA art. 44 ust. 8 -> PASS (scoring liczy ocenione)."""
+    for v in (Verdict.FAIL, Verdict.PASS):
+        r = _run(rule_id, v, text)
+        assert r.verdict is Verdict.PASS
+        assert r.confidence == 1.0
+        assert "nie sugeruje jego aprobaty" in r.evidence.summary
+
+
+def test_bez_odwolania_do_nadzoru_not_applicable_zostaje():
+    assert _run("17", Verdict.NOT_APPLICABLE, "Zwykla reklama.").verdict is Verdict.NOT_APPLICABLE
+
+
+# ---- straznik 17: zaprzeczenie nie jest aprobata ------------------------- #
+
+
+@pytest.mark.parametrize("text", [
+    "KNF nie ocenia ani nie zatwierdza produktu.",
+    "Produkt nie zostal zatwierdzony przez KNF.",
+    "Fundusz bez zatwierdzenia KNF jest oferowany inaczej, a KNF nie zatwierdza produktow.",
+])
+def test_17_zaprzeczenie_nie_odpala(text):
+    assert _run("17", Verdict.PASS, text).verdict is Verdict.PASS
+
+
+@pytest.mark.parametrize("text", [
+    "Produkt zatwierdzony przez KNF.",
+    "Fundusz zaakceptowany przez KNF, wiec jest pewny.",
+])
+def test_17_aprobata_nadal_fail(text):
+    assert _run("17", Verdict.PASS, text).verdict is Verdict.FAIL
+
+
+# ---- regula 2: ogolne oznaczenia reklamy --------------------------------- #
+
+
+@pytest.mark.parametrize("text", [
+    "KOMUNIKAT MARKETINGOWY. Fundusz Gamma.",
+    "Materialy reklamowe funduszu.",
+    "Tresc sponsorowana: nowy ETF.",
+    "Sponsorem odcinka jest Delta.",
+    "Partner materialu: Delta. Zainwestuj.",
+    "Super oferta #reklama",
+    "#wspolpracaplatna z Delta",
+    "Wpis oparty o wspolprace platna.",
+])
+def test_2_ogolne_oznaczenia_reklamy_daja_pass(text):
+    assert _run("2", Verdict.FAIL, text).verdict is Verdict.PASS
+
+
+@pytest.mark.parametrize("text", [
+    "Moje ETF-y na emeryture #wspolpraca. Link w bio, aplikacja naszego partnera.",
+    "Zainwestuj dzis w fundusz.",
+])
+def test_2_sam_wspolpraca_i_brak_oznaczenia_zostaja_werdyktem_modelu(text):
+    assert _run("2", Verdict.FAIL, text).verdict is Verdict.FAIL
+
+
+@pytest.mark.parametrize("text", [
+    "Inwestycja w pelni bezpieczna - spelniamy rygorystyczne wymogi KNF.",
+    "Jestesmy pod nadzorem Komisji Nadzoru Finansowego.",
+    "Fundusz nadzorowany przez regulatora, wiec Twoje pieniadze sa bezpieczne.",
+])
+def test_z_odwolaniem_do_nadzoru_18_zostaje_werdyktem_modelu(text):
+    assert _run("18", Verdict.FAIL, text).verdict is Verdict.FAIL
