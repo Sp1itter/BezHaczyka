@@ -43,7 +43,7 @@ log = logging.getLogger("api")
 _PARENTS = Path(__file__).resolve().parents
 DEFAULT_GOLD = (_PARENTS[3] if len(_PARENTS) > 3 else _PARENTS[-1]) / "fixtures" / "gold" / "labels.json"
 
-ALERT_DEDUP_MAX = 1000  # ile ostatnio wyslanych id pamietamy (dedup POST /findings vs poll)
+ALERT_DEDUP_MAX = 5000  # ile ostatnio wyslanych id pamietamy (dedup POST /findings vs poll)
 
 CSV_MAX_ROWS = 50000  # twardy limit eksportu CSV
 
@@ -137,22 +137,26 @@ def _mark_alerted(app: FastAPI, finding_id: str) -> bool:
     return True
 
 
-def _parse_ts(value: str) -> datetime:
-    dt = datetime.fromisoformat(value)
-    return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+def _env_float(name: str, default: float) -> float:
+    """Liczba dodatnia z env; zla wartosc = domyslna (start nie moze sie wywrocic)."""
+    try:
+        v = float(os.getenv(name, default))
+        return v if v > 0 else default
+    except ValueError:
+        return default
 
 
-async def poll_alerts_once(app: FastAPI) -> int:
-    """Wysyla alerty o nowych `high` zapisanych prosto do bazy; zwraca liczbe wyslanych."""
-    since: datetime = app.state.alert_since
-    rows = await run_in_threadpool(app.state.store.new_high_findings, since)
+async def poll_alerts_once(app: FastAPI, seed: bool = False) -> int:
+    """Alerty o `high` z okna ALERT_LOOKBACK_S zapisanych prosto do bazy; zwraca liczbe wyslanych.
+
+    seed=True tylko zapamietuje istniejace id (start API), niczego nie rozglasza.
+    """
+    rows = await run_in_threadpool(app.state.store.new_high_findings, app.state.alert_lookback_s)
     sent = 0
     for f in rows:
-        since = max(since, _parse_ts(f["created_at"]))
-        if _mark_alerted(app, f["id"]):
+        if _mark_alerted(app, f["id"]) and not seed:
             await app.state.hub.broadcast(alert_payload(f))
             sent += 1
-    app.state.alert_since = since
     return sent
 
 
@@ -181,8 +185,11 @@ def create_app(store: SqlStore | None = None, gold_path: Path | None = None) -> 
     async def lifespan(a: FastAPI):
         task = None
         if a.state.store.dialect == "postgresql":  # findingi analyzera ida prosto do Postgresa
-            a.state.alert_since = datetime.now(timezone.utc)
-            task = asyncio.create_task(_alert_loop(a, float(os.getenv("ALERT_POLL_S", "3"))))
+            try:
+                await poll_alerts_once(a, seed=True)  # restart nie powtarza starych alertow
+            except Exception:  # noqa: BLE001
+                log.exception("Nie udalo sie wstepnie wczytac findingow high")
+            task = asyncio.create_task(_alert_loop(a, _env_float("ALERT_POLL_S", 3)))
         try:
             yield
         finally:
@@ -193,7 +200,7 @@ def create_app(store: SqlStore | None = None, gold_path: Path | None = None) -> 
     app.state.store = store or open_store(os.getenv("DATABASE_URL"))
     app.state.hub = AlertHub()
     app.state.alerted = OrderedDict()
-    app.state.alert_since = datetime.now(timezone.utc)
+    app.state.alert_lookback_s = _env_float("ALERT_LOOKBACK_S", 3600)
     app.state.gold_path = gold_path or Path(os.getenv("GOLD_LABELS_PATH", str(DEFAULT_GOLD)))
 
     # Front w trybie dev (vite, :5173) wola API z innego originu. W compose idzie przez nginx.
