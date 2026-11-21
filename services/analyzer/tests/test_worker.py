@@ -268,7 +268,7 @@ class FakeStore:
     def save_vectors(self, doc):
         self.calls.append(("save_vectors", doc.id))
 
-    def post_finding(self, finding, document=None):
+    def post_finding(self, finding, document=None, **_kw):
         self.calls.append(("post_finding", finding.id, document is not None))
 
     def save_change_event(self, event):

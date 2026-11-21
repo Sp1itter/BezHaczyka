@@ -25,11 +25,11 @@ Bez `DATABASE_URL` baza to `services/api/data/api-dev.sqlite`. W compose
 | `GET` | `/documents/{id}` | analyzer (B) | pełny `AdDocument` |
 | `POST` | `/findings` | analyzer (B) | `Finding`; 409 gdy brak dokumentu; nowe `high` → broadcast WS |
 | `GET` | `/findings` | web | filtry: `risk_level` (wielokrotny), `status`, `module`, `source`, `min_score`, `max_score`, `q`, `limit`, `offset` |
-| `GET` | `/findings/{id}` | web | z podglądem dokumentu i `coverage` |
+| `GET` | `/findings/{id}` | web | z podglądem dokumentu, `coverage` oraz `summary` i `summary_engine` (NULL gdy brak; też w `GET /findings`) |
 | `PATCH` | `/findings/{id}` | web | `{"status": "in_review" \| "confirmed" \| "dismissed" \| ...}` |
 | `GET` | `/stats` | web | agregaty do wykresów |
 | `GET` | `/calibration` | web | zbiór złoty (`fixtures/gold/labels.json`); progi liczy front |
-| `WS` | `/ws/alerts` | web | `{"type": "finding.high", ...}` przy nowym lub eskalowanym `high` |
+| `WS` | `/ws/alerts` | web | `{"type": "finding.high", ...}` przy nowym lub eskalowanym `high`; na Postgresie także dla findingów zapisanych prosto do bazy (odpytywanie co `ALERT_POLL_S`, domyślnie 3 s; dedup po `id`). Alerty: nowe i eskalowane findingi `high` z ostatniej godziny (`ALERT_LOOKBACK_S`, domyślnie 3600). Przy kilku workerach uvicorn każdy obsługuje własnych klientów WS |
 | `GET` | `/reports/module1` | web | raport Modułu 1 (widok `module1_report`): `source`, `relation`, `flag` (z `m1_flags`; 400 gdy brak kolumny), `since` (po `last_seen_at`), `limit` (200, max 1000), `offset`; `{items, total}`. Na SQLite 503 |
 | `GET` | `/reports/module1.csv` | web | te same filtry; CSV z BOM, tablice jako `a;b`, `modul1-raport-YYYYMMDD.csv` |
 | `GET` | `/health` | compose | stan bazy |
@@ -61,3 +61,5 @@ Różnice względem SQLite, których pilnują te testy:
 - `id` w Postgresie to `UUID` — zapytanie o ID spoza formatu zwraca 404, zapis 422 (nie 500),
 - `embedding` to `vector(1024)` — wektor o innym wymiarze jest pomijany (dokument zapisuje się
   bez embeddingu, ostrzeżenie w logu); przykład kontraktowy `ad_document.json` ma skrócony wektor.
+
+Wymaga migracji 015 (casedb): po pullu uruchom `docker compose up -d --build` (albo co najmniej `casedb api analyzer dashboard`).

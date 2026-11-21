@@ -21,7 +21,8 @@ import io
 import json
 import logging
 import os
-from collections import Counter
+from collections import Counter, OrderedDict
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Literal
@@ -41,6 +42,8 @@ log = logging.getLogger("api")
 # W repo: <root>/services/api/api/main.py. W kontenerze sciezke podaje GOLD_LABELS_PATH.
 _PARENTS = Path(__file__).resolve().parents
 DEFAULT_GOLD = (_PARENTS[3] if len(_PARENTS) > 3 else _PARENTS[-1]) / "fixtures" / "gold" / "labels.json"
+
+ALERT_DEDUP_MAX = 5000  # ile ostatnio wyslanych id pamietamy (dedup POST /findings vs poll)
 
 CSV_MAX_ROWS = 50000  # twardy limit eksportu CSV
 
@@ -123,6 +126,49 @@ def alert_payload(finding: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _mark_alerted(app: FastAPI, finding_id: str) -> bool:
+    """True, gdy id jeszcze nie alarmowal (i zapamietuje go). Bez await - atomowe w petli zdarzen."""
+    seen: OrderedDict[str, None] = app.state.alerted
+    if finding_id in seen:
+        return False
+    seen[finding_id] = None
+    while len(seen) > ALERT_DEDUP_MAX:
+        seen.popitem(last=False)
+    return True
+
+
+def _env_float(name: str, default: float) -> float:
+    """Liczba dodatnia z env; zla wartosc = domyslna (start nie moze sie wywrocic)."""
+    try:
+        v = float(os.getenv(name, default))
+        return v if v > 0 else default
+    except ValueError:
+        return default
+
+
+async def poll_alerts_once(app: FastAPI, seed: bool = False) -> int:
+    """Alerty o `high` z okna ALERT_LOOKBACK_S zapisanych prosto do bazy; zwraca liczbe wyslanych.
+
+    seed=True tylko zapamietuje istniejace id (start API), niczego nie rozglasza.
+    """
+    rows = await run_in_threadpool(app.state.store.new_high_findings, app.state.alert_lookback_s)
+    sent = 0
+    for f in rows:
+        if _mark_alerted(app, f["id"]) and not seed:
+            await app.state.hub.broadcast(alert_payload(f))
+            sent += 1
+    return sent
+
+
+async def _alert_loop(app: FastAPI, every: float) -> None:
+    while True:
+        try:
+            await poll_alerts_once(app)
+        except Exception:  # noqa: BLE001 - blad bazy nie moze zabic petli
+            log.exception("Odpytywanie bazy o alerty nie powiodlo sie")
+        await asyncio.sleep(every)
+
+
 def _csv_cell(v: Any) -> Any:
     """Komorka CSV; tekst zaczynajacy sie od =,+,-,@, tab, CR dostaje prefiks ' (formula injection)."""
     if v is None:
@@ -135,9 +181,26 @@ def _csv_cell(v: Any) -> Any:
 
 
 def create_app(store: SqlStore | None = None, gold_path: Path | None = None) -> FastAPI:
-    app = FastAPI(title="InvestWatch API", version="0.1.0")
+    @asynccontextmanager
+    async def lifespan(a: FastAPI):
+        task = None
+        if a.state.store.dialect == "postgresql":  # findingi analyzera ida prosto do Postgresa
+            try:
+                await poll_alerts_once(a, seed=True)  # restart nie powtarza starych alertow
+            except Exception:  # noqa: BLE001
+                log.exception("Nie udalo sie wstepnie wczytac findingow high")
+            task = asyncio.create_task(_alert_loop(a, _env_float("ALERT_POLL_S", 3)))
+        try:
+            yield
+        finally:
+            if task:
+                task.cancel()
+
+    app = FastAPI(title="InvestWatch API", version="0.1.0", lifespan=lifespan)
     app.state.store = store or open_store(os.getenv("DATABASE_URL"))
     app.state.hub = AlertHub()
+    app.state.alerted = OrderedDict()
+    app.state.alert_lookback_s = _env_float("ALERT_LOOKBACK_S", 3600)
     app.state.gold_path = gold_path or Path(os.getenv("GOLD_LABELS_PATH", str(DEFAULT_GOLD)))
 
     # Front w trybie dev (vite, :5173) wola API z innego originu. W compose idzie przez nginx.
@@ -184,8 +247,9 @@ def create_app(store: SqlStore | None = None, gold_path: Path | None = None) -> 
         # Alert przy nowym 'high' albo przy eskalacji do 'high' — nie przy kazdym odswiezeniu.
         alerted = 0
         if finding.risk_level.value == "high" and result.previous_risk_level != "high":
-            stored = await run_in_threadpool(st().get_finding, finding.id)
-            alerted = await app.state.hub.broadcast(alert_payload(stored))
+            if _mark_alerted(app, finding.id):
+                stored = await run_in_threadpool(st().get_finding, finding.id)
+                alerted = await app.state.hub.broadcast(alert_payload(stored))
         return {"id": finding.id, "created": result.created, "alerted_clients": alerted}
 
     @app.get("/findings")
