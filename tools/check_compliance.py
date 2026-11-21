@@ -109,6 +109,12 @@ SOURCE_SUFFIXES = {".py", ".ts", ".tsx", ".js", ".jsx", ".yml", ".yaml", ".json"
 SOURCE_NAMES = {"Dockerfile", ".env.example", ".dockerignore", "Makefile"}
 SKIP_DIRS = {".venv", "node_modules", "graphify-out", "DocsTaskINWESTWATCH"}
 
+# Lockfile npm: adresy rejestru to zrodlo pobrania paczek przy BUILDZIE (z hashem
+# integrity), nie wywolanie w runtime. Plik jest generowany przez npm, wiec nie da
+# sie w nim trzymac znacznika compliance:allow-file. Jest wlasnie tym, co spelnia
+# wymog przypietych wersji dla frontu — wylaczamy go jawnie, po nazwie.
+SKIP_NAMES = {"package-lock.json"}
+
 # Jawne wyjatki. Potrzebne, bo pliki, ktore OPISUJA zakazane wzorce (testy
 # tego checkera, dokumentacja licencji), same je zawieraja i checker zglaszalby
 # sam siebie.
@@ -139,6 +145,7 @@ def _scannable(files: list[Path]) -> list[Path]:
         f
         for f in files
         if (f.suffix in SOURCE_SUFFIXES or f.name in SOURCE_NAMES)
+        and f.name not in SKIP_NAMES
         and f.exists()
         and not is_allowlisted_file(f)
     ]
