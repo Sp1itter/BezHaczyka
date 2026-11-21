@@ -45,6 +45,16 @@ Zasady z kontraktu, których API pilnuje:
 Testy działają na SQLite w pamięci. `tests/test_contracts_copy.py` pilnuje, że
 `api/contracts.py` jest identyczna z kopią analyzera.
 
-**Niezweryfikowane:** `PostgresStore` (Postgres + pgvector) nie był uruchomiony —
-w zespole nie było Dockera. SQL jest wspólny z SQLite poza filtrem modułu
-(`= ANY(modules)`), JSONB i rzutowaniem `embedding` na `vector`.
+Te same testy na prawdziwym Postgresie (stos z `infra/` musi działać):
+
+```
+$env:TEST_DATABASE_URL = "postgresql://investwatch:<haslo>@127.0.0.1:5432/investwatch"
+./.venv/Scripts/python.exe -m pytest
+```
+
+**Uwaga:** testy Postgresa czyszczą tabele `documents` i `findings` w podanej bazie.
+
+Różnice względem SQLite, których pilnują te testy:
+- `id` w Postgresie to `UUID` — zapytanie o ID spoza formatu zwraca 404, zapis 422 (nie 500),
+- `embedding` to `vector(1024)` — wektor o innym wymiarze jest pomijany (dokument zapisuje się
+  bez embeddingu, ostrzeżenie w logu); przykład kontraktowy `ad_document.json` ma skrócony wektor.
