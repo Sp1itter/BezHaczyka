@@ -9,8 +9,8 @@ from __future__ import annotations
 import json
 
 import pytest
-
 from contracts import AdDocument, Finding, RenderProbe, RuleResult, Scope
+
 from tests.conftest import REPO_ROOT
 
 EXAMPLES = REPO_ROOT / "fixtures" / "contract-examples"

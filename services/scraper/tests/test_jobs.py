@@ -1,47 +1,18 @@
-"""Kontrakt przekazania scraper -> API -> analyzer (docs/INTEGRACJA.md)."""
+"""Testy zadan RQ (jobs.py) na atrapach: baza, kolejka i zrodlo."""
 
 from __future__ import annotations
 
-import json
-import urllib.error
-from datetime import UTC, datetime
-
+import jobs
 import pytest
+from contracts import AdDocument, Publisher
+from resolver import Registry
+from sources.base import SourceGone
 
-from contracts import AdDocument, RuleResult
-from jobs import (
-    ANALYSIS_QUEUE,
-    ANALYZE_FUNC,
-    ApiError,
-    build_analysis_payload,
-    det_results_for,
-    hand_off,
-    post_document,
-)
-from tests.conftest import REPO_ROOT
-
-GOLDEN = REPO_ROOT / "fixtures" / "contract-examples" / "facebook_ad_document.json"
+ROWS = [{"knf_id": "DM-XTB", "name": "XTB S.A.", "aliases": [], "domains": ["xtb.com"], "handles": []}]
 
 
-@pytest.fixture
-def doc() -> AdDocument:
-    return AdDocument.model_validate(json.loads(GOLDEN.read_text(encoding="utf-8")))
-
-
-class FakeQueue:
-    def __init__(self) -> None:
-        self.calls: list[tuple] = []
-
-    def enqueue(self, func, *args, **kwargs):
-        self.calls.append((func, args, kwargs))
-
-
-class FakeResponse:
-    def __init__(self, status: int, body: bytes) -> None:
-        self.status, self._body = status, body
-
-    def read(self) -> bytes:
-        return self._body
+class FakeConn:
+    commits = 0
 
     def __enter__(self):
         return self
@@ -49,77 +20,77 @@ class FakeResponse:
     def __exit__(self, *exc):
         return False
 
-
-def test_names_match_analyzer_worker():
-    # analyzer/worker.py: QUEUE_NAME = "q:gpu", def analyze_document(payload)
-    assert ANALYSIS_QUEUE == "q:gpu"
-    assert ANALYZE_FUNC == "analyzer.worker.analyze_document"
+    def commit(self):
+        FakeConn.commits += 1
 
 
-def test_payload_shape_matches_integracja():
-    now = datetime(2026, 11, 21, 18, 0, tzinfo=UTC)
-    assert build_analysis_payload("abc", [], now) == {
-        "document_id": "abc",
-        "enqueued_at": "2026-11-21T18:00:00Z",
-        "det_results": [],
-    }
+class FakeSource:
+    def __init__(self, doc=None, gone=False):
+        self.doc, self.gone = doc, gone
+
+    def fetch(self, url):
+        if self.gone:
+            raise SourceGone("404")
+        return self.doc
 
 
-def test_facebook_det_results_are_valid_rule_results(doc):
-    det = det_results_for(doc)
-    assert [r["rule_id"] for r in det] == ["4", "5", "6", "7", "8"]
-    for r in det:
-        RuleResult.model_validate(r)
+@pytest.fixture
+def env(monkeypatch):
+    calls = {"record": [], "gone": [], "analysis": []}
+    FakeConn.commits = 0
+    Registry.clear_cache()
+    monkeypatch.setattr(jobs, "_redis", lambda: object())
+    monkeypatch.setattr(jobs.db, "connect", lambda: FakeConn())
+    monkeypatch.setattr(Registry, "from_db", classmethod(lambda cls, conn: Registry.from_rows(ROWS)))
+    monkeypatch.setattr(jobs.store, "record_document", lambda conn, doc, **kw: calls["record"].append((doc, kw)) or ("cid", "new"))
+    monkeypatch.setattr(jobs.store, "mark_gone", lambda conn, cid: calls["gone"].append(cid))
+    monkeypatch.setattr(jobs, "_enqueue_analysis", lambda *a: calls["analysis"].append(a))
+    return calls
 
 
-def test_post_document_sends_full_document_and_returns_api_id(doc):
-    seen = {}
-
-    def opener(req, timeout):
-        seen["url"], seen["method"] = req.full_url, req.get_method()
-        seen["body"] = json.loads(req.data)
-        return FakeResponse(201, json.dumps({"id": "api-id-1"}).encode())
-
-    assert post_document(doc, base_url="http://api.test:8000", opener=opener) == "api-id-1"
-    assert seen["url"] == "http://api.test:8000/documents" and seen["method"] == "POST"
-    AdDocument.model_validate(seen["body"])
+def doc():
+    return AdDocument(id="1", source="www", url="https://blog.example/a", fetched_at="2026-11-21T10:00:00Z",
+                      publisher=Publisher(handle="blog.example", display_name="Blog"), text="Konto w XTB")
 
 
-def test_post_document_falls_back_to_document_id(doc):
-    assert post_document(doc, base_url="http://x.test", opener=lambda r, timeout: FakeResponse(200, b"")) == doc.id
+def test_fetch_job_records_resolves_and_enqueues(monkeypatch, env):
+    monkeypatch.setattr(jobs, "build_source", lambda *a, **k: FakeSource(doc()))
+    assert jobs.fetch_job("www", "https://blog.example/a") == {"case_id": "cid", "outcome": "new"}
+    (stored, kw), = env["record"]
+    assert kw["entity_resolution"]["publisher_relation"] == "third_party" and kw["qualified"] is True
+    assert stored["publisher"]["is_official_firm_channel"] is False
+    assert FakeConn.commits == 1 and len(env["analysis"]) == 1
 
 
-def test_post_document_raises_when_api_down(doc):
-    def opener(req, timeout):
-        raise urllib.error.URLError("connection refused")
-
-    with pytest.raises(ApiError):
-        post_document(doc, base_url="http://x.test", opener=opener)
+def test_fetch_job_gone(monkeypatch, env):
+    monkeypatch.setattr(jobs, "build_source", lambda *a, **k: FakeSource(gone=True))
+    out = jobs.fetch_job("www", "https://blog.example/a", recheck=True)
+    assert out["outcome"] == "gone" and env["gone"] and not env["record"]
 
 
-def test_post_document_raises_on_bad_status(doc):
-    with pytest.raises(ApiError):
-        post_document(doc, base_url="http://x.test", opener=lambda r, timeout: FakeResponse(500, b""))
+def test_fetch_job_unqualified_is_not_analyzed(monkeypatch, env):
+    monkeypatch.setattr(jobs, "build_source", lambda *a, **k: FakeSource(doc()))
+    monkeypatch.setattr(jobs, "_fetch", lambda *a: (doc(), False, []))
+    jobs.fetch_job("youtube", "https://blog.example/a")
+    assert env["record"][0][1]["qualified"] is False and not env["analysis"]
 
 
-def test_hand_off_posts_then_enqueues_minimal_payload(doc):
-    queue = FakeQueue()
-    payload = hand_off(doc, queue, poster=lambda d: d.id)
-    assert len(queue.calls) == 1
-    func, args, _kwargs = queue.calls[0]
-    assert func == ANALYZE_FUNC
-    assert args == (payload,)
-    assert set(payload) == {"document_id", "enqueued_at", "det_results"}
-    assert payload["document_id"] == doc.id
-    assert len(payload["det_results"]) == 5
+def test_youtube_content_mapping():
+    meta = {"evidence": [{"quote": "kod XTB", "field": "title", "target": "XTB", "extra_ignored": 1}],
+            "clips": [{"text": "polecam", "start": 1.0, "end": 9.5, "url": "u", "targets": ["XTB"], "signals": ["kod"]}]}
+    ev, clip = jobs._youtube_content(meta)
+    assert (ev.kind, ev.body, ev.extra) == ("evidence", "kod XTB", {"field": "title", "target": "XTB"})
+    assert (clip.kind, clip.start_s, clip.end_s, clip.extra["targets"]) == ("clip", 1.0, 9.5, ["XTB"])
 
 
-def test_hand_off_does_not_enqueue_when_api_fails(doc):
-    queue = FakeQueue()
+def test_build_source_www_and_unknown(monkeypatch):
+    monkeypatch.delenv("S3_ENDPOINT", raising=False)
+    assert jobs.build_source("www").name == "www"
+    with pytest.raises(ValueError):
+        jobs.build_source("tiktok")
 
-    def poster(d):
-        raise ApiError("down")
 
-    with pytest.raises(ApiError):
-        hand_off(doc, queue, poster=poster)
-    assert queue.calls == []
+def test_build_source_youtube_uses_registry_rows():
+    src = jobs.build_source("youtube", registry=Registry.from_rows(ROWS))
+    assert any(e["type"] == "domain" for e in src.dictionary)
+    assert src.limiter.key == "yt:ratelimit"

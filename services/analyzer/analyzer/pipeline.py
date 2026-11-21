@@ -70,6 +70,8 @@ class EntityResolution:
 
     publisher_relation: Relation = Relation.UNKNOWN
     publisher_is_authorized: bool = False
+    # Wymieniona firma jest w rejestrze KNF. Nie podano -> wnioskujemy z registry_knf_id.
+    firm_is_authorized: bool = False
     mentions_authorized_firm: bool = False
     publisher_name: str | None = None
     firm_name_in_ad: str | None = None
@@ -91,7 +93,7 @@ class EntityResolution:
             investment_firm=InvestmentFirmRef(
                 name_in_ad=self.firm_name_in_ad,
                 registry_match=match,
-                is_authorized=self.publisher_is_authorized,
+                is_authorized=self.firm_is_authorized or bool(self.registry_knf_id),
             ),
             advertiser=AdvertiserRef(
                 name=self.publisher_name,

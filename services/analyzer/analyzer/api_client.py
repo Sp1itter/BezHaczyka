@@ -59,6 +59,15 @@ class ApiClient:
         except (ValueError, ValidationError) as exc:
             raise ApiError(f"Niepoprawny dokument {document_id}: {exc}") from exc
 
+    def post_document(self, doc: AdDocument) -> None:
+        # API zwraca 201 (nowy) lub 200 (zaktualizowany); reszta to blad.
+        try:
+            resp = self._http().post("/documents", json=doc.model_dump(mode="json"))
+        except httpx.HTTPError as exc:
+            raise ApiError(f"Nie wyslano dokumentu {doc.id}: {exc}") from exc
+        if resp.status_code not in (200, 201):
+            raise ApiError(f"Nie wyslano dokumentu {doc.id}: HTTP {resp.status_code}")
+
     def post_finding(self, finding: Finding) -> None:
         try:
             resp = self._http().post("/findings", json=finding.model_dump(mode="json"))

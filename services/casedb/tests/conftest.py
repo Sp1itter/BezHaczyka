@@ -16,7 +16,11 @@ def conn():
     from casedb import db
 
     c = db.connect(url)
-    c.execute("DROP TABLE IF EXISTS ai_results, case_assets, case_content, cases, casedb_migrations")
+    c.execute("DROP VIEW IF EXISTS module1_report")
+    c.execute(
+        "DROP TABLE IF EXISTS change_events, findings, documents, authorized_entities, knf_entities, ai_results,"
+        " case_assets, case_content, cases, casedb_migrations CASCADE"
+    )
     c.commit()
     db.migrate(c)
     yield c
