@@ -293,6 +293,31 @@ def test_report_module1(conn):
     assert store.report_module1(conn, since="2999-01-01") == []
 
 
+def test_report_module1_flags_campaign_screenshot(conn):
+    store.load_registry(conn, [
+        {"knf_id": "K1", "name": "XTB S.A.", "country": "PL", "aliases": [], "domains": [], "handles": []},
+        {"knf_id": "K2", "name": "Foreign Ltd", "country": "CY", "aliases": [], "domains": [], "handles": []}])
+    er = {"publisher_relation": "third_party", "mentions_authorized_firm": True, "registry_knf_id": "K1",
+          "disclosure_found": False}
+    a, _ = store.record_document(conn, _doc(text="Kup   XTB teraz", screenshots={}), entity_resolution=er)
+    b, _ = store.record_document(conn, _doc(id=str(uuid.uuid4()), url="https://x.pl/b", source="www",
+                                            text="kup xtb teraz", screenshots={}), entity_resolution=er)
+    o, _ = store.record_document(conn, _doc(id=str(uuid.uuid4()), url="https://x.pl/o", source="www", text="inny", screenshots={}),
+                                 entity_resolution={"publisher_relation": "official", "disclosure_found": True,
+                                                    "mentions_authorized_firm": True, "registry_knf_id": "K2",
+                                                    "firm_license_active": False,
+                                                    "affiliate_without_disclosure": True})
+    store.add_asset(conn, a, store.Asset(kind="link", uri="https://x"))
+    store.add_asset(conn, a, store.Asset(kind="screenshot", uri="s3://b/a.png"))
+    rows = {r["case_id"]: r for r in store.report_module1(conn)}
+    assert rows[a]["m1_flags"] == ["podmiot_trzeci_bez_ujawnienia"]
+    assert rows[a]["campaign_size"] == 2 and rows[b]["campaign_size"] == 2
+    assert rows[a]["campaign_key"] == rows[b]["campaign_key"] and rows[o]["campaign_size"] == 1
+    assert rows[a]["screenshot_uri"] == "s3://b/a.png" and rows[b]["screenshot_uri"] is None
+    assert rows[o]["m1_flags"] == ["link_afiliacyjny_bez_ujawnienia", "cofniete_zezwolenie", "firma_zagraniczna"]
+    assert "podmiot_trzeci_bez_ujawnienia" not in rows[o]["m1_flags"]
+
+
 def test_cli_init_and_report(conn, tmp_path: Path, monkeypatch):
     monkeypatch.setenv("DATABASE_URL", conn.info.dsn + " password=" + (conn.info.password or ""))
     assert cli.main(["init"]) == 0
