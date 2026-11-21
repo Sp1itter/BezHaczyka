@@ -1,0 +1,54 @@
+# --- Claude Code / narzedzia ---
+.claude/worktrees/
+.claude/settings.local.json
+.claude/jobs/
+
+# --- graphify: graf commitujemy (patrz CLAUDE.md), cache lokalny NIE ---
+graphify-out/cache/
+graphify-out/.cloud-cta-shown
+graphify-out/.graphify_root
+
+# --- SEKRETY: nigdy nie commitowac (wymog specyfikacji par. 5) ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials.json
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# --- Node / frontend ---
+node_modules/
+dist/
+build/
+.vite/
+npm-debug.log*
+
+# --- Dane lokalne i artefakty runtime ---
+data/
+volumes/
+*.sqlite3
+*.db
+
+# --- Media pobrane przez scraper (ida do object storage, nie do repo) ---
+fixtures/downloads/
+fixtures/media/
+*.mp4
+*.wav
+*.webm
+
+# --- Modele (pobierane przez ollama / faster-whisper, nie wersjonujemy) ---
+models/
+*.gguf
+
+# --- System ---
+.DS_Store
+Thumbs.db

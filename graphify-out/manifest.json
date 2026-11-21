@@ -1,0 +1,33 @@
+{
+  ".claude/settings.json": {
+    "mtime": 1795256105.466812,
+    "seen": 1795256740.788024,
+    "ast_hash": "d5a094f0cf09e316bd247e6bb7567fc7",
+    "semantic_hash": "d5a094f0cf09e316bd247e6bb7567fc7",
+    "ast_empty": true
+  },
+  ".claude/CLAUDE.md": {
+    "mtime": 1795256105.5657513,
+    "seen": 1795256740.788024,
+    "ast_hash": "9b31786b637be3c13978bec4c2330752",
+    "semantic_hash": "9b31786b637be3c13978bec4c2330752"
+  },
+  "CLAUDE.md": {
+    "mtime": 1795256105.4648101,
+    "seen": 1795256740.788024,
+    "ast_hash": "dfe5fa7939121e96d61b54077cc9ab84",
+    "semantic_hash": "dfe5fa7939121e96d61b54077cc9ab84"
+  },
+  "DocsTaskINWESTWATCH/Opis Wyzwania HackNation UKNF 19.11.pdf": {
+    "mtime": 1795255315.7746637,
+    "seen": 1795256740.788024,
+    "ast_hash": "ff5063ec51a947dc8978fee82372d5b8",
+    "semantic_hash": "ff5063ec51a947dc8978fee82372d5b8"
+  },
+  "DocsTaskINWESTWATCH/UKNF - Regulamin Zadania Konkursowego.pdf": {
+    "mtime": 1795255557.5519123,
+    "seen": 1795256740.788024,
+    "ast_hash": "e485c10e1093efb01fc97b3a7bd0b1a4",
+    "semantic_hash": "e485c10e1093efb01fc97b3a7bd0b1a4"
+  }
+}
