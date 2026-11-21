@@ -20,7 +20,7 @@ from analyzer.contracts import (
     RuleResult,
     Verdict,
 )
-from analyzer.llm import LlmError, OllamaClient, load_prompt
+from analyzer.llm import LlmError, OllamaClient, fit_material, load_prompt
 from analyzer.rules_llm.guards import apply_guards
 
 # rule_id -> (nazwa, severity, podstawa prawna)
@@ -135,6 +135,16 @@ def _build_result(
     )
 
 
+TRUNCATION_NOTE = " [Uwaga: material przyciety do okna modelu (poczatek i koniec).]"
+
+
+def _mark_truncated(r: RuleResult) -> RuleResult:
+    if r.verdict is Verdict.NOT_APPLICABLE:
+        return r
+    ev = r.evidence.model_copy(update={"summary": (r.evidence.summary or "") + TRUNCATION_NOTE})
+    return r.model_copy(update={"evidence": ev})
+
+
 def evaluate_batch(
     doc: AdDocument,
     client: OllamaClient | None,
@@ -175,7 +185,14 @@ def evaluate_batch(
             or "Material nie spelnia warunku wstepnego tych regul.",
         )
 
-    prompt = load_prompt(prompt_file).replace("{material}", material)
+    template = load_prompt(prompt_file)
+    # Material przycinamy do okna kontekstu (poczatek + koniec), inaczej Ollama
+    # obcina poczatek PROMPTU, czyli instrukcje. Cytaty weryfikujemy nadal
+    # wzgledem pelnego `material`.
+    fitted, truncated = fit_material(
+        material, prompt_chars=len(template.replace("{material}", ""))
+    )
+    prompt = template.replace("{material}", fitted)
 
     try:
         data = client.generate_json(prompt)
@@ -210,4 +227,7 @@ def evaluate_batch(
                 _build_result(rule_id, entry, material, rule_meta, fail_means_absence)
             )
     # Straznicy: obiektywne elementy rozstrzygamy w kodzie po odpowiedzi modelu.
-    return apply_guards(results, material, rule_meta)
+    results = apply_guards(results, material, rule_meta)
+    if truncated:
+        results = [_mark_truncated(r) for r in results]
+    return results

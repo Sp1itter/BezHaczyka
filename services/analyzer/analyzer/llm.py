@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import os
+import threading
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -33,6 +34,69 @@ DEFAULT_EMBED_MODEL = os.getenv("OLLAMA_EMBED_MODEL", "bge-m3")
 DEFAULT_TEMPERATURE = float(os.getenv("OLLAMA_TEMPERATURE", "0"))
 DEFAULT_SEED = int(os.getenv("OLLAMA_SEED", "42"))
 DEFAULT_TIMEOUT = float(os.getenv("OLLAMA_TIMEOUT_S", "120"))
+
+# SZYBKOSC. Ollama 0.5.x domyslnie uzywa num_ctx 2048 i po cichu obcina POCZATEK
+# zbyt dlugiego promptu, czyli instrukcje. Dlatego jawnie ustawiamy okno,
+# limit generowania i keep_alive (model zostaje w VRAM miedzy dokumentami).
+CHARS_PER_TOKEN = 3.5  # szacunek dla polskiego tekstu
+TRUNCATION_MARKER = "\n[...]\n"
+
+
+def _num_ctx() -> int:
+    return int(os.getenv("LLM_NUM_CTX", "4096"))
+
+
+def _num_predict() -> int:
+    return int(os.getenv("LLM_NUM_PREDICT", "400"))
+
+
+def _keep_alive() -> str:
+    return os.getenv("LLM_KEEP_ALIVE", "30m")
+
+
+def fit_material(
+    material: str,
+    prompt_chars: int = 0,
+    num_ctx: int | None = None,
+    num_predict: int | None = None,
+) -> tuple[str, bool]:
+    """Przytnij material tak, by prompt + material + odpowiedz zmiescily sie w num_ctx.
+
+    Zachowuje POCZATEK (70% budzetu) i KONIEC (30%) — ostrzezenia o ryzyku
+    czesto stoja na koncu. Zwraca (material, czy_przyciety).
+    """
+    num_ctx = _num_ctx() if num_ctx is None else num_ctx
+    num_predict = _num_predict() if num_predict is None else num_predict
+    # 10% zapasu na bledy szacunku
+    budget_tokens = (num_ctx - num_predict) * 0.9
+    budget = int(budget_tokens * CHARS_PER_TOKEN) - prompt_chars
+    budget = max(budget, 200)
+    if len(material) <= budget:
+        return material, False
+    keep = max(budget - len(TRUNCATION_MARKER), 100)
+    head = int(keep * 0.7)
+    tail = keep - head
+    return material[:head] + TRUNCATION_MARKER + material[len(material) - tail :], True
+
+
+# Wspolny, watkowo-bezpieczny klient httpx (pula polaczen) na adres bazowy.
+_SHARED: dict[tuple[str, float], httpx.Client] = {}
+_SHARED_LOCK = threading.Lock()
+
+
+def _shared_client(base_url: str, timeout: float) -> httpx.Client:
+    key = (base_url, timeout)
+    with _SHARED_LOCK:
+        c = _SHARED.get(key)
+        if c is None:
+            c = httpx.Client(
+                base_url=base_url,
+                timeout=timeout,
+                limits=httpx.Limits(max_connections=16, max_keepalive_connections=8),
+            )
+            _SHARED[key] = c
+        return c
+
 
 PROMPTS_DIR = Path(__file__).resolve().parent / "prompts"
 
@@ -58,7 +122,7 @@ class OllamaClient:
     def _http(self) -> httpx.Client:
         if self.client is not None:
             return self.client
-        return httpx.Client(base_url=self.base_url, timeout=self.timeout)
+        return _shared_client(self.base_url, self.timeout)
 
     # ----------------------------------------------------------------- #
     # Generowanie
@@ -77,7 +141,13 @@ class OllamaClient:
             "format": "json",
             # `seed` razem z temperature 0 daje powtarzalne werdykty — wymog demo
             # i uczciwosci wobec nadzorcy (patrz komentarz przy DEFAULT_TEMPERATURE).
-            "options": {"temperature": self.temperature, "seed": self.seed},
+            "keep_alive": _keep_alive(),
+            "options": {
+                "temperature": self.temperature,
+                "seed": self.seed,
+                "num_ctx": _num_ctx(),
+                "num_predict": _num_predict(),
+            },
         }
         try:
             resp = self._http().post("/api/generate", json=payload)
