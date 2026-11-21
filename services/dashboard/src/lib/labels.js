@@ -9,6 +9,10 @@ export const STATUS = {
 };
 export const SOURCE = { youtube: "YouTube", facebook: "Facebook", www: "WWW" };
 export const MODULE = { 1: "M1 · Podmioty", 2: "M2 · Treść", 3: "M3 · Rejestr KNF" };
+export const ASSIGNED_BY = { ai: "AI", human: "człowiek" };
+export const DECISION = { confirmed: "Potwierdzone", dismissed: "Odrzucone" };
+// Statusy koncowe: tylko decyzja czlowieka w weryfikacji.
+export const HUMAN_ONLY = ["confirmed", "dismissed"];
 export const ANALYSTS = ["analityk.a", "analityk.b", "analityk.c"];
 
 export const fmtDate = (iso) =>

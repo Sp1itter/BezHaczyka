@@ -5,6 +5,9 @@
 //   [DB-1] GET   /api/findings           -> SELECT findings f JOIN documents d (store.list_findings)
 //   [DB-2] GET   /api/findings/:id       -> store.get_finding
 //   [DB-3] PATCH /api/findings/:id       -> UPDATE findings SET status/assignee (store.update_status)
+//          body: { status } | { assignee, actor } | { review: { decision, note }, actor }
+//          confirmed/dismissed tylko przez review od czlowieka (actor); brak kolumn: assignee, assigned_by,
+//          ai_suggestion, review_* -> nowa migracja casedb
 //   [DB-4] GET   /api/stats              -> agregaty (services/api /stats)
 //   [DB-5] GET   /api/stats/trend        -> GROUP BY date_trunc('day', created_at), risk_level  (NOWY endpoint)
 //   [DB-6] GET   /api/calibration        -> zbior zloty (fixtures/gold/labels.json)
@@ -12,7 +15,7 @@
 //          (services/api ma dzis natywny WS /ws/alerts; patrz src/api/socket.js)
 import http from "node:http";
 import { Server } from "socket.io";
-import { makeFindings, makeFinding, makeGold, STATUSES } from "./data.js";
+import { makeFindings, makeFinding, makeGold, STATUSES, HUMAN_ONLY } from "./data.js";
 
 const PORT = Number(process.env.MOCK_PORT || 4000);
 const ALERT_EVERY_MS = Number(process.env.MOCK_ALERT_MS || 25000);
@@ -30,6 +33,8 @@ function applyFilters(items, sp) {
   const from = sp.get("from");
   const to = sp.get("to");
   const q = (sp.get("q") || "").toLowerCase();
+  const minScore = sp.get("min_score") != null ? Number(sp.get("min_score")) : null;
+  const reviewed = sp.get("reviewed"); // "true" | "false" | null
   return items.filter(
     (f) =>
       (!risk.length || risk.includes(f.risk_level)) &&
@@ -38,6 +43,8 @@ function applyFilters(items, sp) {
       (!module.length || f.modules.some((m) => module.includes(m))) &&
       (!from || f.created_at >= from) &&
       (!to || f.created_at <= to) &&
+      (minScore == null || f.risk_score >= minScore) &&
+      (reviewed == null || (reviewed === "true") === !!f.review) &&
       (!q ||
         [f.document.title, f.document.publisher, f.routing.reason, f.entities.investment_firm.name_in_ad]
           .join(" ")
@@ -110,11 +117,26 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "GET") return send(res, 200, f);
     if (req.method === "PATCH") {
       const body = await readBody(req);
-      if (body.status && !STATUSES.includes(body.status)) return send(res, 422, { detail: "Zly status" });
-      if (body.status) f.status = body.status;
-      if ("assignee" in body) f.assignee = body.assignee || null;
+      if (body.status) {
+        if (!STATUSES.includes(body.status)) return send(res, 422, { detail: "Zly status" });
+        if (HUMAN_ONLY.includes(body.status))
+          return send(res, 422, { detail: "Potwierdzenie/odrzucenie tylko przez weryfikacje czlowieka (review)" });
+        f.status = body.status;
+      }
+      if ("assignee" in body) {
+        f.assignee = body.assignee || null;
+        f.assigned_by = f.assignee ? "human" : null;
+      }
+      if (body.review) {
+        if (!body.actor) return send(res, 422, { detail: "Weryfikacja wymaga osoby (actor)" });
+        const { decision, note } = body.review;
+        if (!HUMAN_ONLY.includes(decision)) return send(res, 422, { detail: "decision: confirmed | dismissed" });
+        f.status = decision;
+        f.review = { decision, by: body.actor, at: new Date().toISOString(), note: note || null };
+        if (!f.assignee) { f.assignee = body.actor; f.assigned_by = "human"; }
+      }
       io.emit("finding.updated", { finding_id: f.id, status: f.status, assignee: f.assignee });
-      return send(res, 200, { id: f.id, status: f.status, assignee: f.assignee });
+      return send(res, 200, f);
     }
   }
   if (req.method === "GET" && p === "/stats") return send(res, 200, stats(applyFilters(findings, sp)));
@@ -130,6 +152,7 @@ io.on("connection", (s) => s.emit("hello", { clients: io.engine.clientsCount }))
 setInterval(() => {
   const f = makeFinding(new Date());
   f.status = "new";
+  if (f.risk_level === "high") { f.assignee = f.ai_suggestion.assignee; f.assigned_by = "ai"; }
   findings.unshift(f);
   if (f.risk_level === "high") {
     io.emit("finding.high", {

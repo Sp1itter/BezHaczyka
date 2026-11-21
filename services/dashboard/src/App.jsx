@@ -9,10 +9,11 @@ import Dashboard from "./views/Dashboard.jsx";
 import Discover from "./views/Discover.jsx";
 import Alerts from "./views/Alerts.jsx";
 import Calibration from "./views/Calibration.jsx";
+import Review from "./views/Review.jsx";
 import { api } from "./api/client.js";
 import { connectAlerts } from "./api/socket.js";
-import { MODULE, RISK, SOURCE, STATUS } from "./lib/labels.js";
-import { BRAND, NAV } from "./config.js";
+import { ANALYSTS, MODULE, RISK, SOURCE, STATUS } from "./lib/labels.js";
+import { BRAND, DEFAULT_USER, NAV } from "./config.js";
 
 const FILTER_GROUPS = [
   { key: "source", label: "Źródło", options: SOURCE },
@@ -21,7 +22,7 @@ const FILTER_GROUPS = [
   { key: "status", label: "Status", options: STATUS },
 ];
 
-const VIEWS = { dashboard: Dashboard, discover: Discover, alerts: Alerts, calibration: Calibration };
+const VIEWS = { dashboard: Dashboard, discover: Discover, alerts: Alerts, review: Review, calibration: Calibration };
 
 // Zakres czasu -> from/to w ISO (format, ktory dostaje API).
 function timeRange(range, custom) {
@@ -39,6 +40,7 @@ export default function App() {
   const [filters, setFilters] = useState({});
   const [reloadKey, setReloadKey] = useState(0);
   const [threshold, setThreshold] = useState(65);
+  const [currentUser, setCurrentUser] = useState(DEFAULT_USER);
   const [selected, setSelected] = useState(null);
   const [live, setLive] = useState(false);
   const [feed, setFeed] = useState([]);
@@ -63,11 +65,11 @@ export default function App() {
   );
 
   const open = (id) => api.finding(id).then(setSelected);
-  const update = async (id, patch) => {
-    await api.updateFinding(id, patch);
-    if (selected?.id === id) setSelected({ ...selected, ...patch });
-    reload();
-  };
+  // Po zapisie odswiezamy szczegoly z serwera (mock zwraca caly rekord).
+  const refreshSelected = (id) => selected?.id === id && api.finding(id).then(setSelected);
+  const update = async (id, patch) => { await api.updateFinding(id, patch); refreshSelected(id); reload(); };
+  const review = async (id, decision, note) => { await api.review(id, decision, note, currentUser); refreshSelected(id); reload(); };
+  const assign = async (id, assignee) => { await api.assign(id, assignee, currentUser); refreshSelected(id); reload(); };
 
   const nav = NAV.map((n) => (n.id === "alerts" ? { ...n, badge: feed.length || null } : n));
   const View = VIEWS[view];
@@ -75,7 +77,15 @@ export default function App() {
 
   return (
     <div className="app">
-      <Sidebar items={nav} active={view} onSelect={setView} brand={BRAND} />
+      <Sidebar items={nav} active={view} onSelect={setView} brand={BRAND}
+        footer={
+          <label className="user">
+            <span className="muted">Zalogowany</span>
+            <select value={currentUser} onChange={(e) => setCurrentUser(e.target.value)}>
+              {ANALYSTS.map((a) => <option key={a}>{a}</option>)}
+            </select>
+          </label>
+        } />
       <main>
         <TopBar title={title} query={q} onQuery={setQ} range={range} onRange={setRange}
           custom={custom} onCustom={setCustom} onRefresh={reload} live={live} />
@@ -84,11 +94,12 @@ export default function App() {
         )}
         <div className="content">
           <View query={query} reloadKey={reloadKey} onOpen={open} onUpdate={update}
-            live={live} feed={feed} threshold={threshold} onThreshold={setThreshold} />
+            live={live} feed={feed} threshold={threshold} onThreshold={setThreshold}
+            currentUser={currentUser} onReview={review} onAssign={assign} onGoCalibration={() => setView("calibration")} />
         </div>
       </main>
       <Flyout open={!!selected} title="Szczegóły rekordu" onClose={() => setSelected(null)}>
-        <FindingDetail finding={selected} onUpdate={update} />
+        <FindingDetail finding={selected} onUpdate={update} onReview={review} onAssign={assign} currentUser={currentUser} />
       </Flyout>
       <Toasts items={toasts} onOpen={(id) => { open(id); setToasts((t) => t.filter((x) => x.finding_id !== id)); }}
         onDismiss={(id) => setToasts((t) => t.filter((x) => x.finding_id !== id))} />
