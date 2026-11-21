@@ -142,11 +142,14 @@ def _mentions_rule(text: str, rule_id: str) -> bool:
 
 # Tokeny twierdzen prawnych/oskarzen: wolno ich uzyc tylko, gdy wystepuja w danych
 # podanych modelowi (np. w podstawie prawnej reguly). Inaczej model je zmyslil.
+# Wyjatki: AUTH_TOKENS sprawdzamy polaryzacja wzgledem pola Autoryzacja, a `rejestr`
+# jest dozwolony, gdy dane mowia o dopasowaniu do rejestru (EXTRA_SOURCE).
 CLAIM_TOKENS = (
     "art.", "ustaw", "rozporzadz", "dyrektyw", "zezwol", "autoryz", "licencj", "doradztw",
-    "nielegaln", "oszust", "piramid", "gwarantow", "kara", "sankcj", "prokurat",
-    "modul", "rejestr",  # numery modulow i rejestr KNF: tylko jesli wynikaja z naruszonych regul
+    "nielegaln", "oszust", "piramid", "gwarantow", "kara", "sankcj", "prokurat", "rejestr",
 )
+AUTH_TOKENS = ("autoryz", "zezwol", "licencj")
+_NEGATION = re.compile(r"(?<!\w)(nie|brak\w*|bez)(?!\w)")
 
 # Sprzecznosci z naruszona regula: wzorce (na tekscie bez diakrytykow), ktore NIE moga
 # wystapic, gdy regula jest naruszona (np. regula 3 lamie sie brakiem informacji o
@@ -167,7 +170,25 @@ def _sentences(text: str) -> int:
     return len(_SENTENCE_SPLIT.split(text.strip()))
 
 
-def check_llm_reply(data: object, fails: list[RuleResult], data_block: str):
+def _auth_state(finding: Finding) -> bool | None:
+    """Stan z pola Autoryzacja: True/False albo None (nie ustalono)."""
+    value = _authorization(finding)
+    return None if value == "nie ustalono" else finding.entities.investment_firm.is_authorized
+
+
+def _extra_source(finding: Finding) -> str:
+    """Dodatkowe fakty o rejestrze, ktore model dostaje w polach Firma/Autoryzacja."""
+    firm = finding.entities.investment_firm
+    if firm.registry_match:
+        return "rejestr"
+    if _auth_state(finding) is False:
+        return "brak w rejestrze"
+    return ""
+
+
+def check_llm_reply(
+    data: object, fails: list[RuleResult], data_block: str, auth: bool | None = None
+):
     """Straznik odpowiedzi modelu: (tekst, None) gdy przyjeta, (None, powod) gdy odrzucona."""
     if not isinstance(data, dict):
         return None, "ksztalt"
@@ -182,13 +203,38 @@ def check_llm_reply(data: object, fails: list[RuleResult], data_block: str):
         return None, "brak_numeru_reguly"
     folded, source = _fold(text), _fold(data_block)
     for token in CLAIM_TOKENS:
-        if token in folded and token not in source:
+        if token in folded and token not in source and token not in AUTH_TOKENS:
             return None, f"twierdzenie:{token}"
+    for token in AUTH_TOKENS:
+        if token not in folded or token in source:
+            continue
+        if auth is None:
+            return None, f"twierdzenie:{token}"
+        for sentence in _SENTENCE_SPLIT.split(text):
+            sent = _fold(sentence)
+            if any(t in sent for t in AUTH_TOKENS) and bool(_NEGATION.search(sent)) == auth:
+                return None, "autoryzacja_polarnosc"
     for r in fails:
         for pattern in CONTRADICTIONS.get(r.rule_id, ()):
             if re.search(pattern, folded):
                 return None, f"sprzecznosc:{r.rule_id}"
     return text, None
+
+
+def _correction(reason: str) -> str:
+    """Zdanie dla modelu: dlaczego odrzucono poprzednia odpowiedz."""
+    kind, _, arg = reason.partition(":")
+    why = {
+        "pusta": "odpowiedź pusta",
+        "ksztalt": "odpowiedź nie jest obiektem JSON z polem summary",
+        "za_dluga": f"za długa (max {MAX_LEN} znaków)",
+        "za_duzo_zdan": "za dużo zdań (max 3)",
+        "brak_numeru_reguly": "brak numeru naruszonej reguły",
+        "twierdzenie": f"użyto słowa '{arg}', które nie wynika z danych",
+        "autoryzacja_polarnosc": "stwierdzenie o autoryzacji niezgodne z polem Autoryzacja",
+        "sprzecznosc": f"sprzeczność z naruszoną regułą {arg}",
+    }.get(kind, reason)
+    return f"\n\nPoprzednia odpowiedź odrzucona: {why} — popraw i odpowiedz ponownie w JSON.\n"
 
 
 def explain_summary(
@@ -197,24 +243,36 @@ def explain_summary(
     client: OllamaClient | None = None,
     use_llm: bool = True,
 ) -> tuple[str, str, str | None]:
-    """(tekst, engine, powod_odrzucenia_LLM albo None). Nigdy nie rzuca LlmError."""
+    """(tekst, engine, powod). Nigdy nie rzuca LlmError, najwyzej 2 wywolania modelu.
+
+    Powod: None = LLM przyjety za pierwszym razem; "a" = LLM przyjety po ponowieniu
+    (a = powod pierwszego odrzucenia); "a>b" albo "a" przy szablonie = odrzucenia/blad.
+    """
     fails = _failed(finding)
     reason = None
     if fails and use_llm:
         values = _data_values(finding, doc, fails)
-        # Zrodlo tokenow twierdzen: tylko naruszone reguly i pole Autoryzacja (routing moze
+        # Zrodlo tokenow twierdzen: naruszone reguly (pole Autoryzacja ocenia polaryzacja; routing moze
         # wspominac o doradztwie, ale to nie jest podstawa naruszenia).
-        data_block = values["violations"] + "\n" + values["authorization"]
+        data_block = "\n".join(
+            (values["violations"], _extra_source(finding))
+        )
+        auth = _auth_state(finding)
+        prompt = _prompt(values)
         try:
             client = client or OllamaClient()
-            text, reason = check_llm_reply(
-                client.generate_json(_prompt(values)), fails, data_block
-            )
-            if text:
-                return text, "llm", None
-            log.warning("Podsumowanie %s: odpowiedz modelu odrzucona (%s)", finding.id, reason)
+            for attempt in (1, 2):
+                text, why = check_llm_reply(client.generate_json(prompt), fails, data_block, auth)
+                if text:
+                    return text, "llm", reason
+                log.warning(
+                    "Podsumowanie %s: odpowiedz modelu odrzucona (%s), proba %d",
+                    finding.id, why, attempt,
+                )
+                reason = why if reason is None else f"{reason}>{why}"
+                prompt = _prompt(values) + _correction(why)
         except LlmError as exc:
-            reason = "llm_error"
+            reason = "llm_error" if reason is None else f"{reason}>llm_error"
             log.warning("Podsumowanie %s: model niedostepny: %s", finding.id, exc)
     return _template(finding, doc), "template", reason
 

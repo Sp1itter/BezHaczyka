@@ -57,7 +57,8 @@ def backfill(
 ) -> dict:
     """Policz i zapisz podsumowania; zwraca liczniki {total, llm, template, errors, rejected}.
 
-    `rejected` to slownik powod -> liczba odrzucen odpowiedzi LLM przez straznik.
+    `llm_retry` to czesc `llm` przyjeta po ponowieniu; `rejected` to powod -> liczba
+    odrzuconych odpowiedzi LLM (kazda proba liczona osobno).
     """
     sql = "SELECT * FROM findings WHERE " + ("TRUE" if force else "summary IS NULL")
     params: list = []
@@ -69,15 +70,18 @@ def backfill(
         sql += " LIMIT %s"
         params.append(limit)
     rows = conn.execute(sql, tuple(params)).fetchall()
-    stats = {"total": len(rows), "llm": 0, "template": 0, "errors": 0}
+    stats = {"total": len(rows), "llm": 0, "template": 0, "errors": 0, "llm_retry": 0}
     rejected: Counter = Counter()
     for row in rows:
         try:
             text, used, reason = explain_summary(
                 _finding_of(row), _doc_of(row), client=client, use_llm=use_llm
             )
-            if reason:
-                rejected[reason] += 1
+            for part in (reason or "").split(">"):
+                if part:
+                    rejected[part] += 1
+            if used == "llm" and reason:
+                stats["llm_retry"] += 1  # przyjety dopiero po ponowieniu
             conn.execute(
                 "UPDATE findings SET summary = %s, summary_engine = %s WHERE id = %s",
                 (text, used, row["id"]),
@@ -109,7 +113,7 @@ def main(argv: list[str] | None = None) -> int:
             conn, use_llm=args.llm, limit=args.limit, force=args.force, engine=args.engine
         )
     print(
-        f"Findingow: {stats['total']}, llm: {stats['llm']}, "
+        f"Findingow: {stats['total']}, llm: {stats['llm']} (po ponowieniu: {stats['llm_retry']}), "
         f"szablon: {stats['template']}, bledy: {stats['errors']}, "
         f"odrzucone przez straznik: {stats['rejected']}"
     )

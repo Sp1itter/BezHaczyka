@@ -10,7 +10,7 @@ import pytest
 
 from analyzer.contracts import AdDocument, Evidence, EvidenceKind, Finding, RuleResult, Verdict
 from analyzer.llm import LlmError
-from analyzer.summary import build_summary
+from analyzer.summary import build_summary, explain_summary
 from analyzer.worker import handle_job
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -59,11 +59,15 @@ def _finding(rules: list[RuleResult], level: str = "high", score: float = 72.4) 
 class FakeClient:
     def __init__(self, reply=None, error: Exception | None = None):
         self.reply, self.error, self.prompts = reply, error, []
+        self.calls = 0
 
     def generate_json(self, prompt: str) -> dict:
         self.prompts.append(prompt)
+        self.calls += 1
         if self.error:
             raise self.error
+        if isinstance(self.reply, list) and self.reply and isinstance(self.reply[0], dict):
+            return self.reply[min(self.calls, len(self.reply)) - 1]  # kolejne odpowiedzi
         return self.reply
 
 
@@ -134,7 +138,7 @@ def _reason(text: str, rules=None, legal_basis: str | None = None) -> str | None
         _finding(rules), None, client=FakeClient(reply={"summary": text})
     )
     assert (engine == "llm") == (reason is None)
-    return reason
+    return reason and reason.split(">")[0]  # pierwsza proba (ta sama odpowiedz w obu)
 
 
 def test_guard_too_many_sentences_and_chars():
@@ -157,6 +161,65 @@ def test_guard_claim_must_come_from_failed_rules_not_routing():
     client = FakeClient(reply={"summary": "Reguła 3 naruszona: doradztwo bez zezwolenia."})
     _, engine = build_summary(f, None, client=client)
     assert engine == "template"
+
+
+def _with_firm(authorized: bool | None) -> Finding:
+    f = _finding(FAILS)
+    if authorized is None:
+        f.entities.investment_firm.name_in_ad = None
+    else:
+        f.entities.investment_firm.is_authorized = authorized
+    return f
+
+
+def _try(finding: Finding, text: str):
+    return build_summary(finding, None, client=FakeClient(reply={"summary": text}))[1]
+
+
+def test_auth_polarity_unauthorized():
+    f = _with_firm(False)
+    assert _try(f, "Reguła 3 naruszona, firma nie posiada autoryzacji KNF.") == "llm"
+    assert _try(f, "Reguła 3 naruszona, firma jest autoryzowana przez KNF.") == "template"
+    assert _try(f, "Reguła 3 naruszona. Firma nie figuruje w rejestrze.") == "llm"
+
+
+def test_auth_polarity_authorized():
+    f = _with_firm(True)
+    assert _try(f, "Reguła 3 naruszona, firma jest autoryzowana przez KNF.") == "llm"
+    assert _try(f, "Reguła 3 naruszona, firma nie ma autoryzacji KNF.") == "template"
+    assert _try(f, "Reguła 3 naruszona. Firma nie figuruje w rejestrze.") == "template"
+
+
+def test_auth_unknown_rejects_auth_words():
+    assert _try(_with_firm(None), "Reguła 3 naruszona, brak autoryzacji.") == "template"
+
+
+def test_module_number_no_longer_a_claim():
+    assert _reason("Reguła 3 naruszona, dokument skierowano do modułu 1.") is None
+
+
+def test_retry_after_rejection_accepted():
+    good = {"summary": "Reguła 3 naruszona: brak ostrzeżenia."}
+    client = FakeClient(reply=[{"summary": "Za mało konkretów."}, good])
+    text, engine, reason = explain_summary(_finding(FAILS), None, client=client)
+    assert (text, engine, reason) == (good["summary"], "llm", "brak_numeru_reguly")
+    assert client.calls == 2
+    assert "Poprzednia odpowiedź odrzucona: brak numeru naruszonej reguły" in client.prompts[1]
+    assert "Poprzednia" not in client.prompts[0]
+
+
+def test_retry_also_rejected_gives_template_and_max_two_calls():
+    client = FakeClient(reply=[{"summary": "Pierwsza zła."}, {"summary": "Druga zła. A. B. C."}])
+    _, engine, reason = explain_summary(_finding(FAILS), None, client=client)
+    assert engine == "template" and client.calls == 2
+    assert reason == "brak_numeru_reguly>za_duzo_zdan"
+    assert "brak numeru naruszonej reguły" in client.prompts[1]
+
+
+def test_llm_error_not_retried():
+    client = FakeClient(error=LlmError("x"))
+    explain_summary(_finding(FAILS), None, client=client)
+    assert client.calls == 1
 
 
 def test_guard_allows_claims_present_in_data():
@@ -285,7 +348,7 @@ def test_backfill_on_real_db(pg_conn):
 
     client = FakeClient(reply={"summary": "Naruszona reguła 3 (obietnica zysku)."})
     stats = backfill(pg_conn, use_llm=True, client=client)
-    assert stats == {"total": 2, "llm": 1, "template": 1, "errors": 0, "rejected": {}}
+    assert stats == {"total": 2, "llm": 1, "template": 1, "errors": 0, "llm_retry": 0, "rejected": {}}
     rows = {
         str(r["id"]): r
         for r in pg_conn.execute("SELECT id, summary, summary_engine FROM findings")
