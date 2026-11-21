@@ -1,0 +1,7 @@
+# Serwis api (osoba C) — FastAPI + Postgres. Wersje PRZYPIETE (weryfikowalny lancuch dostaw).
+# Wszystko na licencjach permisywnych.
+fastapi==0.115.5           # MIT
+uvicorn==0.32.1            # BSD-3-Clause
+websockets==13.1           # BSD-3-Clause — transport WS dla uvicorn
+pydantic==2.9.2            # MIT — ta sama wersja co analyzer (wspolne kontrakty)
+psycopg[binary]==3.3.9     # LGPL-3.0 (dynamiczne linkowanie) — ta sama wersja co casedb

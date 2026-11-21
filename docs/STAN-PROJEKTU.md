@@ -50,8 +50,12 @@ jest niezweryfikowane, jest to napisane wprost.
 
 ### Osoba C — `services/api`, `services/web`
 
-**Zero commitów.** Serwisy nie istnieją. Przygotowany punkt startowy: `infra/`
-z compose, `init.sql` pokrywającym 100% pól obu kontraktów, i README pisanym pod nią.
+**Minimum działa lokalnie (bez Dockera).** API: dokumenty, findingi z filtrami,
+zmiana statusu, `/stats`, `/calibration`, WebSocket `/ws/alerts`; 25 testów, a
+`ApiClient` analyzera sprawdzony przeciw niemu (pobranie dokumentu + `POST /findings`).
+Dashboard: tabela + szczegóły z dowodami, przegląd z wykresami, panel kalibracji
+liczony po stronie klienta (zgodny z `evaluate.py`: próg 50 → TP 0, FP 0, FN 3, TN 5),
+alerty na żywo. **Nieprzetestowane:** Postgres w `PostgresStore` i oba Dockerfile.
 
 ---
 
@@ -144,10 +148,9 @@ aktualizacji**. Projekt: `docs/superpowers/specs/2026-11-22-harmonogram-design.m
 3. ~~Reguła 13~~ — zrobiona po stronie analyzera (B), korzysta z RenderProbe.
 
 ### Osoba C
-1. `services/api` — FastAPI, `POST /findings`, `GET /findings` z filtrami, WebSocket.
-2. `services/web` — tabela findingów, widok szczegółów z `evidence`, wykresy,
-   **panel kalibracji**.
-3. Usunąć `profiles: ["full"]` z `infra/docker-compose.yml`, gdy serwisy powstaną.
+1. Pierwszy `docker compose up` z Postgresem — weryfikacja `PostgresStore` i obrazów `api`/`web`.
+2. Prawdziwe findingi z korpusu w bazie (analyzer → `POST /findings`) zamiast samych przykładów kontraktowych.
+3. Wycinki `screenshot_crop` przy dowodach, widok zmian w czasie (`ChangeEvent`), `npm audit`.
 
 ### Wspólne, blok dokumentacyjny
 `README.md` (Quick Start ≤ 1 ekran), `docs/AI_PROCESS.md` (**20% oceny**),
