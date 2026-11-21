@@ -1,0 +1,66 @@
+# Progi liczbowe analizatora - jedno zrodlo prawdy dla konfiguracji.
+#
+# Wartosci tutaj MUSZA byc zgodne z kodem:
+#   - sekcja `scoring`  <-> analyzer/scoring.py   (DEFAULT_FLAG_THRESHOLD, HIGH_THRESHOLD, MEDIUM_THRESHOLD)
+#   - sekcja `dedup`    <-> analyzer/embeddings.py (NEAR_DUPLICATE_COSINE, SAME_CAMPAIGN_COSINE, SIMHASH_MAX_DISTANCE)
+# Test tests/test_config.py pilnuje tej zgodnosci - rozjechanie zrodel jest bledem.
+#
+# Progi regul deterministycznych (4, 5, 6, 8) sa konfigurowalne i to tutaj
+# jest ich zrodlo. Osobna os kalibracji obok globalnego progu scoringu (design doc, par. 9).
+#
+# Podstawy prawne: rozporzadzenie delegowane Komisji (UE) 2017/565 (art. 44).
+
+# -----------------------------------------------------------------------------
+# Reguly deterministyczne
+# -----------------------------------------------------------------------------
+rules:
+
+  # Regula 4 - rozmiar czcionki ryzyka.
+  # Stosunek czcionki ostrzezenia o ryzyku do dominujacej czcionki w materiale.
+  # Ponizej progu -> fail.
+  rule_4:
+    min_ratio: 0.9
+    legal_basis: "art. 44 ust. 2 lit. c rozporzadzenia delegowanego 2017/565"
+
+  # Regula 5 - ekspozycja i kontrast.
+  # Kontrast WCAG ponizej progu -> fail. Przy nieznanym tle wynik to not_applicable, nigdy fail.
+  rule_5:
+    min_contrast: 4.5
+    legal_basis: "art. 44 ust. 2 lit. c i e rozporzadzenia delegowanego 2017/565"
+
+  # Regula 6 - zakrywanie / ukrywanie ostrzezenia.
+  # Ostrzezenie w stopce (footer/legal/disclaimer) i nizej niz ten ulamek wysokosci strony -> fail.
+  rule_6:
+    footer_position_fraction: 0.85
+    legal_basis: "art. 44 ust. 2 lit. e rozporzadzenia delegowanego 2017/565"
+
+  # Regula 8 - responsywnosc.
+  # Na viewporcie mobilnym czcionka mniejsza niz ta wartosc (px) albo obciecie tresci -> fail.
+  rule_8:
+    min_mobile_font_px: 9
+    legal_basis: "art. 44 ust. 2 lit. g rozporzadzenia delegowanego 2017/565"
+
+# -----------------------------------------------------------------------------
+# Scoring ryzyka
+# -----------------------------------------------------------------------------
+# Progi poziomu ryzyka i flagi. Wartosci zgodne z analyzer/scoring.py.
+# Brak podstawy prawnej - to parametry wewnetrzne kalibracji, nie wymog przepisu.
+scoring:
+  # Od tego wyniku material zostaje oflagowany (domyslny prog panelu kalibracji).
+  flag_threshold: 50.0
+  # Poziom HIGH od tego wyniku - odpala alert WebSocket w dashboardzie.
+  high_threshold: 70.0
+  # Poziom MEDIUM od tego wyniku (ponizej - LOW).
+  medium_threshold: 40.0
+
+# -----------------------------------------------------------------------------
+# Deduplikacja i podobienstwo kampanii
+# -----------------------------------------------------------------------------
+# Wartosci zgodne z analyzer/embeddings.py. Brak podstawy prawnej - parametry techniczne.
+dedup:
+  # Cosinus embeddingow od tej wartosci = near-duplicate (ten sam material).
+  near_duplicate_cosine: 0.95
+  # Cosinus od tej wartosci = ta sama kampania (podobny material, inny wariant).
+  same_campaign_cosine: 0.88
+  # Maksymalna odleglosc Hamminga simhash, przy ktorej uznajemy teksty za takie same.
+  simhash_max_distance: 6
