@@ -155,6 +155,49 @@ class TestFleksjiWRouterze:
         assert router._normalize is router.normalize
 
 
+class TestPowtarzalnosciModelu:
+    """Regresja: przy temperature 0.1 werdykty Bielika zmienialy sie miedzy
+    przebiegami na TYM SAMYM materiale — ta sama reklama raz lamala reguly
+    1, 2 i 18, raz tylko 1 i 2.
+
+    Dla narzedzia nadzorczego to nie do przyjecia: nadzorca nie moze dostawac
+    innego ustalenia przy kazdym odswiezeniu, a demo przed jury musi zachowac
+    sie tak samo jak na probie. Stad temperature 0 i staly seed.
+    """
+
+    def test_temperatura_zero_i_staly_seed(self) -> None:
+        from analyzer.llm import DEFAULT_SEED, DEFAULT_TEMPERATURE
+
+        assert DEFAULT_TEMPERATURE == 0.0, (
+            "temperature > 0 przywraca niedeterminizm werdyktow"
+        )
+        assert isinstance(DEFAULT_SEED, int)
+
+    def test_seed_jest_wysylany_do_ollamy(self) -> None:
+        """Sam temperature 0 nie wystarcza — bez seeda llama.cpp moze dalej
+        roznic sie miedzy procesami."""
+        import json as _json
+
+        import httpx
+
+        from analyzer.llm import OllamaClient
+
+        przechwycone: dict = {}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            przechwycone.update(_json.loads(request.content))
+            return httpx.Response(200, json={"response": "{}"})
+
+        client = OllamaClient(
+            client=httpx.Client(
+                transport=httpx.MockTransport(handler), base_url="http://fake"
+            )
+        )
+        client.generate_json("prompt")
+        assert przechwycone["options"]["temperature"] == 0.0
+        assert "seed" in przechwycone["options"]
+
+
 class TestZaleznosci:
     def test_redis_jest_przypiety_jawnie(self) -> None:
         """rq ciagnie redis tranzytywnie, ale zasada weryfikowalnego lancucha

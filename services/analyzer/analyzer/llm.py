@@ -23,9 +23,15 @@ DEFAULT_MODEL = os.getenv(
 )
 DEFAULT_EMBED_MODEL = os.getenv("OLLAMA_EMBED_MODEL", "bge-m3")
 
-# Bielik jest wrazliwy na temperature — karta modelu zaleca 0.2.
-# Dla zadan klasyfikacyjnych chcemy powtarzalnosci, wiec jeszcze nizej.
-DEFAULT_TEMPERATURE = float(os.getenv("OLLAMA_TEMPERATURE", "0.1"))
+# POWTARZALNOSC. Karta Bielika zaleca temperature 0.2, ale przy 0.1 werdykty
+# FAKTYCZNIE zmienialy sie miedzy przebiegami na tym samym materiale: ta sama
+# reklama raz lamala reguly 1, 2 i 18, raz tylko 1 i 2. Dla narzedzia
+# nadzorczego to nie do przyjecia z dwoch powodow: nadzorca nie moze dostawac
+# innego ustalenia przy kazdym odswiezeniu, a demo przed jury musi zachowac
+# sie tak samo jak na probie.
+# Dlatego temperature 0 (dekodowanie zachlanne) plus staly `seed`.
+DEFAULT_TEMPERATURE = float(os.getenv("OLLAMA_TEMPERATURE", "0"))
+DEFAULT_SEED = int(os.getenv("OLLAMA_SEED", "42"))
 DEFAULT_TIMEOUT = float(os.getenv("OLLAMA_TIMEOUT_S", "120"))
 
 PROMPTS_DIR = Path(__file__).resolve().parent / "prompts"
@@ -45,6 +51,7 @@ class OllamaClient:
     model: str = DEFAULT_MODEL
     embed_model: str = DEFAULT_EMBED_MODEL
     temperature: float = DEFAULT_TEMPERATURE
+    seed: int = DEFAULT_SEED
     timeout: float = DEFAULT_TIMEOUT
     client: httpx.Client | None = None
 
@@ -68,7 +75,9 @@ class OllamaClient:
             "prompt": prompt,
             "stream": False,
             "format": "json",
-            "options": {"temperature": self.temperature},
+            # `seed` razem z temperature 0 daje powtarzalne werdykty — wymog demo
+            # i uczciwosci wobec nadzorcy (patrz komentarz przy DEFAULT_TEMPERATURE).
+            "options": {"temperature": self.temperature, "seed": self.seed},
         }
         try:
             resp = self._http().post("/api/generate", json=payload)
