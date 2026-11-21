@@ -1,6 +1,7 @@
 # scraper: FacebookAdsSource (Meta Ad Library)
 
-Na razie ten katalog zawiera tylko źródło `facebook`, sondę RenderProbe i ich testy.
+Ten katalog zawiera źródło `facebook`, sondę RenderProbe i ich testy oraz niezależne [demo scrapera YouTube](youtube/README.md).
+YouTube działa przez CLI lub `scan`/`start_background`, z własnymi zależnościami. Podłączenie do wspólnych kolejek i kontraktów pozostaje kolejnym etapem.
 Właścicielem serwisu jest osoba A: `Dockerfile`, compose, `WebPageSource` i `rules_det` są po jej stronie.
 
 ## Quick start
