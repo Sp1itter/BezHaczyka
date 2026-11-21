@@ -31,37 +31,59 @@ from analyzer.contracts import Scope, ScopeStatus
 # Opakowania = instrumenty finansowe wg art. 2 i art. 3 ustawy o obrocie
 # --------------------------------------------------------------------------- #
 
-INSTRUMENT_WRAPPERS: dict[str, tuple[str, str]] = {
-    # klucz -> (nazwa opakowania, podstawa prawna)
-    "cfd": ("cfd", "art. 2 ust. 1 pkt 2 lit. h ustawy o obrocie"),
-    "kontrakt na roznice": ("cfd", "art. 2 ust. 1 pkt 2 lit. h ustawy o obrocie"),
-    "kontrakty na roznice": ("cfd", "art. 2 ust. 1 pkt 2 lit. h ustawy o obrocie"),
-    "roznice kursowe": ("cfd", "art. 2 ust. 1 pkt 2 lit. h ustawy o obrocie"),
-    "kontrakt terminowy": ("futures", "art. 2 ust. 1 pkt 2 lit. c ustawy o obrocie"),
-    "kontrakty terminowe": ("futures", "art. 2 ust. 1 pkt 2 lit. c ustawy o obrocie"),
-    "futures": ("futures", "art. 2 ust. 1 pkt 2 lit. c ustawy o obrocie"),
-    "opcja": ("opcje", "art. 2 ust. 1 pkt 2 lit. c ustawy o obrocie"),
-    "opcje": ("opcje", "art. 2 ust. 1 pkt 2 lit. c ustawy o obrocie"),
-    "swap": ("swap", "art. 2 ust. 1 pkt 2 lit. c ustawy o obrocie"),
-    "forward": ("forward", "art. 2 ust. 1 pkt 2 lit. c ustawy o obrocie"),
-    "etf": ("etf", "art. 2 ust. 1 pkt 2 lit. a ustawy o obrocie"),
-    "etn": ("etn", "art. 3 pkt 1 lit. a ustawy o obrocie"),
-    "certyfikat inwestycyjny": ("certyfikat", "art. 3 pkt 1 lit. a ustawy o obrocie"),
-    "certyfikaty inwestycyjne": ("certyfikat", "art. 3 pkt 1 lit. a ustawy o obrocie"),
-    "tytul uczestnictwa": ("fundusz", "art. 2 ust. 1 pkt 2 lit. a ustawy o obrocie"),
-    "fundusz inwestycyjny": ("fundusz", "art. 2 ust. 1 pkt 2 lit. a ustawy o obrocie"),
-    "jednostki uczestnictwa": ("fundusz", "art. 2 ust. 1 pkt 2 lit. a ustawy o obrocie"),
-    "akcje": ("akcje", "art. 3 pkt 1 lit. a ustawy o obrocie"),
-    "akcji": ("akcje", "art. 3 pkt 1 lit. a ustawy o obrocie"),
-    "obligacje": ("obligacje", "art. 3 pkt 1 lit. a ustawy o obrocie"),
-    "obligacji": ("obligacje", "art. 3 pkt 1 lit. a ustawy o obrocie"),
-    "list zastawny": ("list_zastawny", "art. 3 pkt 1 lit. a ustawy o obrocie"),
-    "warrant": ("warrant", "art. 3 pkt 1 lit. a ustawy o obrocie"),
-    "kwit depozytowy": ("kwit_depozytowy", "art. 3 pkt 1 lit. a ustawy o obrocie"),
-    "prawa pochodne": ("prawa_pochodne", "art. 3 pkt 1 lit. b ustawy o obrocie"),
-    "instrument pochodny": ("pochodny", "art. 2 ust. 1 pkt 2 ustawy o obrocie"),
-    "uprawnienia do emisji": ("emisje", "art. 2 ust. 1 pkt 2 lit. j ustawy o obrocie"),
-}
+# WZORCE, nie dopasowanie literalne — polski jest jezykiem fleksyjnym i reklama
+# napisze "handluj kontraktami na roznice", a nie "kontrakt na roznice".
+# Dopasowanie literalne przeoczyloby wiekszosc realnych materialow.
+# Wzorce stosujemy do tekstu PO normalizacji (male litery, bez ogonkow).
+#
+# (wzorzec, nazwa opakowania, podstawa prawna)
+ART2_DERIV = "art. 2 ust. 1 pkt 2 lit. c ustawy o obrocie"
+ART2_CFD = "art. 2 ust. 1 pkt 2 lit. h ustawy o obrocie"
+ART2_FUND = "art. 2 ust. 1 pkt 2 lit. a ustawy o obrocie"
+ART3_SEC = "art. 3 pkt 1 lit. a ustawy o obrocie"
+
+INSTRUMENT_WRAPPERS: list[tuple[str, str, str]] = [
+    (r"\bcfd\w*", "cfd", ART2_CFD),
+    (r"kontrakt\w*\s+na\s+roznic\w*", "cfd", ART2_CFD),
+    (r"roznic\w*\s+kursow\w*", "cfd", ART2_CFD),
+    (r"kontrakt\w*\s+terminow\w*", "futures", ART2_DERIV),
+    (r"\bfutures\b", "futures", ART2_DERIV),
+    # Zawezone formy, bo `opcj\w*` lapie "opcjonalnie".
+    (r"\bopcj(a|e|i|ami|ach|om)\b", "opcje", ART2_DERIV),
+    (r"\bswap\w*", "swap", ART2_DERIV),
+    (r"\bforward\w*", "forward", ART2_DERIV),
+    (r"\betf\w*", "etf", ART2_FUND),
+    (r"\betn\w*", "etn", ART3_SEC),
+    # ETP / ETC — produkty notowane na gieldzie, zbywalne papiery wartosciowe.
+    # Stoja PRZED "akcje", bo reklama ETP czesto porownuje go do akcji
+    # ("inwestowanie w Solane w podobny sposob jak zakup akcji") i bez tego
+    # wykrylibysmy opakowanie "akcje" na podstawie porownania, nie instrumentu.
+    (r"\betp\w*", "etp", ART3_SEC),
+    (r"\betc\b", "etc", ART3_SEC),
+    (r"\bexchange\s+traded\s+(product|note|commodit)\w*", "etp", ART3_SEC),
+    # Notowanie na rynku regulowanym samo w sobie wskazuje papier wartosciowy.
+    (r"notowan\w*\s+na\s+(gield|rynku\s+regulowan)\w*", "papier_notowany", ART3_SEC),
+    (r"giel\w*\s+papierow\s+wartosciowych", "papier_notowany", ART3_SEC),
+    (r"certyfikat\w*\s+inwestycyjn\w*", "certyfikat", ART3_SEC),
+    (r"tytul\w*\s+uczestnictwa", "fundusz", ART2_FUND),
+    (r"fundusz\w*\s+inwestycyjn\w*", "fundusz", ART2_FUND),
+    (r"jednostk\w*\s+uczestnictwa", "fundusz", ART2_FUND),
+    # "akcja promocyjna" / "akcja marketingowa" to NIE instrument finansowy,
+    # a w reklamach wystepuje czesto — stad negatywny lookahead.
+    (
+        r"\bakcj(a|e|i|ami|ach|om)\b"
+        r"(?!\s*(promocyjn|marketingow|reklamow|charytatywn|spoleczn|informacyjn))",
+        "akcje",
+        ART3_SEC,
+    ),
+    (r"\bobligacj\w*", "obligacje", ART3_SEC),
+    (r"list\w*\s+zastawn\w*", "list_zastawny", ART3_SEC),
+    (r"\bwarrant\w*", "warrant", ART3_SEC),
+    (r"kwit\w*\s+depozytow\w*", "kwit_depozytowy", ART3_SEC),
+    (r"praw\w*\s+pochodn\w*", "prawa_pochodne", "art. 3 pkt 1 lit. b ustawy o obrocie"),
+    (r"instrument\w*\s+pochodn\w*", "pochodny", "art. 2 ust. 1 pkt 2 ustawy o obrocie"),
+    (r"uprawnien\w*\s+do\s+emisji", "emisje", "art. 2 ust. 1 pkt 2 lit. j ustawy o obrocie"),
+]
 
 # --------------------------------------------------------------------------- #
 # Aktywa bazowe — NIE decyduja o zakresie, tylko go opisuja i tagują
@@ -129,8 +151,8 @@ def classify_scope(text: str) -> Scope:
         underlying = "non_financial"
 
     # --- 1. opakowanie decyduje -------------------------------------------- #
-    for needle, (wrapper, basis) in INSTRUMENT_WRAPPERS.items():
-        if needle in norm:
+    for pattern, wrapper, basis in INSTRUMENT_WRAPPERS:
+        if re.search(pattern, norm):
             if underlying == "crypto":
                 # NIE wykluczamy. Oznaczamy i podnosimy priorytet.
                 tags.append("crypto_derivative")

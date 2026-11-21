@@ -5,6 +5,8 @@ Pierwotny design mial slownikowy filtr wykluczajacy slowa "krypto"/"bitcoin",
 co wycielo by najagresywniej reklamowane produkty detaliczne pod nadzorem KNF.
 """
 
+import pytest
+
 from analyzer.scope_gate import classify_scope
 from analyzer.contracts import ScopeStatus
 
@@ -69,6 +71,64 @@ class TestNiepewneIdaDoTriage:
         scope = classify_scope("Najlepsza okazja tego roku, nie przegap!")
         assert scope.status is ScopeStatus.UNCERTAIN
         assert scope.reason is not None
+
+
+class TestPolskaOdmiana:
+    """Polski jest fleksyjny — reklama napisze 'kontraktami', nie 'kontrakt'.
+
+    Regresja: dopasowanie literalne przeoczylo "handluj kontraktami na roznice",
+    co wyszlo dopiero w tescie potoku na transkrypcji wideo.
+    """
+
+    @pytest.mark.parametrize(
+        "tekst",
+        [
+            "handluj kontraktami na różnicę z dźwignią",
+            "kontrakty na różnicę na indeksy",
+            "kontraktów na różnicę nie polecamy początkującym",
+            "Kontrakt na Różnicę to instrument pochodny",
+        ],
+    )
+    def test_cfd_w_roznych_przypadkach(self, tekst: str):
+        assert classify_scope(tekst).instrument_wrapper == "cfd"
+
+    @pytest.mark.parametrize(
+        "tekst",
+        ["kup akcje", "nabycie akcji", "handel akcjami", "inwestuj w akcje spółek"],
+    )
+    def test_akcje_w_roznych_przypadkach(self, tekst: str):
+        assert classify_scope(tekst).instrument_wrapper == "akcje"
+
+    @pytest.mark.parametrize(
+        "tekst",
+        ["obligacje korporacyjne", "zakup obligacji", "obligacjami skarbowymi"],
+    )
+    def test_obligacje_w_roznych_przypadkach(self, tekst: str):
+        assert classify_scope(tekst).instrument_wrapper == "obligacje"
+
+    def test_fundusz_w_dopelniaczu(self):
+        assert classify_scope("jednostki funduszu inwestycyjnego").instrument_wrapper == "fundusz"
+
+
+class TestFalszywePozytywy:
+    """Slowa, ktore wygladaja jak instrumenty, a nimi nie sa."""
+
+    @pytest.mark.parametrize(
+        "tekst",
+        [
+            "Akcja promocyjna tylko do konca miesiaca!",
+            "Nasza akcja marketingowa objela cala Polske",
+            "akcja charytatywna na rzecz dzieci",
+        ],
+    )
+    def test_akcja_promocyjna_nie_jest_instrumentem(self, tekst: str):
+        """W reklamach wystepuje czesto — bez tego mielibysmy fale
+        falszywych pozytywow."""
+        assert classify_scope(tekst).instrument_wrapper != "akcje"
+
+    def test_opcjonalnie_nie_jest_opcja(self):
+        scope = classify_scope("Ubezpieczenie opcjonalnie w cenie pakietu")
+        assert scope.instrument_wrapper != "opcje"
 
 
 class TestZwykleInstrumenty:

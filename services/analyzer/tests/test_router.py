@@ -100,11 +100,24 @@ class TestR3DoradztwoBezZezwolenia:
 
 
 class TestR4Triage:
-    def test_nic_nie_pasuje_idzie_do_triage(self):
+    def test_nieustalony_podmiot_nadal_ocenia_modul_2(self):
+        """Poprawka po integracji ze scraperem.
+
+        Wczesniej R4 dawalo modules=[], czyli ZERO ocenionych regul. Na realnym
+        dokumencie z Meta Ad Library (bez dopasowanego rejestru KNF) oznaczalo
+        to, ze material nie byl oceniany w ogole, a razem z nim przepadaly
+        wyniki regul DET policzone juz przez scraper.
+
+        Wymogi art. 44 rozporzadzenia del. 2017/565 dotycza MATERIALU, nie
+        statusu publikujacego, wiec Modul 2 jest ocena bazowa. `status: triage`
+        nadal sygnalizuje, ze podmiot wymaga ustalenia przez czlowieka.
+        """
         d = route(_inp(text="Losowy tekst bez sygnalow"))
-        assert d.modules == []
-        assert d.primary_module is None
+        assert d.modules == [2]
+        assert d.primary_module == 2
         assert d.routing.rule == "R4"
+        assert "Modul 2" in d.routing.reason
+        assert "rejestru KNF" in d.routing.reason
 
     def test_poza_zakresem_nie_jest_kasowany(self):
         """Dokument poza zakresem zachowujemy z powodem — nadzorca musi

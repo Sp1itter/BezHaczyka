@@ -79,6 +79,11 @@ SECRET_PATTERNS = {
 }
 
 SOURCE_SUFFIXES = {".py", ".ts", ".tsx", ".js", ".jsx", ".yml", ".yaml", ".json", ".txt"}
+
+# Pliki BEZ rozszerzenia albo z nietypowym, ktore mimo to musza byc skanowane.
+# Dockerfile moze odwolac sie do zewnetrznego obrazu lub adresu, a .env.example
+# to najlatwiejsze miejsce na przypadkowe wklejenie prawdziwego sekretu.
+SOURCE_NAMES = {"Dockerfile", ".env.example", ".dockerignore", "Makefile"}
 SKIP_DIRS = {".venv", "node_modules", "graphify-out", "DocsTaskINWESTWATCH"}
 
 # Jawne wyjatki. Potrzebne, bo pliki, ktore OPISUJA zakazane wzorce (testy
@@ -95,7 +100,9 @@ ALLOW_FILE_MARKER = "compliance:allow-file"
 
 
 def is_allowlisted_file(path: Path) -> bool:
-    if not path.exists() or path.suffix not in SOURCE_SUFFIXES:
+    if not path.exists():
+        return False
+    if path.suffix not in SOURCE_SUFFIXES and path.name not in SOURCE_NAMES:
         return False
     try:
         head = path.read_text(encoding="utf-8", errors="ignore").splitlines()[:30]
@@ -108,7 +115,9 @@ def _scannable(files: list[Path]) -> list[Path]:
     return [
         f
         for f in files
-        if f.suffix in SOURCE_SUFFIXES and f.exists() and not is_allowlisted_file(f)
+        if (f.suffix in SOURCE_SUFFIXES or f.name in SOURCE_NAMES)
+        and f.exists()
+        and not is_allowlisted_file(f)
     ]
 
 
