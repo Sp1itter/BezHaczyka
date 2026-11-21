@@ -4,7 +4,7 @@ import { api } from "../api/client.js";
 import { useApi } from "../hooks/useApi.js";
 import { fmtDate, SOURCE } from "../lib/labels.js";
 
-// Kolejka alertow: wysokie ryzyko, nieobsluzone + strumien na zywo z Socket.io.
+// Kolejka alertow: wysokie ryzyko, nieobsluzone + strumien na zywo z WebSocket.
 export default function Alerts({ query, reloadKey, live, feed, onOpen, onUpdate }) {
   const q = { ...query, risk_level: ["high"], status: query.status?.length ? query.status : ["new", "triage", "in_review"] };
   const list = useApi(() => api.findings(q), [JSON.stringify(q) + reloadKey]);
@@ -14,7 +14,7 @@ export default function Alerts({ query, reloadKey, live, feed, onOpen, onUpdate 
         <FindingsTable items={list.data?.items} onOpen={onOpen} onStatusChange={onUpdate} emptyText="Brak otwartych alertów." />
       </Panel>
       <Panel title={`Na żywo ${live ? "●" : "○"}`} className="span-4">
-        {!feed.length && <div className="empty">Czekam na alerty z Socket.io…</div>}
+        {!feed.length && <div className="empty">Czekam na alerty na żywo…</div>}
         <ul className="feed">
           {feed.map((a) => (
             <li key={a.finding_id} onClick={() => onOpen(a.finding_id)}>

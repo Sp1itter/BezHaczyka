@@ -1,14 +1,24 @@
-// Alerty na zywo przez Socket.io. [DB-7]
-// Mock emituje: "finding.high", "finding.new", "finding.updated".
-// Przy integracji: albo socket.io w services/api (python-socketio), albo adapter na natywny WS /ws/alerts.
-import { io } from "socket.io-client";
-
+// Alerty na zywo: natywny WebSocket /ws/alerts (tak jak services/api). [DB-7]
+// Wiadomosci: {type:"hello"}, {type:"finding.high", finding_id, risk_score, title, routing_reason, ...}.
+// Mock wysyla dodatkowo "finding.new" i "finding.updated".
 export function connectAlerts({ onHigh, onNew, onUpdated, onState }) {
-  const socket = io(import.meta.env.VITE_SOCKET_URL || "/", { path: "/socket.io", transports: ["websocket", "polling"] });
-  socket.on("connect", () => onState?.(true));
-  socket.on("disconnect", () => onState?.(false));
-  socket.on("finding.high", (a) => onHigh?.(a));
-  socket.on("finding.new", (a) => onNew?.(a));
-  socket.on("finding.updated", (a) => onUpdated?.(a));
-  return () => socket.close();
+  let ws, timer, closed = false;
+  const open = () => {
+    const proto = location.protocol === "https:" ? "wss" : "ws";
+    ws = new WebSocket(`${proto}://${location.host}/ws/alerts`);
+    ws.onopen = () => onState?.(true);
+    ws.onmessage = (e) => {
+      let m;
+      try { m = JSON.parse(e.data); } catch { return; }
+      if (m.type === "finding.high") onHigh?.(m);
+      else if (m.type === "finding.new") onNew?.(m);
+      else if (m.type === "finding.updated") onUpdated?.(m);
+    };
+    ws.onclose = () => {
+      onState?.(false);
+      if (!closed) timer = setTimeout(open, 3000); // ponowne laczenie
+    };
+  };
+  open();
+  return () => { closed = true; clearTimeout(timer); ws?.close(); };
 }
