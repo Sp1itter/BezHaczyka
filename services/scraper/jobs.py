@@ -27,8 +27,8 @@ from datetime import UTC, datetime
 from typing import Any
 
 from contracts import AdDocument
+from rules_det import evaluate_det
 from sources.facebook import FacebookAdsSource, FacebookConfig
-from sources.facebook_rules import facebook_det_results
 from sources.meta_json import ad_id_from_url
 from state import CircuitBreaker, NodeCache, RateLimiter, SeenSet
 from storage import blob_store_from_env
@@ -78,9 +78,7 @@ def post_document(
 
 def det_results_for(doc: AdDocument) -> list[dict]:
     """Wyniki regul DET 4-8 dla zadania q:gpu (JSON gotowy do walidacji RuleResult)."""
-    if doc.source == "facebook":
-        return [r.model_dump(mode="json") for r in facebook_det_results(doc)]
-    return []  # pozostale zrodla: rules_det/ (w toku)
+    return [r.model_dump(mode="json") for r in evaluate_det(doc)]
 
 
 def build_analysis_payload(document_id: str, det_results: list[dict], now: datetime | None = None) -> dict:
