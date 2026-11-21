@@ -13,6 +13,10 @@ PyYAML==6.0.2              # MIT
 
 # --- speech-to-text, CPU int8 (NIE na GPU — konflikt o VRAM z Bielikiem) ---
 faster-whisper==1.0.3      # MIT (CTranslate2 pod spodem, tez MIT)
+# faster-whisper 1.0.3 nie deklaruje ich poprawnie: bez `requests` import pada,
+# a huggingface_hub >= 1.0 lamie jego pobieranie modelu. Sprawdzone na zywym audio.
+requests==2.34.2           # Apache-2.0
+huggingface_hub==0.36.2    # Apache-2.0
 
 # --- wykrywanie jezyka dla reguly 10 (spojnosc jezykowa) ---
 langdetect==1.0.9          # Apache-2.0
@@ -28,3 +32,7 @@ rq==2.9.1                  # BSD-2-Clause
 redis==8.1.0               # MIT — klient Valkey; rq ciagnie go tranzytywnie,
                            # ale przypinamy jawnie (weryfikowalny lancuch dostaw)
 rq-scheduler==0.14         # MIT — CronJob/orchestrator dla Modulu 1
+
+# --- most do wspolnej bazy przypadkow (tryb --db w tools/casedb_batch.py); importowany LENIWIE ---
+# Ta sama wersja co services/casedb/requirements.txt.
+psycopg[binary]==3.3.9     # LGPL-3.0 (biblioteka dynamicznie linkowana, bez modyfikacji)
