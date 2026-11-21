@@ -29,7 +29,7 @@ export default function TopBar({ title, query, onQuery, range, onRange, custom, 
         </>
       )}
       <button className="btn primary" onClick={onRefresh}>Odśwież</button>
-      <span className={`live ${live ? "on" : ""}`} title="Połączenie Socket.io">{live ? "● na żywo" : "○ offline"}</span>
+      <span className={`live ${live ? "on" : ""}`} title="Połączenie WebSocket /ws/alerts">{live ? "● na żywo" : "○ offline"}</span>
     </header>
   );
 }

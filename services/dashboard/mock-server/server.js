@@ -1,4 +1,4 @@
-// Serwer mock InvestWatch: REST w ksztalcie services/api + Socket.io z alertami.
+// Serwer mock InvestWatch: REST w ksztalcie services/api + WebSocket /ws/alerts.
 // Uruchom: npm run mock  (port MOCK_PORT, domyslnie 4000).
 //
 // PUNKTY POLACZENIA Z BAZA (do podmiany przy integracji):
@@ -11,10 +11,9 @@
 //   [DB-4] GET   /api/stats              -> agregaty (services/api /stats)
 //   [DB-5] GET   /api/stats/trend        -> GROUP BY date_trunc('day', created_at), risk_level  (NOWY endpoint)
 //   [DB-6] GET   /api/calibration        -> zbior zloty (fixtures/gold/labels.json)
-//   [DB-7] socket.io "finding.high"      -> emitowany przy INSERT findingu z risk_level=high
-//          (services/api ma dzis natywny WS /ws/alerts; patrz src/api/socket.js)
+//   [DB-7] WS /ws/alerts "finding.high" -> jak services/api (AlertHub), emitowany przy nowym high
 import http from "node:http";
-import { Server } from "socket.io";
+import { WebSocketServer } from "ws";
 import { makeFindings, makeFinding, makeGold, STATUSES, HUMAN_ONLY } from "./data.js";
 
 const PORT = Number(process.env.MOCK_PORT || 4000);
@@ -117,9 +116,9 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "GET") return send(res, 200, f);
     if (req.method === "PATCH") {
       const body = await readBody(req);
-      if (body.status) {
+      if (body.status && !body.review) {
         if (!STATUSES.includes(body.status)) return send(res, 422, { detail: "Zly status" });
-        if (HUMAN_ONLY.includes(body.status))
+        if (HUMAN_ONLY.includes(body.status) && body.status !== f.status)
           return send(res, 422, { detail: "Potwierdzenie/odrzucenie tylko przez weryfikacje czlowieka (review)" });
         f.status = body.status;
       }
@@ -145,8 +144,15 @@ const server = http.createServer(async (req, res) => {
   send(res, 404, { detail: "Not found" });
 });
 
-const io = new Server(server, { cors: { origin: "*" } });
-io.on("connection", (s) => s.emit("hello", { clients: io.engine.clientsCount }));
+// Natywny WebSocket /ws/alerts - ten sam kontrakt co services/api.
+const wss = new WebSocketServer({ server, path: "/ws/alerts" });
+wss.on("connection", (s) => s.send(JSON.stringify({ type: "hello" })));
+const io = {
+  emit: (type, payload) => {
+    const msg = JSON.stringify({ type, ...payload });
+    for (const c of wss.clients) if (c.readyState === 1) c.send(msg);
+  },
+};
 
 // Symulacja: co ALERT_EVERY_MS nowy finding; jesli high -> alert na zywo.
 setInterval(() => {
@@ -156,7 +162,6 @@ setInterval(() => {
   findings.unshift(f);
   if (f.risk_level === "high") {
     io.emit("finding.high", {
-      type: "finding.high",
       finding_id: f.id,
       risk_score: f.risk_score,
       risk_level: f.risk_level,

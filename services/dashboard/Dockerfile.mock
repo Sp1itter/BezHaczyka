@@ -1,4 +1,4 @@
-# Serwer mock API + Socket.io (placeholder do czasu podpiecia bazy).
+# Serwer mock API + WebSocket /ws/alerts (praca bez bazy).
 FROM node:20.18.1-bookworm-slim
 WORKDIR /app
 COPY package.json package-lock.json ./
