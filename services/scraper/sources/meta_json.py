@@ -304,10 +304,13 @@ def publisher_from(node: dict) -> Publisher:
     if profile_uri:
         parsed = urlparse(profile_uri)
         segments = [s for s in parsed.path.split("/") if s]
+        if parsed.netloc.endswith("instagram.com") and len(segments) == 2 and segments[0] == "_u":
+            segments = segments[1:]  # instagram.com/_u/<nazwa> — wariant linku z Ad Library
         if (
             parsed.netloc.endswith(("facebook.com", "instagram.com"))
             and len(segments) == 1
             and segments[0] != "profile.php"
+            and not segments[0].isdigit()  # facebook.com/<page_id>/ to ID strony, nie handle
         ):
             handle = f"@{segments[0]}"
 

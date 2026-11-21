@@ -16,6 +16,7 @@ _HERE = Path(__file__).resolve().parent
 PROBE_JS = (_HERE / "probe.js").read_text(encoding="utf-8")
 NEUTRALIZE_JS = (_HERE / "neutralize.js").read_text(encoding="utf-8")
 FREEZE_JS = (_HERE / "freeze.js").read_text(encoding="utf-8")
+MARK_CREATIVE_JS = (_HERE / "creative.js").read_text(encoding="utf-8")
 
 # Trzy viewporty z par. 6.2. Tablet jest MIERZONY w RenderProbe, ale nie trafia
 # do AdDocument.screenshots (kontrakt par. 6.1: tylko desktop i mobile).

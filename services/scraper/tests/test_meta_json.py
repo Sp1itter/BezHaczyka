@@ -149,6 +149,8 @@ def test_video_urls_prefers_hd_and_reads_cards():
     [
         (f"{FB}/skarbiecpl/", "@skarbiecpl"),
         (f"{FB}/profile.php?id=1", None),
+        (f"{FB}/100084703352186/", None),  # brak vanity URL — numeryczne ID strony
+        ("https://www.instagram.com/_u/inwestor_pl", "@inwestor_pl"),  # compliance:allow — dane testowe Meta
         ("https://example.invalid/x/", None),
     ],
 )
