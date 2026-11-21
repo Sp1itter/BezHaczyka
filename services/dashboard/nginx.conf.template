@@ -1,0 +1,24 @@
+# PUNKT POLACZENIA: API_UPSTREAM. Teraz mock (http://dashboard-mock:4000),
+# po podpieciu bazy: http://api:8000 (services/api, sciezki bez prefiksu /api).
+server {
+    listen 8080;
+    server_name _;
+    root /usr/share/nginx/html;
+
+    location /api/ {
+        proxy_pass ${API_UPSTREAM}/;
+        proxy_set_header Host $host;
+    }
+
+    location /socket.io/ {
+        proxy_pass ${API_UPSTREAM}/socket.io/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_read_timeout 1h;
+    }
+
+    location / {
+        try_files $uri /index.html;
+    }
+}

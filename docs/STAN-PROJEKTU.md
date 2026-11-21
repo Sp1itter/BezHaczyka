@@ -56,7 +56,7 @@ sprawdzony przeciw niemu (pobranie dokumentu + `POST /findings`).
 Dashboard: tabela + szczegóły z dowodami, przegląd z wykresami, panel kalibracji
 liczony po stronie klienta (zgodny z `evaluate.py`: próg 50 → TP 0, FP 0, FN 3, TN 5),
 alerty na żywo. **Zweryfikowane w Dockerze:** postgres + api + web z compose, 45 testów API
-na SQLite i na Postgresie, dashboard na `localhost:8090` z alertami przez nginx.
+na SQLite i na Postgresie, dashboard na `localhost:7090` z alertami przez nginx.
 
 ---
 
