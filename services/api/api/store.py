@@ -15,14 +15,26 @@ kalibracji przelicza flagi po stronie klienta.
 from __future__ import annotations
 
 import json
+import logging
 import sqlite3
 import threading
+import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
 
 from api.contracts import AdDocument, Finding
+
+log = logging.getLogger("api.store")
+
+# Wymiar kolumny documents.embedding w infra/init.sql (bge-m3).
+EMBEDDING_DIM = 1024
+
+
+class InvalidId(ValueError):
+    """Identyfikator nie pasuje do typu kolumny (Postgres: UUID)."""
+
 
 _DOC_JSON = ("publisher", "screenshots", "media", "transcript", "render_probe", "scope")
 _FINDING_JSON = ("routing", "rule_results", "entities")
@@ -131,8 +143,18 @@ class SqlStore:
     def _load_modules(self, value: Any) -> list[int]:
         return self._load_json(value) or []
 
+    def valid_id(self, value: str) -> bool:
+        """Czy identyfikator pasuje do typu kolumny id (SQLite: dowolny tekst)."""
+        return True
+
+    def _require_ids(self, *ids: str) -> None:
+        bad = [i for i in ids if not self.valid_id(i)]
+        if bad:
+            raise InvalidId(f"Identyfikator nie jest UUID: {', '.join(bad)}")
+
     # --- dokumenty --------------------------------------------------------
     def upsert_document(self, doc: AdDocument) -> bool:
+        self._require_ids(doc.id)
         row = document_row(doc)
         exists = bool(self._execute(f"SELECT 1 AS x FROM documents WHERE id = {self.ph}", [row["id"]]))
         values = {
@@ -152,6 +174,8 @@ class SqlStore:
         return not exists
 
     def get_document(self, document_id: str) -> AdDocument | None:
+        if not self.valid_id(document_id):
+            return None
         cols = "id, source, url, fetched_at, lang, title, text, html_path, simhash, " + ", ".join(_DOC_JSON)
         rows = self._execute(
             f"SELECT {cols}, {self._embedding_select()} AS embedding FROM documents WHERE id = {self.ph}",
@@ -167,10 +191,13 @@ class SqlStore:
         return _row_to_document(row)
 
     def document_exists(self, document_id: str) -> bool:
+        if not self.valid_id(document_id):
+            return False
         return bool(self._execute(f"SELECT 1 AS x FROM documents WHERE id = {self.ph}", [document_id]))
 
     # --- findingi ---------------------------------------------------------
     def upsert_finding(self, f: Finding) -> UpsertResult:
+        self._require_ids(f.id, f.document_id)
         row = finding_row(f)
         prev = self._execute(f"SELECT risk_level FROM findings WHERE id = {self.ph}", [row["id"]])
         values = {
@@ -261,10 +288,14 @@ class SqlStore:
         return [self._hydrate(r) for r in rows], int(total)
 
     def get_finding(self, finding_id: str) -> dict[str, Any] | None:
+        if not self.valid_id(finding_id):
+            return None
         rows = self._execute(f"{self._finding_select()} WHERE f.id = {self.ph}", [finding_id])
         return self._hydrate(rows[0]) if rows else None
 
     def update_status(self, finding_id: str, status: str) -> bool:
+        if not self.valid_id(finding_id):
+            return False
         if not self._execute(f"SELECT 1 AS x FROM findings WHERE id = {self.ph}", [finding_id]):
             return False
         self._execute(f"UPDATE findings SET status = {self.ph} WHERE id = {self.ph}", [status, finding_id])
@@ -359,9 +390,23 @@ class PostgresStore(SqlStore):
     def _load_modules(self, value: Any) -> list[int]:
         return list(value or [])
 
+    def valid_id(self, value: str) -> bool:
+        try:
+            uuid.UUID(str(value))
+            return True
+        except ValueError:
+            return False
+
     # pgvector bez dodatkowego pakietu: literal tekstowy '[a,b,...]' rzutowany na vector.
     def _embedding_value(self, vec: list[float] | None) -> Any:
-        return None if vec is None else "[" + ",".join(repr(float(x)) for x in vec) + "]"
+        if vec is None:
+            return None
+        if len(vec) != EMBEDDING_DIM:
+            # Kolumna ma staly wymiar. Zly wektor nie moze zablokowac zapisu reklamy:
+            # zapisujemy dokument bez embeddingu (brak danych, nie blad materialu).
+            log.warning("Embedding o wymiarze %d zamiast %d pominiety", len(vec), EMBEDDING_DIM)
+            return None
+        return "[" + ",".join(repr(float(x)) for x in vec) + "]"
 
     def _embedding_placeholder(self) -> str:
         return "%s::vector"

@@ -46,7 +46,8 @@ zmiana statusu, `/stats`, `/calibration`, WebSocket `/ws/alerts`; 25 testów, a
 `ApiClient` analyzera sprawdzony przeciw niemu (pobranie dokumentu + `POST /findings`).
 Dashboard: tabela + szczegóły z dowodami, przegląd z wykresami, panel kalibracji
 liczony po stronie klienta (zgodny z `evaluate.py`: próg 50 → TP 0, FP 0, FN 3, TN 5),
-alerty na żywo. **Nieprzetestowane:** Postgres w `PostgresStore` i oba Dockerfile.
+alerty na żywo. **Zweryfikowane w Dockerze:** postgres + api + web z compose, 45 testów API
+na SQLite i na Postgresie, dashboard na `localhost:8090` z alertami przez nginx.
 
 ---
 
@@ -122,7 +123,7 @@ aktualizacji**. Projekt: `docs/superpowers/specs/2026-11-22-harmonogram-design.m
    rozmiaru czcionki z największą na stronie.
 
 ### Osoba C
-1. Pierwszy `docker compose up` z Postgresem — weryfikacja `PostgresStore` i obrazów `api`/`web`.
+1. Uruchomić w compose pozostałe serwisy (valkey, seaweedfs, nginx, analyzer) i przejść GATE 1 na jednym dokumencie.
 2. Prawdziwe findingi z korpusu w bazie (analyzer → `POST /findings`) zamiast samych przykładów kontraktowych.
 3. Wycinki `screenshot_crop` przy dowodach, widok zmian w czasie (`ChangeEvent`), `npm audit`.
 
