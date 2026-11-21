@@ -215,11 +215,17 @@ def test_display_prefix_longest_alias_wins():
 
 
 @pytest.mark.parametrize("text", [
-    "Link afiliacyjny w opisie", "Moje linki partnerskie", "Uzyj kodu rabatowego: kod rabatowy XYZ",
-    "kod polecajacy ABC", "Płatna współpraca z XTB", "Odcinek powstał we współpracy z XTB",
-    "Sponsorem odcinka jest XTB", "Partnerem materiału jest XTB", "Materiał reklamowy",
-    "paid partnership with XTB", "#wspolpracareklamowa", "#partner", "#sponsorowane", "#reklamaxtb",
-    "Reklama\nzaloz konto", "Tresc [reklama] tresc", "tresc (Reklama) tresc",
+    "Link afiliacyjny w opisie", "Moje linki partnerskie", "z mojego linku partnerskiego", "linków afiliacyjnych",
+    "kod rabatowy XYZ", "kodem polecającym ABC", "kodów promocyjnych", "Płatna współpraca z XTB",
+    "we współpracy reklamowej z XTB", "współpracy reklamowej", "odpłatnej współpracy", "płatnym partnerstwem",
+    "Odcinek powstał we współpracy z XTB", "Sponsorem odcinka jest XTB", "sponsorów materiału",
+    "Partnerem materiału jest XTB", "Materiał reklamowy", "materiałem sponsorowanym", "lokowaniem produktu",
+    "postem sponsorowanym", "Affiliate Disclosure", "Sponsored link", "paid partnership with XTB",
+    "Paid promotion", "partner links below", "referral code ABC", "This video is sponsored by XTB",
+    "includes paid promotion", "I earn commission if you buy", "fizetett reklám", "#hirdetés",
+    "#wspolpracareklamowa", "#partner", "#sponsorowane", "#reklamaxtb", "#sponsored", "#ad",
+    "Reklama\nzaloz konto", "Reklama: XTB", "Reklama - XTB", "Reklama | XTB", "Tresc [reklama] tresc",
+    "tresc (Reklama) tresc",
 ])
 def test_new_disclosure_phrases(text):
     assert has_disclosure(text)
@@ -227,10 +233,28 @@ def test_new_disclosure_phrases(text):
 
 @pytest.mark.parametrize("text", [
     "Zlozylem reklamacje", "reklamacja u brokera", "Partnerstwo roku", "#partnerzy", "#sponsoring",
-    "Pierwsza linia\nreklama w drugiej linii", "kod rabatowych", "nie ma tu nic",
+    "Pierwsza linia\nreklama w drugiej linii", "Reklama XTB - czy warto?", "partner biznesowy", "linkedin",
+    "kodowanie w Pythonie", "wspolpraca z klientem", "nie ma tu nic", "#add",
 ])
 def test_non_disclosures(text):
     assert not has_disclosure(text)
+
+
+@pytest.mark.parametrize("name", ["XTB Fan Club", "XTB Fans", "XTB Community", "XTB Opinie", "XTB tips",
+                                  "XTB Nieoficjalny", "XTB Polska Community", "XTB Klub Inwestora"])
+def test_fan_pages_are_not_official(reg, name):
+    r = resolve(doc("Nowa oferta XTB.", handle="@kanal", display_name=name), reg)
+    assert r["publisher_relation"] == "third_party" and r["publisher_relation_basis"] == "none"
+
+
+def test_relation_basis(reg):
+    def basis(**pub):
+        return resolve(doc("XTB", **pub), reg)["publisher_relation_basis"]
+    assert basis(handle="@kanal", display_name="XTB Online Investing") == "name_prefix"
+    assert basis(handle="@kanal", display_name="XTB S.A.") == "name_exact"
+    assert basis(handle="@xtb_official", display_name="Cokolwiek") == "handle"
+    assert basis(handle="xtb.com", display_name="Cokolwiek") == "domain"
+    assert basis(handle="@kanal", display_name="Blog") == "none"
 
 
 def test_affiliate_without_disclosure(reg):
