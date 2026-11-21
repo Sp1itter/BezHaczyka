@@ -125,6 +125,91 @@ def test_good_llm_reply_accepted():
     assert "{risk_level}" not in client.prompts[0]
 
 
+def _reason(text: str, rules=None, legal_basis: str | None = None) -> str | None:
+    """Powod odrzucenia przez straznik (None = przyjeta)."""
+    from analyzer.summary import explain_summary
+
+    rules = rules or FAILS
+    out, engine, reason = explain_summary(
+        _finding(rules), None, client=FakeClient(reply={"summary": text})
+    )
+    assert (engine == "llm") == (reason is None)
+    return reason
+
+
+def test_guard_too_many_sentences_and_chars():
+    five = "Reguła 3 naruszona. Drugie. Trzecie. Czwarte. Piąte."
+    assert _reason(five) == "za_duzo_zdan"
+    assert _reason("Reguła 3 naruszona. " + "x" * 440) == "za_dluga"
+    assert _reason("Reguła 3 naruszona. Wynik 72. Podmiot Firma X.") is None  # 3 zdania, art. 76 nie liczy
+
+
+def test_guard_rejects_legal_claims_absent_from_data():
+    # Realna proba 1: powolanie art. 76 i doradztwa bez zezwolenia przy innych regulach.
+    bad = "Reguła 3 naruszona; to doradztwo inwestycyjne bez zezwolenia z art. 76 ustawy."
+    assert _reason(bad).startswith("twierdzenie:")
+    assert _reason("Reguła 3: kara za oszustwo.").startswith("twierdzenie:")
+
+
+def test_guard_claim_must_come_from_failed_rules_not_routing():
+    f = _finding(FAILS)
+    f.routing.reason = "Wykryto doradztwo inwestycyjne bez zezwolenia."
+    client = FakeClient(reply={"summary": "Reguła 3 naruszona: doradztwo bez zezwolenia."})
+    _, engine = build_summary(f, None, client=client)
+    assert engine == "template"
+
+
+def test_guard_allows_claims_present_in_data():
+    rule = _rule("M3", Verdict.FAIL, "Kup akcje")
+    rule = rule.model_copy(update={"legal_basis": "art. 76 ustawy o obrocie"})
+    text = "Reguła M3 naruszona (art. 76 ustawy o obrocie)."
+    assert _reason(text, [rule]) is None
+
+
+def test_guard_rejects_contradiction_with_failed_rule():
+    # Realna proba 2: "zawiera informacje o ryzyku" mimo naruszenia reguly 3.
+    bad = "Reguła 3 naruszona. Materiał zawiera informacje o ryzyku, ale bez podmiotu."
+    assert _reason(bad) == "sprzecznosc:3"
+    assert _reason("Reguła 3 naruszona, a informacja o ryzyku jest widoczna.") == "sprzecznosc:3"
+    r2 = [_rule("2", Verdict.FAIL, "x")]
+    assert _reason("Reguła 2 naruszona, bo materiał jest oznaczony jako reklama.", r2) == "sprzecznosc:2"
+    r1 = [_rule("1", Verdict.FAIL, "x")]
+    assert _reason("Reguła 1: materiał podaje oficjalną nazwę firmy.", r1) == "sprzecznosc:1"
+
+
+def test_guard_contradiction_only_for_failed_rules():
+    # Regula 3 przeszla, naruszona jest 5: to samo zdanie nie jest sprzecznoscia.
+    rules = [_rule("3", Verdict.PASS), _rule("5", Verdict.FAIL, "x")]
+    assert _reason("Reguła 5 naruszona. Materiał zawiera informację o ryzyku.", rules) is None
+
+
+def test_prompt_and_guard_share_max_len():
+    from analyzer.summary import MAX_LEN
+
+    client = FakeClient(reply={"summary": "Reguła 3."})
+    build_summary(_finding(FAILS), None, client=client)
+    assert f"najwyżej {MAX_LEN} znaków" in client.prompts[0]
+
+
+def test_dbstore_summary_failure_keeps_finding(pg_conn, monkeypatch):
+    from analyzer.db_store import DbStore
+
+    real = pg_conn.execute
+
+    def flaky(sql, *a, **k):
+        if str(sql).startswith("UPDATE findings SET summary"):
+            raise RuntimeError("boom")
+        return real(sql, *a, **k)
+
+    f = _finding(FAILS)
+    store = DbStore(conn=pg_conn)
+    monkeypatch.setattr(pg_conn, "execute", flaky, raising=False)
+    store.post_finding(f, None, summary="Tekst reguła 3.", summary_engine="llm")
+    monkeypatch.undo()
+    row = pg_conn.execute("SELECT id, summary FROM findings").fetchone()
+    assert str(row["id"]) == f.id and row["summary"] is None
+
+
 class FakeStore:
     def __init__(self):
         self.posted = []
@@ -200,7 +285,7 @@ def test_backfill_on_real_db(pg_conn):
 
     client = FakeClient(reply={"summary": "Naruszona reguła 3 (obietnica zysku)."})
     stats = backfill(pg_conn, use_llm=True, client=client)
-    assert stats == {"total": 2, "llm": 1, "template": 1, "errors": 0}
+    assert stats == {"total": 2, "llm": 1, "template": 1, "errors": 0, "rejected": {}}
     rows = {
         str(r["id"]): r
         for r in pg_conn.execute("SELECT id, summary, summary_engine FROM findings")
@@ -208,6 +293,9 @@ def test_backfill_on_real_db(pg_conn):
     assert rows[ok["id"]]["summary_engine"] == "llm"
     assert rows[clean["id"]]["summary_engine"] == "template"
     assert backfill(pg_conn, use_llm=True, client=client)["total"] == 0  # idempotentne
+    assert backfill(pg_conn, use_llm=True, client=client, force=True)["total"] == 2
+    only = backfill(pg_conn, use_llm=False, force=True, engine="llm")
+    assert only["total"] == 1 and only["template"] == 1
 
 
 def test_dbstore_post_finding_writes_summary(pg_conn):
