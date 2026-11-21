@@ -10,7 +10,7 @@ not_applicable z powodem, nigdy fail.
 from __future__ import annotations
 
 import re
-from collections.abc import Collection, Mapping
+from collections.abc import Callable, Collection, Mapping
 
 from analyzer.contracts import (
     AdDocument,
@@ -141,6 +141,8 @@ def evaluate_batch(
     prompt_file: str,
     rule_meta: RuleMeta,
     fail_means_absence: Collection[str],
+    precondition: Callable[[str], bool] | None = None,
+    precondition_reason: str = "",
 ) -> list[RuleResult]:
     """Ocen wszystkie reguly wsadu jednym wywolaniem modelu.
 
@@ -153,6 +155,24 @@ def evaluate_batch(
 
     if not material.strip():
         return _all_not_applicable(rule_meta, "Material nie zawiera tekstu do oceny.")
+
+    # BRAMKA WARUNKU WSTEPNEGO — deterministyczna, PRZED wywolaniem modelu.
+    #
+    # Czesc regul jest warunkowa: regula 16 dotyczy tylko materialow mowiacych
+    # o podatkach, a reguly 12a/12b/14 tylko tych, ktore prezentuja wyniki
+    # historyczne. Bielik 4.5B ignorowal taki warunek zapisany w promptcie
+    # i dawal `fail` na materiale z sama prognoza, bez zadnych wynikow
+    # historycznych — czyli falszywy alarm, najgorszy kierunek bledu
+    # w narzedziu nadzorczym.
+    #
+    # Warunek wstepny rozstrzygamy wiec w kodzie, nie w promptcie. Zysk podwojny:
+    # znika cala klasa falszywych alarmow ORAZ oszczedzamy wywolanie modelu.
+    if precondition is not None and not precondition(material):
+        return _all_not_applicable(
+            rule_meta,
+            precondition_reason
+            or "Material nie spelnia warunku wstepnego tych regul.",
+        )
 
     prompt = load_prompt(prompt_file).replace("{material}", material)
 

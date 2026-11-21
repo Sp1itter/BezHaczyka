@@ -9,6 +9,10 @@ from __future__ import annotations
 from analyzer.contracts import AdDocument, RuleResult
 from analyzer.llm import OllamaClient
 from analyzer.rules_llm.batching import evaluate_batch
+from analyzer.rules_llm.preconditions import (
+    FORECAST_OR_TAX_REASON,
+    mentions_forecast_or_tax,
+)
 
 PROMPT_FILE = "batch_4.txt"
 
@@ -36,11 +40,18 @@ def evaluate_batch_4(
     doc: AdDocument,
     client: OllamaClient | None = None,
 ) -> list[RuleResult]:
-    """Ocen reguly 15, 16 jednym wywolaniem modelu."""
+    """Ocen reguly 15, 16 jednym wywolaniem modelu.
+
+    Warunek wstepny: material musi zawierac prognoze ALBO wzmianke
+    o podatkach. Bez tego obie reguly sa not_applicable i model nie jest
+    wolany (art. 44 ust. 6 i 7 rozporzadzenia del. 2017/565).
+    """
     return evaluate_batch(
         doc,
         client,
         prompt_file=PROMPT_FILE,
         rule_meta=RULE_META,
         fail_means_absence=FAIL_MEANS_ABSENCE,
+        precondition=mentions_forecast_or_tax,
+        precondition_reason=FORECAST_OR_TAX_REASON,
     )

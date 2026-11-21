@@ -96,6 +96,65 @@ class TestWzorcowOsiCzasu:
         )
 
 
+class TestFleksjiWRouterze:
+    """Regresja: RECOMMENDATION_SIGNALS dopasowywalo literalnie, wiec
+    "rekomendacji" i "rekomendacje" nie pasowaly do literalu "rekomendacja".
+    Router przepuszczalby wiekszosc realnych ofert doradczych do triage
+    zamiast do Modulu 3. Zgloszone przy przegladzie Modulu 3."""
+
+    @pytest.mark.parametrize(
+        "zdanie",
+        [
+            "rekomendujemy akcje X",
+            "rekomendacja kupna akcji",
+            "w naszej rekomendacji akcji",
+            "rekomendacje dla akcji spolki",
+            "nasze rekomendacjami sie kierujemy",
+            "sygnaly kupna od nas",
+            "zarzadzamy portfelami klientow",
+            "wskazemy instrumenty do zakupu",
+        ],
+    )
+    def test_rekomendacje_w_roznych_przypadkach(self, zdanie: str) -> None:
+        from analyzer.router import has_investment_recommendation
+
+        assert has_investment_recommendation(zdanie), (
+            f"{zdanie!r} JEST rekomendacja inwestycyjna — router musi to wykryc, "
+            "inaczej oferta trafi do triage zamiast do Modulu 3"
+        )
+
+    @pytest.mark.parametrize(
+        "zdanie",
+        [
+            "polecamy nasz newsletter",
+            "zapraszamy do kontaktu z nami",
+            "jestesmy na rynku od 20 lat",
+        ],
+    )
+    def test_falszywi_przyjaciele_nie_sa_rekomendacja(self, zdanie: str) -> None:
+        from analyzer.router import has_investment_recommendation
+
+        assert not has_investment_recommendation(zdanie), (
+            f"{zdanie!r} nie jest rekomendacja instrumentu finansowego"
+        )
+
+    def test_procent_jest_obietnica_zysku(self) -> None:
+        """Zastapilo goly literal '%' i bezsensowny literal 'do 1'."""
+        from analyzer.router import has_profit_claims
+
+        assert has_profit_claims("do 18% rocznie")
+        assert has_profit_claims("12,5 % w skali roku")
+        assert not has_profit_claims("nasza siedziba jest w Warszawie")
+
+    def test_normalize_jest_publiczne(self) -> None:
+        """Modul 3 importowal prywatne _normalize. Teraz jest publiczny
+        odpowiednik, a alias pozostaje dla zgodnosci."""
+        from analyzer import router
+
+        assert hasattr(router, "normalize")
+        assert router._normalize is router.normalize
+
+
 class TestZaleznosci:
     def test_redis_jest_przypiety_jawnie(self) -> None:
         """rq ciagnie redis tranzytywnie, ale zasada weryfikowalnego lancucha
