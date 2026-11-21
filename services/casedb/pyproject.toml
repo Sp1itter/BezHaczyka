@@ -13,4 +13,4 @@ dependencies = ["psycopg[binary]==3.3.9"]
 packages = ["casedb", "casedb.migrations"]
 
 [tool.setuptools.package-data]
-casedb = ["migrations/*.sql", "data/*.csv"]
+casedb = ["migrations/*.sql", "data/*.csv", "data/*.jsonl"]
