@@ -157,9 +157,10 @@ services:
     restart: unless-stopped
     networks: [investwatch]
 
-  # --- scraper-worker: Modul 1, kolejki q:ingest + q:render ---------------------
-  # Liczbe replik ustawia SCRAPER_WORKERS (domyslnie 2). Repliki dziela limiter i breaker
-  # w Valkey. Wynik zadan trafia do bazy (casedb), a analiza do q:gpu (analyzer).
+  # --- scraper-worker: Modul 1, kolejka q:ingest (discover, recheck) ------------
+  # Render (q:render) ma osobne repliki (scraper-worker-render), zeby discover nie blokowal
+  # renderu. Repliki dziela limiter i breaker w Valkey. Wynik zadan trafia do bazy (casedb),
+  # a analiza do q:gpu (analyzer).
   scraper-worker: &scraper
     build:
       context: ../services
@@ -175,7 +176,7 @@ services:
       casedb:
         condition: service_completed_successfully
     env_file: .env
-    environment:
+    environment: &scraper-env
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       VALKEY_URL: redis://valkey:6379/0
       S3_ENDPOINT: http://seaweedfs:8333
@@ -183,13 +184,25 @@ services:
       S3_SECRET_KEY: ${S3_SECRET_KEY}
       # Korpus offline Facebooka (tryb FB_MODE=auto przechodzi na niego bez sieci).
       FB_FIXTURES_DIR: /opt/iw/fixtures/demo-ads/facebook
+      SCRAPER_QUEUES: q:ingest
     volumes:
       - ../fixtures/demo-ads:/opt/iw/fixtures/demo-ads:ro
     shm_size: 1gb  # Chromium (/dev/shm); bez tego renderer potrafi sie wywracac
     deploy:
-      replicas: ${SCRAPER_WORKERS:-2}
+      replicas: ${SCRAPER_INGEST_WORKERS:-1}
     restart: unless-stopped
     networks: [investwatch]
+
+  # --- scraper-worker-render: Modul 1, kolejka q:render (Playwright, zapis, analiza) --
+  # Liczbe replik ustawia SCRAPER_WORKERS (domyslnie 2). Tempo zapytan do Meta i tak
+  # ogranicza wspolny limiter (FB_MIN_INTERVAL_S), wiec repliki nie zwiekszaja ruchu.
+  scraper-worker-render:
+    <<: *scraper
+    environment:
+      <<: *scraper-env
+      SCRAPER_QUEUES: q:render
+    deploy:
+      replicas: ${SCRAPER_WORKERS:-2}
 
   # --- scheduler: harmonogram Modulu 1 (rq-scheduler, services/scraper/schedule.yaml) --
   # Ten sam obraz co worker. Jednorazowy przebieg (demo):
