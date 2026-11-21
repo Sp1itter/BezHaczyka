@@ -21,7 +21,7 @@ export default function Alerts({ query, reloadKey, live, feed, onOpen, onUpdate 
               <span className="badge" style={{ background: "#e7664c" }}>{a.risk_score?.toFixed(1)}</span>
               <div>
                 <div>{a.title}</div>
-                <div className="muted">{SOURCE[a.source]} · M{a.primary_module} · {fmtDate(a.created_at)}</div>
+                <div className="muted">{a.source ? `${SOURCE[a.source] || a.source} · ` : ""}M{a.primary_module} · {fmtDate(a.created_at || a.received_at)}</div>
               </div>
             </li>
           ))}
