@@ -6,9 +6,10 @@ AnalyzerConfig(module2_runners=...).
 UWAGA: nie wszystkie z 18 regul sa nasze. Tu NIE brakuje regul, ktore
 trzeba dopisac:
   - reguly 4, 5, 6, 7, 8 sa deterministyczne i liczy je osoba A z geometrii
-    renderu (services/scraper),
-  - reguly 3 i 13 sa hybrydowe i czekaja na jej RenderProbe.
-Nasze sa wylacznie reguly LLM: 1, 2, 9, 10, 11, 12a, 12b, 14, 15, 16, 17, 18.
+    renderu (services/scraper).
+Nasze sa reguly LLM (1, 2, 9, 10, 11, 12a, 12b, 14, 15, 16, 17, 18) oraz
+hybrydowe 3 i 13 (analyzer/rules_hybrid.py), ktore korzystaja z RenderProbe
+od osoby A.
 """
 
 from __future__ import annotations
@@ -51,14 +52,19 @@ def _with_hybrid(meta: dict[str, tuple[str, int, str]]) -> dict[str, tuple[str, 
     """Dolacz reguly hybrydowe, ktore nie naleza do zadnego wsadu LLM.
 
     Regula 3 laczy wykrycie semantyczne twierdzen o zyskach z POMIAREM
-    odleglosci do ostrzezenia (geometria RenderProbe, znaki albo sekundy),
-    wiec nie jest ani czystym wsadem LLM, ani regula DET osoby A.
+    odleglosci do ostrzezenia (geometria RenderProbe, znaki albo sekundy);
+    regula 13 mierzy, czy wyniki historyczne nie sa najwiekszym elementem
+    (czcionka z RenderProbe). Zadna nie jest czystym wsadem LLM ani regula
+    DET osoby A.
     """
-    from analyzer.rules_hybrid import RULE_3_META
+    from analyzer.rules_hybrid import RULE_3_META, RULE_13_META
 
-    if "3" in meta:
-        raise ValueError("Kolizja rule_id '3' miedzy wsadem LLM a regula hybrydowa")
-    return {**meta, "3": RULE_3_META}
+    for rule_id in ("3", "13"):
+        if rule_id in meta:
+            raise ValueError(
+                f"Kolizja rule_id {rule_id!r} miedzy wsadem LLM a regula hybrydowa"
+            )
+    return {**meta, "3": RULE_3_META, "13": RULE_13_META}
 
 
 ALL_RULE_META: dict[str, tuple[str, int, str]] = _with_hybrid(_merge_meta())
@@ -70,14 +76,14 @@ def _rule_sort_key(rule_id: str) -> tuple[int, str]:
 
 
 def module2_runners(client: OllamaClient | None = None) -> tuple[RuleRunner, ...]:
-    """Runnery Modulu 2: cztery wsady LLM plus regula hybrydowa 3.
+    """Runnery Modulu 2: cztery wsady LLM plus reguly hybrydowe 3 i 13.
 
-    `client` trafia do kazdego wsadu. Regula 3 go nie potrzebuje — mierzy
+    `client` trafia do kazdego wsadu. Reguly 3 i 13 go nie potrzebuja — 3 mierzy
     odleglosc miedzy obietnica zysku a ostrzezeniem deterministycznie
     (geometria RenderProbe, znaki albo sekundy transkrypcji), wiec dziala
-    takze przy padnietym modelu.
+    takze przy padnietym modelu; 13 porownuje czcionki z RenderProbe.
     """
-    from analyzer.rules_hybrid import rule_3_runner
+    from analyzer.rules_hybrid import rule_3_runner, rule_13_runner
 
     runners: list[RuleRunner] = []
     for _module, fn in _BATCHES:
@@ -85,6 +91,7 @@ def module2_runners(client: OllamaClient | None = None) -> tuple[RuleRunner, ...
         runner.__name__ = fn.__name__  # type: ignore[attr-defined]
         runners.append(runner)
     runners.append(rule_3_runner)
+    runners.append(rule_13_runner)
     return tuple(runners)
 
 
@@ -100,7 +107,7 @@ def expected_rule_ids() -> tuple[str, ...]:
     """Posortowane rule_id, ktore powinny wrocic z pelnej analizy.
 
     Tylko reguly faktycznie zaimplementowane w naszych wsadach (patrz
-    docstring modulu: 3-8 i 13 sa po stronie osoby A).
+    docstring modulu: 4-8 sa po stronie osoby A).
     """
     return tuple(sorted(ALL_RULE_META, key=_rule_sort_key))
 

@@ -153,3 +153,44 @@ def test_worker_imports_without_rq():
     )
     analyzer_root = Path(__file__).resolve().parents[1]
     subprocess.run([sys.executable, "-c", code], check=True, cwd=analyzer_root)
+
+
+# --- ksztalty payloadu: document / flat, fallback FINDINGS_OUT_DIR ---------- #
+
+
+def _api_no_get(posted=None, post_status=200) -> ApiClient:
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.method == "POST", "get_document nie powinien byc wolany"
+        if posted is not None:
+            posted.append(json.loads(request.content))
+        return httpx.Response(post_status, json={})
+
+    client = httpx.Client(transport=httpx.MockTransport(handler), base_url="http://fake")
+    return ApiClient(base_url="http://api:8000", client=client)
+
+
+@pytest.mark.parametrize("payload", [{"document": DOC}, dict(DOC)])
+def test_payload_z_pelnym_dokumentem_bez_wolania_api(payload):
+    posted: list = []
+    finding = handle_job(payload, api=_api_no_get(posted))
+    assert isinstance(finding, Finding)
+    assert posted[0]["document_id"] == DOC["id"]
+
+
+def test_flat_payload_z_det_results():
+    payload = {**DOC, "det_results": []}
+    finding = handle_job(payload, api=_api_no_get())
+    assert finding is not None
+    assert [r.rule_id for r in finding.rule_results] == ["4", "5", "6", "7", "8"]
+
+
+@pytest.mark.parametrize("payload", [{"document": {"id": "x"}}, {"id": "x", "url": "u"}])
+def test_niepoprawny_dokument_w_payloadzie_daje_none(payload):
+    assert handle_job(payload, api=_api_no_get()) is None
+
+
+def test_findings_out_dir_zapisuje_json_nawet_gdy_api_pada(tmp_path, monkeypatch):
+    monkeypatch.setenv("FINDINGS_OUT_DIR", str(tmp_path))
+    assert handle_job(dict(DOC), api=_api_no_get(post_status=500)) is None
+    saved = json.loads((tmp_path / f"{DOC['id']}.json").read_text(encoding="utf-8"))
+    assert saved["document_id"] == DOC["id"]

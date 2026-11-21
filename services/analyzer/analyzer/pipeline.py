@@ -45,6 +45,7 @@ from analyzer.contracts import (
     ScopeStatus,
     Verdict,
 )
+from analyzer.det_placeholders import missing_det_placeholders
 from analyzer.router import RoutingInput, route
 from analyzer.scope_gate import classify_scope
 from analyzer.scoring import risk_level, risk_score
@@ -175,6 +176,8 @@ def analyze(
         # LLM, zeby scoring widzial pelny obraz.
         if det_results:
             results.extend(det_results)
+        # Brakujace reguly 4-8 -> wypelniacze not_applicable (widoczne w coverage).
+        results.extend(missing_det_placeholders(doc, det_results))
         for runner in config.module2_runners:
             try:
                 results.extend(runner(doc))
