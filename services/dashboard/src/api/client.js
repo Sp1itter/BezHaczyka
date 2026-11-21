@@ -2,6 +2,7 @@
 // PUNKT POLACZENIA: BASE. Dev -> proxy Vite (vite.config.js), Docker -> nginx /api -> API_UPSTREAM
 // (services/api :8000 albo mock :4000). Korzysta tylko z endpointow, ktore ma services/api.
 import { applyFilters, stats, trend } from "../lib/query.js";
+import { buildQuery, csvUrl } from "../lib/module1.js";
 
 const BASE = import.meta.env.VITE_API_BASE || "/api";
 const LIMIT = 500; // maksimum GET /findings w services/api
@@ -43,4 +44,7 @@ export const api = {
   stats: async (filters) => stats(applyFilters(await allFindings(), filters)), // [DB-4]
   trend: async (filters) => ({ items: trend(applyFilters(await allFindings(), filters)) }), // [DB-5]
   calibration: () => http(`/calibration`), // [DB-6]
+  // Raport Modulu 1 (503, gdy widok bazy niedostepny) i link do CSV z tymi samymi filtrami.
+  module1Report: (filters = {}) => http(`/reports/module1?${buildQuery({ ...filters, limit: 500 })}`),
+  module1CsvUrl: (filters = {}) => csvUrl(filters, BASE),
 };
