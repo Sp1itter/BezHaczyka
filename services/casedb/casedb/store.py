@@ -488,8 +488,68 @@ def registry_entries(conn: psycopg.Connection) -> list[dict]:
     """Caly rejestr KNF (bez updated_at), posortowany po knf_id."""
     return conn.execute(
         "SELECT knf_id, name, normalized_name, type, country, register, aliases, domains,"
-        " handles, source_url FROM authorized_entities ORDER BY knf_id"
+        " handles, source_url, source, active FROM authorized_entities ORDER BY knf_id"
     ).fetchall()
+
+
+_COUNTRY_FIELDS = (
+    "Państwo macierzyste",
+    "Nazwa kraju, w którym działalność domu maklerskiego została notyfikowana",
+)
+_SYNC_CATEGORIES = ("firma_inwestycyjna", "zagraniczna_firma_inwestycyjna")
+
+
+def _knf_country(fields: dict) -> str:
+    for key in _COUNTRY_FIELDS:
+        value = str(fields.get(key) or "").strip()
+        if value:
+            return value
+    return "PL"  # domy, banki i cofniete zezwolenia: krajowe
+
+
+def sync_registry_from_knf(conn: psycopg.Connection) -> int:
+    """Upsert firm inwestycyjnych ze snapshotu (knf_entities) do authorized_entities (source='knf').
+
+    Pomija wpisy pokrywajace sie z firmami curated; curated nigdy nie sa nadpisywane.
+    """
+    from casedb.knf import name_key
+
+    curated = conn.execute(
+        "SELECT name, aliases FROM authorized_entities WHERE source = 'curated'").fetchall()
+    skip = {name_key(n) for r in curated for n in [r["name"], *(r["aliases"] or [])]}
+    rows = conn.execute(
+        "SELECT register, active, name, name_key, former_names, fields FROM knf_entities"
+        " WHERE category = ANY(%s) ORDER BY id", (list(_SYNC_CATEGORIES),)).fetchall()
+    n = 0
+    with conn.transaction():
+        for r in rows:
+            if r["name_key"] in skip:
+                continue
+            knf_id = "KNF-%s-%s" % (r["register"], hashlib.sha1(r["name_key"].encode()).hexdigest()[:10])
+            conn.execute(
+                """
+                INSERT INTO authorized_entities (knf_id, name, normalized_name, type, country,
+                                                 register, aliases, source, active)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, 'knf', %s)
+                ON CONFLICT (knf_id) DO UPDATE SET
+                    name = EXCLUDED.name, normalized_name = EXCLUDED.normalized_name,
+                    type = EXCLUDED.type, country = EXCLUDED.country, register = EXCLUDED.register,
+                    aliases = EXCLUDED.aliases, active = EXCLUDED.active, updated_at = now()
+                WHERE authorized_entities.source = 'knf'
+                """,
+                (knf_id, r["name"], normalize_name(r["name"]), r["register"],
+                 _knf_country(r["fields"] or {}), r["register"], list(r["former_names"] or []),
+                 r["active"]),
+            )
+            n += 1
+    return n
+
+
+def knf_agent_keys(conn: psycopg.Connection) -> set[str]:
+    """Klucze name_key aktywnych agentow firm inwestycyjnych."""
+    rows = conn.execute(
+        "SELECT name_key FROM knf_entities WHERE category = 'agent' AND active").fetchall()
+    return {r["name_key"] for r in rows}
 
 
 def report_module1(

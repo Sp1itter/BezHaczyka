@@ -70,3 +70,39 @@ def test_load_and_lookup(conn):
     assert hit[0]["active"] and hit[0]["category"] == "firma_inwestycyjna"
     assert knf.lookup(conn, "Ventus Asset Management")[0]["active"] is False
     assert knf.lookup(conn, "Nieznany Broker Ltd") == []
+
+
+# ---- synchronizacja snapshotu do authorized_entities -------------------------
+def _snap(register, name, fields=None, former=None):
+    return {"register": register, "name": name, "former_names": former or [], "fields": fields or {},
+            "source_url": "https://knf.test/x", "fetched_at": "2026-11-21T10:00:00+00:00"}
+
+
+def test_sync_registry_from_knf(conn):
+    from casedb import store
+
+    store.load_registry(conn, [{"knf_id": "DM-XTB", "name": "XTB S.A.", "aliases": [], "domains": ["xtb.com"],
+                                "handles": []}])
+    knf.load_snapshot(conn, [
+        _snap("domy_maklerskie", "XTB Spółka Akcyjna"),  # pokrywa sie z curated
+        _snap("zfi_bez_oddzialu", "Foreign Broker Ltd", {"Państwo macierzyste": "Cypr"}, ["Old Broker Ltd"]),
+        _snap("dm_ue_oddzial", "Branch Invest AG",
+              {"Nazwa kraju, w którym działalność domu maklerskiego została notyfikowana": "Niemcy"}),
+        _snap("domy_maklerskie", "Polski Dom Maklerski S.A."),
+        _snap("cofniete_zezwolenia", "Upadly Dom SA"),
+        _snap("agenci_osoby_fizyczne", "Jan Kowalski"),
+    ])
+    n = store.sync_registry_from_knf(conn)
+    assert n == 4
+    assert store.sync_registry_from_knf(conn) == 4  # idempotentne
+    by = {e["name"]: e for e in store.registry_entries(conn)}
+    assert len(by) == 5 and "Jan Kowalski" not in by
+    xtb = by["XTB S.A."]
+    assert xtb["source"] == "curated" and xtb["domains"] == ["xtb.com"] and xtb["active"]
+    fb = by["Foreign Broker Ltd"]
+    assert (fb["source"], fb["country"], fb["aliases"], fb["active"]) == ("knf", "Cypr", ["Old Broker Ltd"], True)
+    assert fb["knf_id"].startswith("KNF-zfi_bez_oddzialu-") and len(fb["knf_id"]) == len("KNF-zfi_bez_oddzialu-") + 10
+    assert by["Branch Invest AG"]["country"] == "Niemcy"
+    assert by["Polski Dom Maklerski S.A."]["country"] == "PL"
+    assert by["Upadly Dom SA"]["active"] is False
+    assert store.knf_agent_keys(conn) == {"jan kowalski"}

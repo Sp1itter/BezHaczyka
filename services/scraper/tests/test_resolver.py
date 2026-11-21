@@ -104,6 +104,7 @@ def test_registry_cache(monkeypatch):
     from casedb import store
     calls = []
     monkeypatch.setattr(store, "registry_entries", lambda conn: calls.append(1) or ROWS)
+    monkeypatch.setattr(store, "knf_agent_keys", lambda conn: set())
     Registry.clear_cache()
     a, b = Registry.from_db(object()), Registry.from_db(object())
     assert a is b and len(calls) == 1
@@ -128,3 +129,47 @@ def test_official_channel_without_name_in_text_is_official():
     assert r["publisher_relation"] == "official"
     assert r["publisher_is_authorized"] and r["registry_knf_id"] == "DM-XTB"
     assert r["firm_name_in_ad"] is None
+
+
+# ---- pelny rejestr KNF: wpisy source='knf' -----------------------------------
+KNF_ROWS = [
+    {"knf_id": "KNF-zfi_bez_oddzialu-aaaaaaaaaa", "name": "Zagraniczny Broker Capital Markets", "aliases": [],
+     "domains": [], "handles": [], "source": "knf", "active": True},
+    {"knf_id": "KNF-cofniete_zezwolenia-bbbbbbbbbb", "name": "Upadly Dom Inwestycyjny", "aliases": [],
+     "domains": [], "handles": [], "source": "knf", "active": False},
+    {"knf_id": "KNF-zfi_oddzialy-cccccccccc", "name": "Ab Xy", "aliases": [], "domains": [], "handles": [],
+     "source": "knf", "active": True},
+    {"knf_id": "KNF-zfi_oddzialy-dddddddddd", "name": "Zeta", "aliases": [], "domains": [], "handles": [],
+     "source": "knf", "active": True},
+]
+
+
+def test_knf_exact_only_no_fuzzy():
+    reg = Registry.from_rows(KNF_ROWS)
+    exact = resolve(doc("Polecam Zagraniczny Broker Capital Markets dla kazdego."), reg)
+    assert exact["registry_knf_id"] == "KNF-zfi_bez_oddzialu-aaaaaaaaaa" and exact["firm_is_authorized"]
+    typo = resolve(doc("Polecam Zagraniczny Broker Capitall Markets dla kazdego."), reg)
+    assert typo["registry_knf_id"] is None
+
+
+def test_knf_short_name_skipped():
+    reg = Registry.from_rows(KNF_ROWS)
+    assert {f.name for f in reg.firms} == {"Zagraniczny Broker Capital Markets", "Upadly Dom Inwestycyjny", "Ab Xy"}
+    r = resolve(doc("Zeta to grecka litera."), reg)
+    assert r["registry_knf_id"] is None
+
+
+def test_inactive_firm_is_not_authorized():
+    reg = Registry.from_rows(KNF_ROWS)
+    r = resolve(doc("Upadly Dom Inwestycyjny obiecuje zyski."), reg)
+    assert r["mentions_authorized_firm"] and r["firm_license_active"] is False
+    assert r["firm_is_authorized"] is False
+    assert resolve(doc("Nic o firmach."), reg)["firm_license_active"] is None
+
+
+def test_agent_publisher_is_authorized():
+    reg = Registry.from_rows(ROWS, agent_keys={"jan agent"})
+    r = resolve(doc("Zaloz konto w XTB.", handle="jan", display_name="Jan Agent"), reg)
+    assert r["publisher_relation"] == "third_party" and r["publisher_is_authorized"]
+    other = resolve(doc("Zaloz konto w XTB.", handle="x", display_name="Ktos Inny"), reg)
+    assert not other["publisher_is_authorized"]
