@@ -1,0 +1,105 @@
+[
+  {
+    "rule_id": "4",
+    "rule_name": "Rozmiar czcionki ryzyka",
+    "engine": "DET",
+    "verdict": "not_applicable",
+    "confidence": 1.0,
+    "severity": 4,
+    "legal_basis": "art. 44 ust. 2 lit. c rozporządzenia del. 2017/565",
+    "evidence": {
+      "kind": "measurement",
+      "summary": "typografia platformy (Meta Ad Library): tekst w DOM Ad Library składa Meta, nie reklamodawca — reguła nie mierzy decyzji reklamodawcy. Tekst wtopiony w grafikę/wideo wymaga oceny ręcznej.",
+      "measured": {
+        "dominant_font_px": 12.0
+      },
+      "quote": null,
+      "viewport": "desktop",
+      "screenshot_crop": "s3://shots/d9aeb3e7-35d2-5336-81a8-ee5b7e7396ba-1920.png",
+      "transcript_ts": null
+    }
+  },
+  {
+    "rule_id": "5",
+    "rule_name": "Ekspozycja i kontrast",
+    "engine": "DET",
+    "verdict": "not_applicable",
+    "confidence": 1.0,
+    "severity": 3,
+    "legal_basis": "art. 44 ust. 2 lit. c, e rozporządzenia del. 2017/565",
+    "evidence": {
+      "kind": "measurement",
+      "summary": "typografia platformy (Meta Ad Library): tekst w DOM Ad Library składa Meta, nie reklamodawca — reguła nie mierzy decyzji reklamodawcy. Tekst wtopiony w grafikę/wideo wymaga oceny ręcznej.",
+      "measured": {
+        "dominant_font_px": 12.0
+      },
+      "quote": null,
+      "viewport": "desktop",
+      "screenshot_crop": "s3://shots/d9aeb3e7-35d2-5336-81a8-ee5b7e7396ba-1920.png",
+      "transcript_ts": null
+    }
+  },
+  {
+    "rule_id": "6",
+    "rule_name": "Zakrywanie / ukrywanie",
+    "engine": "DET",
+    "verdict": "pass",
+    "confidence": 1.0,
+    "severity": 4,
+    "legal_basis": "art. 44 ust. 2 lit. e rozporządzenia del. 2017/565",
+    "evidence": {
+      "kind": "measurement",
+      "summary": "Ostrzeżenie „Inwestowanie w kryptoaktywa wiąże się z wysokim ryzykiem.” zaczyna się na 13% wysokości kreacji.",
+      "measured": {
+        "y_share_of_creative": 0.127,
+        "in_footer": 0.0
+      },
+      "quote": "Inwestowanie w kryptoaktywa wiąże się z wysokim ryzykiem.",
+      "viewport": "desktop",
+      "screenshot_crop": "s3://shots/d9aeb3e7-35d2-5336-81a8-ee5b7e7396ba-1920.png",
+      "transcript_ts": null
+    }
+  },
+  {
+    "rule_id": "7",
+    "rule_name": "Dostępność za 1 kliknięciem",
+    "engine": "HYBRID",
+    "verdict": "fail",
+    "confidence": 0.6,
+    "severity": 4,
+    "legal_basis": "art. 44 ust. 2 lit. b, e rozporządzenia del. 2017/565",
+    "evidence": {
+      "kind": "measurement",
+      "summary": "Ostrzeżenie zaczyna się na znaku 258 treści głównej — za progiem 125 znaków, po którym feed Meta ucina tekst przyciskiem „Zobacz więcej”. Prawdopodobnie ukryte za kliknięciem (heurystyka feedu, nie pomiar Ad Library).",
+      "measured": {
+        "risk_offset_chars": 258.0,
+        "fold_chars": 125.0,
+        "beyond_fold": 1.0
+      },
+      "quote": "Inwestowanie w kryptoaktywa wiąże się z wysokim ryzykiem.",
+      "viewport": null,
+      "screenshot_crop": null,
+      "transcript_ts": null
+    }
+  },
+  {
+    "rule_id": "8",
+    "rule_name": "Responsywność",
+    "engine": "DET",
+    "verdict": "not_applicable",
+    "confidence": 1.0,
+    "severity": 2,
+    "legal_basis": "art. 44 ust. 2 lit. g rozporządzenia del. 2017/565",
+    "evidence": {
+      "kind": "measurement",
+      "summary": "typografia platformy (Meta Ad Library): tekst w DOM Ad Library składa Meta, nie reklamodawca — reguła nie mierzy decyzji reklamodawcy. Tekst wtopiony w grafikę/wideo wymaga oceny ręcznej.",
+      "measured": {
+        "dominant_font_px": 12.0
+      },
+      "quote": null,
+      "viewport": "desktop",
+      "screenshot_crop": "s3://shots/d9aeb3e7-35d2-5336-81a8-ee5b7e7396ba-1920.png",
+      "transcript_ts": null
+    }
+  }
+]

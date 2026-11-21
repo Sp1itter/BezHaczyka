@@ -1,0 +1,654 @@
+{
+  "id": "d00ddf4c-d3e8-53c1-b90c-4fe8edb71a29",
+  "source": "facebook",
+  "url": "https://example.invalid/ads/library/?id=986443020999266",
+  "fetched_at": "2026-11-21T17:26:24.551873Z",
+  "publisher": {
+    "handle": "@WalbrzyskaSSE",
+    "display_name": "Wałbrzyska Specjalna Strefa Ekonomiczna \"INVEST-PARK\"",
+    "profile_url": "https://example.invalid/WalbrzyskaSSE/",
+    "is_official_firm_channel": false
+  },
+  "lang": "pl",
+  "title": "Inwestuj mądrze 📈🏗️",
+  "text": "Inwestorze – w WSSE „INVEST-PARK” sezon na przetargi inwestycyjne trwa cały rok! 📈🏗️\nDziałki inwestycyjne na terenie Dolnego Śląska, Opolszczyzny i Wielkopolski to atrakcyjne\ngrunty 🌍, o różnej wielkości 📐, dopasowane do Twoich potrzeb biznesowych! 💼\nDlaczego warto? 👇\n· Elastyczny wybór – działki od 0,7 ha do 30 ha 📏, idealne zarówno dla MŚP, jak i dużych\nprzedsiębiorców 🏢🏭\n· Świetna lokalizacja i dostęp do kluczowych rynków 📍 – tereny znajdują się w\nsąsiedztwie autostrad 🛣️ / dróg ekspresowych 🚗 / dróg krajowych czy linii kolejowych 🚆, w\nstrefach przemysłowych 🏗️\n· Tereny uzbrojone – gotowe pod inwestycje od zaraz ⚡🚀\n· Ogromne oszczędności 💰 – możliwość skorzystania z ulg podatkowych w ramach\nprogramu Polska Strefa Inwestycji 🇵🇱, sięgających nawet do 60% kosztów Twojej\ninwestycji – uzyskane w ten sposób oszczędności przeznaczysz na dalszy rozwój\nbiznesu! 📊📈\nZ nami zrealizujesz swoje plany biznesowe 🎯 i to na terenie dopasowanym do Twojej\ndziałalności gospodarczej! 💼✨\nSprawdź dostępne działki 🔎\nhttps://example.invalid/category/przetarg/\nInwestuj mądrze 📈🏗️\ninvest-park.com.pl\nhttps://example.invalid/dzialki-inwestycyjne/",
+  "html_path": "s3://raw/d00ddf4c-d3e8-53c1-b90c-4fe8edb71a29.html",
+  "screenshots": {
+    "desktop": "s3://shots/d00ddf4c-d3e8-53c1-b90c-4fe8edb71a29-1920.png",
+    "mobile": "s3://shots/d00ddf4c-d3e8-53c1-b90c-4fe8edb71a29-390.png"
+  },
+  "media": [
+    {
+      "kind": "video",
+      "path": "s3://media/d00ddf4c-d3e8-53c1-b90c-4fe8edb71a29.mp4",
+      "duration_s": null
+    }
+  ],
+  "transcript": null,
+  "render_probe": {
+    "viewports": {
+      "desktop": {
+        "dominant_font_px": 12.0,
+        "page_height_px": 1263.0,
+        "nodes": [
+          {
+            "text": "Wałbrzyska Specjalna Strefa Ekonomiczna \"INVEST-PARK\"",
+            "font_px": 14.0,
+            "font_weight": 700,
+            "color": "#262626",
+            "background_effective": "#ffffff",
+            "background_source": "ancestor:div:nth-of-type(2)>div:nth-of-type(1)>div:nth-of-type(2)>div:nth-of-type(2)>div>div>div>div",
+            "background_confidence": "resolved",
+            "contrast_ratio": 15.08,
+            "bbox": {
+              "x": 773.0,
+              "y": 397.1,
+              "w": 393.7,
+              "h": 16.0
+            },
+            "visible": true,
+            "clipped": false,
+            "behind_interaction": "link",
+            "collapsed_evidence": "a[href]",
+            "dom_path": "div>div>div:nth-of-type(1)>div>div>div>a>span",
+            "in_footer": false
+          },
+          {
+            "text": "Sponsorowane",
+            "font_px": 12.0,
+            "font_weight": 600,
+            "color": "#737373",
+            "background_effective": "#ffffff",
+            "background_source": "ancestor:div:nth-of-type(2)>div:nth-of-type(1)>div:nth-of-type(2)>div:nth-of-type(2)>div>div>div>div",
+            "background_confidence": "resolved",
+            "contrast_ratio": 4.76,
+            "bbox": {
+              "x": 773.0,
+              "y": 416.1,
+              "w": 86.0,
+              "h": 14.0
+            },
+            "visible": true,
+            "clipped": false,
+            "behind_interaction": null,
+            "collapsed_evidence": null,
+            "dom_path": "div>div>div>span>div>div>span:nth-of-type(1)>strong",
+            "in_footer": false
+          },
+          {
+            "text": "Inwestorze – w WSSE „INVEST-PARK” sezon na przetargi inwestycyjne trwa cały rok! 📈🏗️ Działki inwestycyjne na terenie Dolnego Śląska, Opolszczyzny i Wielkopolski to atrakcyjne grunty 🌍, o różnej wielkości 📐, dopasowane do Twoich potrzeb biznesowych! 💼 Dlaczego warto? 👇 · Elastyczny wybór – działki od 0,7 ha do 30 ha 📏, idealne zarówno dla MŚP, jak i dużych przedsiębiorców 🏢🏭 · Świetna lokalizacja i dostęp do kluczowych rynków 📍 – tereny znajdują się w sąsiedztwie autostrad 🛣️ / dróg ekspresowych 🚗 / dróg krajowych czy linii kolejowych 🚆, w strefach przemysłowych 🏗️ · Tereny uzbrojone – gotowe pod inwestycje od zaraz ⚡🚀 · Ogromne oszczędności 💰 – możliwość skorzystania z ulg podatkowych w ramach programu Polska Strefa Inwestycji 🇵🇱, sięgających nawet do 60% kosztów Twojej inwestycji – uzyskane w ten sposób oszczędności przeznaczysz na dalszy rozwój biznesu! 📊📈 Z nami zrealizujesz swoje plany biznesowe 🎯 i to na terenie dopasowanym do Twojej działalności gospodarczej! 💼✨ Sprawdź dostępne działki 🔎",
+            "font_px": 12.0,
+            "font_weight": 400,
+            "color": "#262626",
+            "background_effective": "#ffffff",
+            "background_source": "ancestor:div:nth-of-type(2)>div:nth-of-type(1)>div:nth-of-type(2)>div:nth-of-type(2)>div>div>div>div",
+            "background_confidence": "resolved",
+            "contrast_ratio": 15.08,
+            "bbox": {
+              "x": 737.0,
+              "y": 440.1,
+              "w": 444.1,
+              "h": 430.0
+            },
+            "visible": true,
+            "clipped": true,
+            "behind_interaction": null,
+            "collapsed_evidence": null,
+            "dom_path": "div>div:nth-of-type(2)>div:nth-of-type(1)>span>div>div>div>span",
+            "in_footer": false
+          },
+          {
+            "text": "https://example.invalid/category/przetarg/",
+            "font_px": 12.0,
+            "font_weight": 400,
+            "color": "#385898",
+            "background_effective": "#ffffff",
+            "background_source": "ancestor:div:nth-of-type(2)>div:nth-of-type(1)>div:nth-of-type(2)>div:nth-of-type(2)>div>div>div>div",
+            "background_confidence": "resolved",
+            "contrast_ratio": 6.96,
+            "bbox": {
+              "x": 737.0,
+              "y": 872.1,
+              "w": 233.4,
+              "h": 14.0
+            },
+            "visible": true,
+            "clipped": true,
+            "behind_interaction": "link",
+            "collapsed_evidence": "a[href]",
+            "dom_path": "div:nth-of-type(2)>div:nth-of-type(1)>span>div>div>div>span>a",
+            "in_footer": false
+          },
+          {
+            "text": "Przepraszamy, wystąpiły problemy z odtworzeniem tego filmu.",
+            "font_px": 15.0,
+            "font_weight": 600,
+            "color": "#ffffff",
+            "background_effective": "#797979",
+            "background_source": "ancestor:div>div>div:nth-of-type(2)>div:nth-of-type(2)>div>div>div>div",
+            "background_confidence": "resolved",
+            "contrast_ratio": 4.35,
+            "bbox": {
+              "x": 768.4,
+              "y": 612.1,
+              "w": 383.1,
+              "h": 40.0
+            },
+            "visible": true,
+            "clipped": false,
+            "behind_interaction": null,
+            "collapsed_evidence": null,
+            "dom_path": "div:nth-of-type(2)>div>div>div>div>div>div:nth-of-type(1)>span",
+            "in_footer": false
+          },
+          {
+            "text": "Dowiedz się więcej",
+            "font_px": 17.0,
+            "font_weight": 600,
+            "color": "#ffffff",
+            "background_effective": "#797979",
+            "background_source": "ancestor:div>div>div:nth-of-type(2)>div:nth-of-type(2)>div>div>div>div",
+            "background_confidence": "resolved",
+            "contrast_ratio": 4.35,
+            "bbox": {
+              "x": 887.6,
+              "y": 658.1,
+              "w": 144.8,
+              "h": 22.0
+            },
+            "visible": true,
+            "clipped": false,
+            "behind_interaction": "link",
+            "collapsed_evidence": "a[href]",
+            "dom_path": "div>div>div>div>div>div:nth-of-type(2)>span>a",
+            "in_footer": false
+          },
+          {
+            "text": "INVEST-PARK.COM.PL",
+            "font_px": 8.0,
+            "font_weight": 400,
+            "color": "#606770",
+            "background_effective": "#ffffff",
+            "background_source": "ancestor:div>div>div>div>div:nth-of-type(2)>div:nth-of-type(3)>a>div",
+            "background_confidence": "resolved",
+            "contrast_ratio": 5.72,
+            "bbox": {
+              "x": 725.0,
+              "y": 748.1,
+              "w": 85.2,
+              "h": 9.0
+            },
+            "visible": true,
+            "clipped": false,
+            "behind_interaction": "link",
+            "collapsed_evidence": "a[href]",
+            "dom_path": "div:nth-of-type(2)>div:nth-of-type(3)>a>div>div:nth-of-type(1)>div:nth-of-type(1)>div>div",
+            "in_footer": false
+          },
+          {
+            "text": "Inwestuj mądrze 📈🏗️",
+            "font_px": 10.0,
+            "font_weight": 400,
+            "color": "#1c1e21",
+            "background_effective": "#ffffff",
+            "background_source": "ancestor:div>div>div>div>div:nth-of-type(2)>div:nth-of-type(3)>a>div",
+            "background_confidence": "resolved",
+            "contrast_ratio": 16.71,
+            "bbox": {
+              "x": 725.0,
+              "y": 760.1,
+              "w": 103.0,
+              "h": 11.0
+            },
+            "visible": true,
+            "clipped": false,
+            "behind_interaction": "link",
+            "collapsed_evidence": "a[href]",
+            "dom_path": "div:nth-of-type(2)>div:nth-of-type(3)>a>div>div:nth-of-type(1)>div:nth-of-type(2)>div>div",
+            "in_footer": false
+          },
+          {
+            "text": "Dowiedz się więcej",
+            "font_px": 14.0,
+            "font_weight": 400,
+            "color": "#242424",
+            "background_effective": "#f2f2f2",
+            "background_source": "ancestor:div>div:nth-of-type(2)>div:nth-of-type(3)>a>div>div:nth-of-type(2)>div>div",
+            "background_confidence": "resolved",
+            "contrast_ratio": 13.84,
+            "bbox": {
+              "x": 1091.0,
+              "y": 752.1,
+              "w": 118.3,
+              "h": 16.0
+            },
+            "visible": true,
+            "clipped": true,
+            "behind_interaction": "link",
+            "collapsed_evidence": "a[href]",
+            "dom_path": "div>div:nth-of-type(2)>div>div>span>div>div>div",
+            "in_footer": false
+          }
+        ]
+      },
+      "tablet": {
+        "dominant_font_px": 12.0,
+        "page_height_px": 2435.0,
+        "nodes": [
+          {
+            "text": "Wałbrzyska Specjalna Strefa Ekonomiczna \"INVEST-PARK\"",
+            "font_px": 14.0,
+            "font_weight": 700,
+            "color": "#262626",
+            "background_effective": "#ffffff",
+            "background_source": "ancestor:div:nth-of-type(2)>div:nth-of-type(1)>div:nth-of-type(2)>div:nth-of-type(2)>div>div>div>div",
+            "background_confidence": "resolved",
+            "contrast_ratio": 15.08,
+            "bbox": {
+              "x": 173.0,
+              "y": 397.1,
+              "w": 393.7,
+              "h": 16.0
+            },
+            "visible": true,
+            "clipped": false,
+            "behind_interaction": "link",
+            "collapsed_evidence": "a[href]",
+            "dom_path": "div>div>div:nth-of-type(1)>div>div>div>a>span",
+            "in_footer": false
+          },
+          {
+            "text": "Sponsorowane",
+            "font_px": 12.0,
+            "font_weight": 600,
+            "color": "#737373",
+            "background_effective": "#ffffff",
+            "background_source": "ancestor:div:nth-of-type(2)>div:nth-of-type(1)>div:nth-of-type(2)>div:nth-of-type(2)>div>div>div>div",
+            "background_confidence": "resolved",
+            "contrast_ratio": 4.76,
+            "bbox": {
+              "x": 173.0,
+              "y": 416.1,
+              "w": 86.0,
+              "h": 14.0
+            },
+            "visible": true,
+            "clipped": false,
+            "behind_interaction": null,
+            "collapsed_evidence": null,
+            "dom_path": "div>div>div>span>div>div>span:nth-of-type(1)>strong",
+            "in_footer": false
+          },
+          {
+            "text": "Inwestorze – w WSSE „INVEST-PARK” sezon na przetargi inwestycyjne trwa cały rok! 📈🏗️ Działki inwestycyjne na terenie Dolnego Śląska, Opolszczyzny i Wielkopolski to atrakcyjne grunty 🌍, o różnej wielkości 📐, dopasowane do Twoich potrzeb biznesowych! 💼 Dlaczego warto? 👇 · Elastyczny wybór – działki od 0,7 ha do 30 ha 📏, idealne zarówno dla MŚP, jak i dużych przedsiębiorców 🏢🏭 · Świetna lokalizacja i dostęp do kluczowych rynków 📍 – tereny znajdują się w sąsiedztwie autostrad 🛣️ / dróg ekspresowych 🚗 / dróg krajowych czy linii kolejowych 🚆, w strefach przemysłowych 🏗️ · Tereny uzbrojone – gotowe pod inwestycje od zaraz ⚡🚀 · Ogromne oszczędności 💰 – możliwość skorzystania z ulg podatkowych w ramach programu Polska Strefa Inwestycji 🇵🇱, sięgających nawet do 60% kosztów Twojej inwestycji – uzyskane w ten sposób oszczędności przeznaczysz na dalszy rozwój biznesu! 📊📈 Z nami zrealizujesz swoje plany biznesowe 🎯 i to na terenie dopasowanym do Twojej działalności gospodarczej! 💼✨ Sprawdź dostępne działki 🔎",
+            "font_px": 12.0,
+            "font_weight": 400,
+            "color": "#262626",
+            "background_effective": "#ffffff",
+            "background_source": "ancestor:div:nth-of-type(2)>div:nth-of-type(1)>div:nth-of-type(2)>div:nth-of-type(2)>div>div>div>div",
+            "background_confidence": "resolved",
+            "contrast_ratio": 15.08,
+            "bbox": {
+              "x": 137.0,
+              "y": 440.1,
+              "w": 498.3,
+              "h": 334.0
+            },
+            "visible": true,
+            "clipped": true,
+            "behind_interaction": null,
+            "collapsed_evidence": null,
+            "dom_path": "div>div:nth-of-type(2)>div:nth-of-type(1)>span>div>div>div>span",
+            "in_footer": false
+          },
+          {
+            "text": "https://example.invalid/category/przetarg/",
+            "font_px": 12.0,
+            "font_weight": 400,
+            "color": "#385898",
+            "background_effective": "#ffffff",
+            "background_source": "ancestor:div:nth-of-type(2)>div:nth-of-type(1)>div:nth-of-type(2)>div:nth-of-type(2)>div>div>div>div",
+            "background_confidence": "resolved",
+            "contrast_ratio": 6.96,
+            "bbox": {
+              "x": 137.0,
+              "y": 776.1,
+              "w": 233.4,
+              "h": 14.0
+            },
+            "visible": true,
+            "clipped": true,
+            "behind_interaction": "link",
+            "collapsed_evidence": "a[href]",
+            "dom_path": "div:nth-of-type(2)>div:nth-of-type(1)>span>div>div>div>span>a",
+            "in_footer": false
+          },
+          {
+            "text": "Przepraszamy, wystąpiły problemy z odtworzeniem tego filmu.",
+            "font_px": 15.0,
+            "font_weight": 600,
+            "color": "#ffffff",
+            "background_effective": "#797979",
+            "background_source": "ancestor:div>div>div:nth-of-type(2)>div:nth-of-type(2)>div>div>div>div",
+            "background_confidence": "resolved",
+            "contrast_ratio": 4.35,
+            "bbox": {
+              "x": 179.0,
+              "y": 622.1,
+              "w": 425.9,
+              "h": 20.0
+            },
+            "visible": true,
+            "clipped": false,
+            "behind_interaction": null,
+            "collapsed_evidence": null,
+            "dom_path": "div:nth-of-type(2)>div>div>div>div>div>div:nth-of-type(1)>span",
+            "in_footer": false
+          },
+          {
+            "text": "Dowiedz się więcej",
+            "font_px": 17.0,
+            "font_weight": 600,
+            "color": "#ffffff",
+            "background_effective": "#797979",
+            "background_source": "ancestor:div>div>div:nth-of-type(2)>div:nth-of-type(2)>div>div>div>div",
+            "background_confidence": "resolved",
+            "contrast_ratio": 4.35,
+            "bbox": {
+              "x": 319.6,
+              "y": 648.1,
+              "w": 144.8,
+              "h": 22.0
+            },
+            "visible": true,
+            "clipped": false,
+            "behind_interaction": "link",
+            "collapsed_evidence": "a[href]",
+            "dom_path": "div>div>div>div>div>div:nth-of-type(2)>span>a",
+            "in_footer": false
+          },
+          {
+            "text": "INVEST-PARK.COM.PL",
+            "font_px": 8.0,
+            "font_weight": 400,
+            "color": "#606770",
+            "background_effective": "#ffffff",
+            "background_source": "ancestor:div>div>div>div>div:nth-of-type(2)>div:nth-of-type(3)>a>div",
+            "background_confidence": "resolved",
+            "contrast_ratio": 5.72,
+            "bbox": {
+              "x": 125.0,
+              "y": 748.1,
+              "w": 85.2,
+              "h": 9.0
+            },
+            "visible": true,
+            "clipped": false,
+            "behind_interaction": "link",
+            "collapsed_evidence": "a[href]",
+            "dom_path": "div:nth-of-type(2)>div:nth-of-type(3)>a>div>div:nth-of-type(1)>div:nth-of-type(1)>div>div",
+            "in_footer": false
+          },
+          {
+            "text": "Inwestuj mądrze 📈🏗️",
+            "font_px": 10.0,
+            "font_weight": 400,
+            "color": "#1c1e21",
+            "background_effective": "#ffffff",
+            "background_source": "ancestor:div>div>div>div>div:nth-of-type(2)>div:nth-of-type(3)>a>div",
+            "background_confidence": "resolved",
+            "contrast_ratio": 16.71,
+            "bbox": {
+              "x": 125.0,
+              "y": 760.1,
+              "w": 103.0,
+              "h": 11.0
+            },
+            "visible": true,
+            "clipped": false,
+            "behind_interaction": "link",
+            "collapsed_evidence": "a[href]",
+            "dom_path": "div:nth-of-type(2)>div:nth-of-type(3)>a>div>div:nth-of-type(1)>div:nth-of-type(2)>div>div",
+            "in_footer": false
+          },
+          {
+            "text": "Dowiedz się więcej",
+            "font_px": 14.0,
+            "font_weight": 400,
+            "color": "#242424",
+            "background_effective": "#f2f2f2",
+            "background_source": "ancestor:div>div:nth-of-type(2)>div:nth-of-type(3)>a>div>div:nth-of-type(2)>div>div",
+            "background_confidence": "resolved",
+            "contrast_ratio": 13.84,
+            "bbox": {
+              "x": 555.0,
+              "y": 752.1,
+              "w": 118.3,
+              "h": 16.0
+            },
+            "visible": true,
+            "clipped": true,
+            "behind_interaction": "link",
+            "collapsed_evidence": "a[href]",
+            "dom_path": "div>div:nth-of-type(2)>div>div>span>div>div>div",
+            "in_footer": false
+          }
+        ]
+      },
+      "mobile": {
+        "dominant_font_px": 12.0,
+        "page_height_px": 3438.0,
+        "nodes": [
+          {
+            "text": "Wałbrzyska Specjalna Strefa Ekonomiczna \"INVEST-PARK\"",
+            "font_px": 14.0,
+            "font_weight": 700,
+            "color": "#262626",
+            "background_effective": "#ffffff",
+            "background_source": "ancestor:div:nth-of-type(2)>div:nth-of-type(1)>div:nth-of-type(2)>div:nth-of-type(2)>div>div>div>div",
+            "background_confidence": "resolved",
+            "contrast_ratio": 15.08,
+            "bbox": {
+              "x": 97.0,
+              "y": 397.1,
+              "w": 200.5,
+              "h": 36.0
+            },
+            "visible": true,
+            "clipped": false,
+            "behind_interaction": "link",
+            "collapsed_evidence": "a[href]",
+            "dom_path": "div>div>div:nth-of-type(1)>div>div>div>a>span",
+            "in_footer": false
+          },
+          {
+            "text": "Sponsorowane",
+            "font_px": 12.0,
+            "font_weight": 600,
+            "color": "#737373",
+            "background_effective": "#ffffff",
+            "background_source": "ancestor:div:nth-of-type(2)>div:nth-of-type(1)>div:nth-of-type(2)>div:nth-of-type(2)>div>div>div>div",
+            "background_confidence": "resolved",
+            "contrast_ratio": 4.76,
+            "bbox": {
+              "x": 97.0,
+              "y": 436.1,
+              "w": 86.0,
+              "h": 14.0
+            },
+            "visible": true,
+            "clipped": false,
+            "behind_interaction": null,
+            "collapsed_evidence": null,
+            "dom_path": "div>div>div>span>div>div>span:nth-of-type(1)>strong",
+            "in_footer": false
+          },
+          {
+            "text": "Inwestorze – w WSSE „INVEST-PARK” sezon na przetargi inwestycyjne trwa cały rok! 📈🏗️ Działki inwestycyjne na terenie Dolnego Śląska, Opolszczyzny i Wielkopolski to atrakcyjne grunty 🌍, o różnej wielkości 📐, dopasowane do Twoich potrzeb biznesowych! 💼 Dlaczego warto? 👇 · Elastyczny wybór – działki od 0,7 ha do 30 ha 📏, idealne zarówno dla MŚP, jak i dużych przedsiębiorców 🏢🏭 · Świetna lokalizacja i dostęp do kluczowych rynków 📍 – tereny znajdują się w sąsiedztwie autostrad 🛣️ / dróg ekspresowych 🚗 / dróg krajowych czy linii kolejowych 🚆, w strefach przemysłowych 🏗️ · Tereny uzbrojone – gotowe pod inwestycje od zaraz ⚡🚀 · Ogromne oszczędności 💰 – możliwość skorzystania z ulg podatkowych w ramach programu Polska Strefa Inwestycji 🇵🇱, sięgających nawet do 60% kosztów Twojej inwestycji – uzyskane w ten sposób oszczędności przeznaczysz na dalszy rozwój biznesu! 📊📈 Z nami zrealizujesz swoje plany biznesowe 🎯 i to na terenie dopasowanym do Twojej działalności gospodarczej! 💼✨ Sprawdź dostępne działki 🔎",
+            "font_px": 12.0,
+            "font_weight": 400,
+            "color": "#262626",
+            "background_effective": "#ffffff",
+            "background_source": "ancestor:div:nth-of-type(2)>div:nth-of-type(1)>div:nth-of-type(2)>div:nth-of-type(2)>div>div>div>div",
+            "background_confidence": "resolved",
+            "contrast_ratio": 15.08,
+            "bbox": {
+              "x": 61.0,
+              "y": 460.1,
+              "w": 286.0,
+              "h": 510.0
+            },
+            "visible": true,
+            "clipped": true,
+            "behind_interaction": null,
+            "collapsed_evidence": null,
+            "dom_path": "div>div:nth-of-type(2)>div:nth-of-type(1)>span>div>div>div>span",
+            "in_footer": false
+          },
+          {
+            "text": "https://example.invalid/category/przetarg/",
+            "font_px": 12.0,
+            "font_weight": 400,
+            "color": "#385898",
+            "background_effective": "#ffffff",
+            "background_source": "ancestor:div:nth-of-type(2)>div:nth-of-type(1)>div:nth-of-type(2)>div:nth-of-type(2)>div>div>div>div",
+            "background_confidence": "resolved",
+            "contrast_ratio": 6.96,
+            "bbox": {
+              "x": 61.0,
+              "y": 972.1,
+              "w": 233.4,
+              "h": 14.0
+            },
+            "visible": true,
+            "clipped": true,
+            "behind_interaction": "link",
+            "collapsed_evidence": "a[href]",
+            "dom_path": "div:nth-of-type(2)>div:nth-of-type(1)>span>div>div>div>span>a",
+            "in_footer": false
+          },
+          {
+            "text": "Przepraszamy, wystąpiły problemy z odtworzeniem tego filmu.",
+            "font_px": 15.0,
+            "font_weight": 600,
+            "color": "#ffffff",
+            "background_effective": "#797979",
+            "background_source": "ancestor:div>div>div:nth-of-type(2)>div:nth-of-type(2)>div>div>div>div",
+            "background_confidence": "resolved",
+            "contrast_ratio": 4.35,
+            "bbox": {
+              "x": 80.4,
+              "y": 632.1,
+              "w": 245.2,
+              "h": 40.0
+            },
+            "visible": true,
+            "clipped": false,
+            "behind_interaction": null,
+            "collapsed_evidence": null,
+            "dom_path": "div:nth-of-type(2)>div>div>div>div>div>div:nth-of-type(1)>span",
+            "in_footer": false
+          },
+          {
+            "text": "Dowiedz się więcej",
+            "font_px": 17.0,
+            "font_weight": 600,
+            "color": "#ffffff",
+            "background_effective": "#797979",
+            "background_source": "ancestor:div>div>div:nth-of-type(2)>div:nth-of-type(2)>div>div>div>div",
+            "background_confidence": "resolved",
+            "contrast_ratio": 4.35,
+            "bbox": {
+              "x": 130.6,
+              "y": 678.1,
+              "w": 144.8,
+              "h": 22.0
+            },
+            "visible": true,
+            "clipped": false,
+            "behind_interaction": "link",
+            "collapsed_evidence": "a[href]",
+            "dom_path": "div>div>div>div>div>div:nth-of-type(2)>span>a",
+            "in_footer": false
+          },
+          {
+            "text": "INVEST-PARK.COM.PL",
+            "font_px": 8.0,
+            "font_weight": 400,
+            "color": "#606770",
+            "background_effective": "#ffffff",
+            "background_source": "ancestor:div>div>div>div>div:nth-of-type(2)>div:nth-of-type(3)>a>div",
+            "background_confidence": "resolved",
+            "contrast_ratio": 5.72,
+            "bbox": {
+              "x": 49.0,
+              "y": 768.1,
+              "w": 85.2,
+              "h": 9.0
+            },
+            "visible": true,
+            "clipped": false,
+            "behind_interaction": "link",
+            "collapsed_evidence": "a[href]",
+            "dom_path": "div:nth-of-type(2)>div:nth-of-type(3)>a>div>div:nth-of-type(1)>div:nth-of-type(1)>div>div",
+            "in_footer": false
+          },
+          {
+            "text": "Inwestuj mądrze 📈🏗️",
+            "font_px": 10.0,
+            "font_weight": 400,
+            "color": "#1c1e21",
+            "background_effective": "#ffffff",
+            "background_source": "ancestor:div>div>div>div>div:nth-of-type(2)>div:nth-of-type(3)>a>div",
+            "background_confidence": "resolved",
+            "contrast_ratio": 16.71,
+            "bbox": {
+              "x": 49.0,
+              "y": 780.1,
+              "w": 103.0,
+              "h": 11.0
+            },
+            "visible": true,
+            "clipped": false,
+            "behind_interaction": "link",
+            "collapsed_evidence": "a[href]",
+            "dom_path": "div:nth-of-type(2)>div:nth-of-type(3)>a>div>div:nth-of-type(1)>div:nth-of-type(2)>div>div",
+            "in_footer": false
+          },
+          {
+            "text": "Dowiedz się więcej",
+            "font_px": 14.0,
+            "font_weight": 400,
+            "color": "#242424",
+            "background_effective": "#f2f2f2",
+            "background_source": "ancestor:div>div:nth-of-type(2)>div:nth-of-type(3)>a>div>div:nth-of-type(2)>div>div",
+            "background_confidence": "resolved",
+            "contrast_ratio": 13.84,
+            "bbox": {
+              "x": 253.0,
+              "y": 772.1,
+              "w": 118.3,
+              "h": 16.0
+            },
+            "visible": true,
+            "clipped": true,
+            "behind_interaction": "link",
+            "collapsed_evidence": "a[href]",
+            "dom_path": "div>div:nth-of-type(2)>div>div>span>div>div>div",
+            "in_footer": false
+          }
+        ]
+      }
+    }
+  },
+  "embedding": null,
+  "simhash": null,
+  "scope": {
+    "status": "uncertain",
+    "instrument_wrapper": null,
+    "underlying": null,
+    "legal_basis": null,
+    "tags": [],
+    "reason": null
+  }
+}
