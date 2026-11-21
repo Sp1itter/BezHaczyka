@@ -19,13 +19,13 @@ test("csvUrl bez paginacji", () => {
 test("clip i zrzut", () => {
   assert.equal(clip("a".repeat(200)).length, 141);
   assert.deepEqual(screenshotInfo("s3://shots/a.png"), { href: null, name: "a.png" });
-  assert.equal(screenshotInfo("https://h/a.png").href, "https://h/a.png");
+  assert.equal(screenshotInfo("https://h.example.invalid/a.png").href, "https://h.example.invalid/a.png");
   assert.equal(screenshotInfo(null), null);
 });
 
 test("safeHref", () => {
-  assert.equal(safeHref("http://a.pl/x"), "http://a.pl/x");
-  assert.equal(safeHref("https://a.pl"), "https://a.pl");
+  assert.equal(safeHref("http://a.example.invalid/x"), "http://a.example.invalid/x");
+  assert.equal(safeHref("https://a.example.invalid"), "https://a.example.invalid");
   assert.equal(safeHref("javascript:alert(1)"), null);
   assert.equal(safeHref("data:text/html,x"), null);
   assert.equal(safeHref(""), null);
