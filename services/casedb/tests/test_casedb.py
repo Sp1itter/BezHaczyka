@@ -297,7 +297,10 @@ def test_cli_init_and_report(conn, tmp_path: Path, monkeypatch):
     monkeypatch.setenv("DATABASE_URL", conn.info.dsn + " password=" + (conn.info.password or ""))
     assert cli.main(["init"]) == 0
     assert cli.main(["init"]) == 0
-    assert len(store.registry_entries(conn)) == len(registry.read_registry_csv(registry.packaged_registry_path()))
+    entries = store.registry_entries(conn)
+    curated = registry.read_registry_csv(registry.packaged_registry_path())
+    assert sum(e["source"] == "curated" for e in entries) == len(curated)
+    assert any(e["source"] == "knf" for e in entries)
     store.record_document(conn, _doc(), entity_resolution={"publisher_relation": "third_party"})
     conn.commit()
     out = tmp_path / "r.csv"
