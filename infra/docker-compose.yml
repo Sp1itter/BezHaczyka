@@ -1,19 +1,37 @@
-# InvestWatch - stos infrastrukturalny.
-#
-# UWAGA: ten plik jest NIEPRZETESTOWANY (autor nie mial Dockera na maszynie).
-# Patrz infra/README.md - lista rzeczy do sprawdzenia przy pierwszym starcie.
-#
-# Uruchamianie z katalogu infra/:
+# InvestWatch - caly stos. Z katalogu infra/:
 #   cp .env.example .env
-#   docker compose up postgres valkey seaweedfs nginx      (same bazy, wystarczy do pracy nad API i frontem)
-#   docker compose up                                      (plus analyzer; wymaga natywnej Ollamy na hoscie)
-#   docker compose --profile full up                       (plus api i web, gdy juz istnieja)
+#   docker compose up -d --build
+# Profil `ollama` jest opcjonalny: docker compose --profile ollama up -d
 #
-# LICENCJE (par. 3.1 design doca): obrazy wylacznie permisywne i przypiete tagiem.
-# Obrazy z licencjami AGPL / SSPL sa zakazane - tools/check_compliance.py je odrzuca.
-# Zadnego `latest`.
+# LICENCJE (par. 3.1): tylko permisywne obrazy, przypiete tagiem, zadnego `latest`.
+# AGPL / SSPL sa zakazane - tools/check_compliance.py je odrzuca.
 
 name: investwatch
+
+# Wspolna definicja scrapera (jeden obraz, trzy serwisy).
+x-scraper: &scraper
+  image: investwatch-scraper:local
+  build:
+    context: ../services/scraper
+  env_file: .env
+  restart: unless-stopped
+  depends_on:
+    valkey:
+      condition: service_healthy
+    seaweedfs:
+      condition: service_healthy
+  networks: [investwatch]
+  volumes:
+    - ../fixtures/demo-ads:/app/fixtures/demo-ads:ro
+  shm_size: "1gb"
+  environment:
+    VALKEY_URL: redis://valkey:6379/0
+    S3_ENDPOINT: http://seaweedfs:8333
+    S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+    S3_SECRET_KEY: ${S3_SECRET_KEY}
+    FB_FIXTURES_DIR: /app/fixtures/demo-ads/facebook
+    SCRAPER_OUTPUT_QUEUE: q:gpu
+    SCRAPER_OUTPUT_FUNC: analyzer.worker.analyze_document
 
 services:
 
@@ -26,11 +44,10 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - pgdata:/var/lib/postgresql/data
-      # Skrypty z tego katalogu odpalaja sie TYLKO przy pierwszym starcie na pustym
-      # wolumenie. Zmiana init.sql wymaga `docker compose down -v` (kasuje dane!).
+      # init.sql dziala tylko na pustym wolumenie; zmiana wymaga `down -v` (kasuje dane!).
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     ports:
-      # Tylko localhost - baza nie wystaje poza maszyne dewelopera.
+      # Tylko localhost.
       - "127.0.0.1:${POSTGRES_PORT}:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
@@ -40,8 +57,7 @@ services:
     networks: [investwatch]
 
   # --- Valkey (BSD-3-Clause): kolejka RQ + cache -------------------------------
-  # Fork Redisa pod Linux Foundation, API-kompatybilny (rq i redis-py dzialaja bez zmian).
-  # Obrazy Redisa w nowszych wersjach sa na licencjach SSPL / AGPL - nie uzywamy ich.
+  # Fork Redisa (LF), API-kompatybilny; nowe Redisy to SSPL/AGPL - nie uzywamy.
   valkey:
     image: valkey/valkey:8-alpine
     volumes:
@@ -56,8 +72,7 @@ services:
     networks: [investwatch]
 
   # --- SeaweedFS (Apache-2.0): magazyn obiektow z API S3 -----------------------
-  # Zamiennik dla obrazow AGPLv3 (patrz par. 3.1). Tryb `server -s3` to master +
-  # volume + filer + brama S3 w jednym procesie - wystarczy na demo.
+  # Zamiennik obrazow AGPLv3; `server -s3` = master+volume+filer+S3 w jednym procesie.
   seaweedfs:
     image: chrislusf/seaweedfs:3.68
     command: ["server", "-dir=/data", "-s3", "-s3.port=8333"]
@@ -66,8 +81,7 @@ services:
     ports:
       - "127.0.0.1:${S3_PORT}:8333"
     healthcheck:
-      # Master wystawia /cluster/status na 9333. Obraz jest oparty na alpine (busybox wget) -
-      # do potwierdzenia przy pierwszym starcie.
+      # Master wystawia /cluster/status na 9333 (busybox wget).
       test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:9333/cluster/status || exit 1"]
       interval: 10s
       timeout: 5s
@@ -75,7 +89,7 @@ services:
     networks: [investwatch]
 
   # --- nginx (BSD-2-Clause): korpus demo offline -------------------------------
-  # Serwuje fixtures/demo-ads/, zeby demo nie zalezalo od wifi (anty-cel z par. 10).
+  # Serwuje fixtures/demo-ads/, zeby demo dzialalo offline.
   nginx:
     image: nginx:1.27-alpine
     volumes:
@@ -85,14 +99,9 @@ services:
       - "127.0.0.1:${DEMO_CORPUS_PORT}:80"
     networks: [investwatch]
 
-  # --- analyzer: worker analizy reklam (nasz obraz) ----------------------------
-  # OLLAMA NIE JEST SERWISEM - swiadoma decyzja architektoniczna.
-  # Ollama dziala NATYWNIE na hoscie (jedna komenda instalatora, sama obsluguje GPU),
-  # a kontener celuje w nia przez host.docker.internal:11434.
-  # Konteneryzacja Ollamy wymagalaby przepuszczania GPU (NVIDIA Container Toolkit +
-  # WSL2), a czlonkowie zespolu z kartami AMD/Intel i tak dostaliby tylko CPU, czyli
-  # kilkanascie razy wolniej. Modele (6,3 GB) zostaja w natywnym magazynie Ollamy,
-  # nigdy w warstwie obrazu.
+  # --- analyzer: worker analizy reklam ----------------------------------------
+  # Ollama domyslnie NATYWNIE na hoscie (GPU bez NVIDIA Container Toolkit);
+  # kontener celuje w host.docker.internal:11434. Alternatywa: profil `ollama` (CPU).
   analyzer:
     build:
       context: ../services/analyzer
@@ -101,23 +110,20 @@ services:
         condition: service_healthy
       valkey:
         condition: service_healthy
-    # Wymaga wczesniejszego `cp .env.example .env` — bez tego pliku compose
-    # odmowi startu. To pierwszy krok w README i nie da sie go pominac, bo
-    # pozostale serwisy i tak czytaja ${ZMIENNE} z tego samego pliku.
+      api:
+        condition: service_healthy
+    restart: unless-stopped
     env_file: .env
     environment:
-      # Nadpisanie, zeby adresy w kontenerze byly poprawne niezaleznie od .env.
+      # Adresy w sieci compose, niezaleznie od .env.
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL}
       VALKEY_URL: redis://valkey:6379/0
       API_BASE_URL: http://api:8000
     extra_hosts:
-      # Na Linuksie host.docker.internal nie istnieje domyslnie - mapujemy na bramke hosta.
-      # Na Docker Desktop (Windows/macOS) wpis jest niegrozny.
+      # Linux: host.docker.internal nie istnieje domyslnie.
       - "host.docker.internal:host-gateway"
     healthcheck:
-      # Ta sama sonda co w Dockerfile. Worker uruchamia serwer /health w watku-demonie
-      # przed wejsciem w petle kolejki (worker.py::_start_health_server), a zgodnosci
-      # portu pilnuje test tests/test_spojnosc.py::TestPortHealth.
+      # Jak w Dockerfile; /health startuje w watku przed petla kolejki.
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8081/health', timeout=3)"]
       interval: 30s
       timeout: 5s
@@ -126,9 +132,8 @@ services:
     networks: [investwatch]
 
   # --- casedb: wspolna baza przypadkow (YT, FB, WWW + wyniki AI) ---------------
-  # Jednorazowy kontener: przy `docker compose up` stosuje migracje i konczy prace.
-  # Inne komendy: docker compose run --rm casedb export --status new
-  # Pliki do ingestu wrzucaj do ../data/casedb (widoczne w kontenerze jako /data).
+  # Jednorazowy: stosuje migracje i konczy. Inne: docker compose run --rm casedb export --status new
+  # Pliki do ingestu: ../data/casedb (w kontenerze /data).
   casedb:
     build:
       context: ../services/casedb
@@ -142,15 +147,14 @@ services:
     restart: "no"
     networks: [investwatch]
 
-  # --- api (Osoba C) ------------------------------------------------------------
-  # FastAPI: POST/GET /documents, POST/GET /findings, PATCH status, /stats,
-  # /calibration, WS /ws/alerts. Tabele `documents`/`findings` tworzy init.sql.
+  # --- api: FastAPI (/documents, /findings, /stats, /calibration, WS /ws/alerts) ---
   api:
     build:
       context: ../services/api
     depends_on:
       postgres:
         condition: service_healthy
+    restart: unless-stopped
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       GOLD_LABELS_PATH: /data/gold/labels.json
@@ -162,22 +166,49 @@ services:
       - "127.0.0.1:${API_PORT}:8000"
     networks: [investwatch]
 
-  # --- web (Osoba C) ------------------------------------------------------------
-  # Statyczny build Vite + nginx (nie-root, port 8080 w kontenerze), proxy /api i /ws -> api.
+  # --- web: build Vite + nginx (8080 w kontenerze), proxy /api i /ws -> api ------
   web:
     build:
       context: ../services/web
     depends_on:
-      - api
+      api:
+        condition: service_healthy
+    restart: unless-stopped
     ports:
       - "127.0.0.1:${WEB_PORT}:8080"
     networks: [investwatch]
 
+  # --- scraper: workery kolejek i scheduler (wspolny obraz) --------------------
+  scraper-ingest:
+    <<: *scraper
+    command: ["python", "worker_main.py", "q:ingest"]
+    deploy:
+      replicas: ${SCRAPER_INGEST_WORKERS:-2}
+
+  scraper-render:
+    <<: *scraper
+    command: ["python", "worker_main.py", "q:render"]
+    deploy:
+      replicas: ${SCRAPER_RENDER_WORKERS:-1}
+
+  scheduler:
+    <<: *scraper
+    command: ["python", "scheduler_main.py"]
+
+  # --- ollama (opcjonalnie, CPU): profil `ollama`, port nieopublikowany --------
+  ollama:
+    image: ollama/ollama:0.5.4
+    profiles: ["ollama"]
+    volumes:
+      - ollamadata:/root/.ollama
+    restart: unless-stopped
+    networks: [investwatch]
+
 networks:
-  investwatch:
-    name: investwatch
+  investwatch: {}
 
 volumes:
   pgdata:
   valkeydata:
   seaweeddata:
+  ollamadata:
