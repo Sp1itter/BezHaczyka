@@ -12,7 +12,7 @@ Komendy uruchomienia, adresy i procedura „po git pull”: `README.md` w korzen
 | nginx | korpus demo offline :8080 | długotrwały |
 | casedb | migracje casedb + rejestr KNF | jednorazowy (Exited 0) |
 | api | FastAPI :8000 | długotrwały |
-| web | dashboard :8090 | długotrwały |
+| web | dashboard :7090 | długotrwały |
 | analyzer | worker kolejki `q:gpu` | długotrwały |
 | scraper-worker | worker `q:ingest` (discover) + `q:render` (pobranie, Playwright) | długotrwały, repliki `SCRAPER_WORKERS` |
 | scheduler | rq-scheduler: harmonogram z `services/scraper/schedule.yaml` | długotrwały |
@@ -38,7 +38,7 @@ Startuje: Postgres+pgvector, Valkey, SeaweedFS (S3 z kluczami z `.env`), nginx z
 demo, `casedb` (jednorazowo: migracje + rejestr KNF, kończy się kodem 0), `analyzer`
 (worker `q:gpu`), `scraper-worker` (repliki wg `SCRAPER_WORKERS`, kolejki `q:ingest` + `q:render`)
 `scheduler` (harmonogram z `services/scraper/schedule.yaml`) oraz `api` (FastAPI, `localhost:8000`)
-i `web` (dashboard, `localhost:8090`), które czytają findingi zapisane przez analyzer.
+i `web` (dashboard, `localhost:7090`), które czytają findingi zapisane przez analyzer.
 
 Demo Modułu 1 bez internetu:
 
@@ -67,7 +67,7 @@ klucze `S3_ACCESS_KEY`/`S3_SECRET_KEY` z `.env`) i korpus demo (`http://localhos
 Schemat i rejestr KNF tworzy `casedb` (`docker compose run --rm casedb init`).
 
 `api` i `web` są w compose bez profilu, więc zwykłe `docker compose up` je poda:
-API na `localhost:${API_PORT}` (8000), dashboard na `localhost:${WEB_PORT}` (8090).
+API na `localhost:${API_PORT}` (8000), dashboard na `localhost:${WEB_PORT}` (7090).
 Tabele `documents` i `findings`, z których korzysta API, tworzy migracja casedb
 (`002_modul1.sql`), więc `api` startuje po zakończeniu kontenera `casedb`.
 Praca bez Dockera (SQLite + vite): `services/api/README.md`, `services/web/README.md`.
@@ -119,6 +119,6 @@ opis w `README.md`. Potrzebna tylko regułom LLM analyzera.
   bez niej dostają `not_applicable` z powodem. Na Linuksie Ollama musi słuchać na adresie
   dostępnym z kontenera (`OLLAMA_HOST=0.0.0.0`).
 - Analyzer wysyła do `http://api:8000` tylko w trybie `ANALYZER_STORE=api`; compose używa `db`.
-- Wolne porty 5432, 6379, 8333, 8080, 8000, 8090 na hoście (port 3000 bywa zarezerwowany przez
+- Wolne porty 5432, 6379, 8333, 8080, 8000, 7090 na hoście (port 3000 bywa zarezerwowany przez
   Hyper-V — `netsh interface ipv4 show excludedportrange protocol=tcp`).
 - Montowanie `../fixtures/demo-ads` na Windows wymaga udostępnienia dysku w Docker Desktop.

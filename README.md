@@ -19,7 +19,7 @@ a bez sieci korpus offline `fixtures/demo-ads/facebook` (`FB_MODE=replay` = tylk
 
 | Usługa | Adres |
 |---|---|
-| Dashboard | http://localhost:8090 |
+| Dashboard | http://localhost:7090 |
 | API (FastAPI, `/docs`) | http://localhost:8000/docs |
 | Korpus demo | http://localhost:8080 |
 | Postgres | `localhost:5432` (dane logowania w `infra/.env`) |
@@ -116,7 +116,7 @@ Znane problemy:
   użytkownika; po instalacji wyloguj się i zaloguj ponownie).
 - `ports are not available ... forbidden by its access permissions` — Windows (Hyper-V/WSL)
   rezerwuje zakresy portów i blokuje bind. Sprawdź: `netsh interface ipv4 show excludedportrange protocol=tcp`
-  i zmień port w `infra/.env` na spoza zakresów. Dlatego dashboard jest na 8090, nie na 3000.
+  i zmień port w `infra/.env` na spoza zakresów. Dlatego dashboard jest na 7090 (8090 i 3000 bywają zarezerwowane).
 - Wirtualizacja musi być włączona w BIOS/UEFI (Menedżer zadań → Wydajność → CPU → „Wirtualizacja: Włączone”).
 
 ## Serwisy
