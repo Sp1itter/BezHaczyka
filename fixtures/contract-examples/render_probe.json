@@ -1,0 +1,54 @@
+{
+  "viewports": {
+    "mobile": {
+      "dominant_font_px": 16.0,
+      "page_height_px": 4210.0,
+      "nodes": [
+        {
+          "text": "Zyski do 18% rocznie!",
+          "font_px": 34.0,
+          "font_weight": 700,
+          "color": "#111111",
+          "background_effective": "#ffffff",
+          "background_source": "ancestor:main>section",
+          "background_confidence": "resolved",
+          "contrast_ratio": 18.9,
+          "bbox": {
+            "x": 24.0,
+            "y": 310.0,
+            "w": 342.0,
+            "h": 44.0
+          },
+          "visible": true,
+          "clipped": false,
+          "behind_interaction": null,
+          "collapsed_evidence": null,
+          "dom_path": "main>section:nth-of-type(1)>h2",
+          "in_footer": false
+        },
+        {
+          "text": "Inwestowanie wiąże się z ryzykiem utraty kapitału.",
+          "font_px": 7.0,
+          "font_weight": 400,
+          "color": "#c9c9c9",
+          "background_effective": "#ffffff",
+          "background_source": "ancestor:body",
+          "background_confidence": "resolved",
+          "contrast_ratio": 1.9,
+          "bbox": {
+            "x": 24.0,
+            "y": 4080.0,
+            "w": 342.0,
+            "h": 9.0
+          },
+          "visible": true,
+          "clipped": false,
+          "behind_interaction": "details",
+          "collapsed_evidence": "details[not(@open)]",
+          "dom_path": "footer>details>p",
+          "in_footer": true
+        }
+      ]
+    }
+  }
+}

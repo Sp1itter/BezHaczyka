@@ -1,0 +1,99 @@
+{
+  "communities": {
+    "0": [
+      "investwatch_ai_modules",
+      "investwatch_dashboard",
+      "investwatch_module_1",
+      "investwatch_module_2",
+      "investwatch_module_3",
+      "investwatch_scraping_engine",
+      "investwatch_system"
+    ],
+    "1": [
+      "claude_claude_skills_graphify_skill",
+      "claude_md"
+    ],
+    "2": [
+      "docstaskinwestwatch_uknf_regulamin_zadania_konkursowego",
+      "uknf"
+    ],
+    "3": [
+      "docstaskinwestwatch_opis_wyzwania_hacknation_uknf_19_11"
+    ]
+  },
+  "cohesion": {
+    "0": 0.2857142857142857,
+    "1": 1.0,
+    "2": 1.0,
+    "3": 1.0
+  },
+  "gods": [
+    {
+      "id": "investwatch_system",
+      "label": "InvestWatch System",
+      "degree": 7
+    },
+    {
+      "id": "docstaskinwestwatch_uknf_regulamin_zadania_konkursowego",
+      "label": "InvestWatch Competition Regulations",
+      "degree": 2
+    },
+    {
+      "id": "claude_claude_skills_graphify_skill",
+      "label": "graphify skill",
+      "degree": 1
+    },
+    {
+      "id": "investwatch_module_1",
+      "label": "Module 1: External Ecosystem Monitoring",
+      "degree": 1
+    },
+    {
+      "id": "investwatch_module_2",
+      "label": "Module 2: Compliance and Risk Verification",
+      "degree": 1
+    },
+    {
+      "id": "investwatch_module_3",
+      "label": "Module 3: Unauthorized Services Identification",
+      "degree": 1
+    },
+    {
+      "id": "investwatch_scraping_engine",
+      "label": "Backend & Scraping Engine",
+      "degree": 1
+    },
+    {
+      "id": "investwatch_ai_modules",
+      "label": "Analytical / AI Modules",
+      "degree": 1
+    },
+    {
+      "id": "investwatch_dashboard",
+      "label": "Web Dashboard",
+      "degree": 1
+    },
+    {
+      "id": "uknf",
+      "label": "Urz\u0105d Komisji Nadzoru Finansowego (UKNF)",
+      "degree": 1
+    }
+  ],
+  "surprises": [
+    {
+      "source": "InvestWatch Competition Regulations",
+      "target": "InvestWatch System",
+      "source_files": [
+        "DocsTaskINWESTWATCH/UKNF - Regulamin Zadania Konkursowego.pdf",
+        "DocsTaskINWESTWATCH/Opis Wyzwania HackNation UKNF 19.11.pdf"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "references",
+      "why": "bridges separate communities; peripheral node `InvestWatch Competition Regulations` unexpectedly reaches hub `InvestWatch System`"
+    }
+  ],
+  "tokens": {
+    "input": 22122,
+    "output": 2098
+  }
+}

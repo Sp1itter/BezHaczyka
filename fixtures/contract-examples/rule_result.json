@@ -1,0 +1,22 @@
+{
+  "rule_id": "4",
+  "rule_name": "Rozmiar czcionki ryzyka",
+  "engine": "DET",
+  "verdict": "fail",
+  "confidence": 1.0,
+  "severity": 4,
+  "legal_basis": "art. 44 ust. 2 lit. c rozporządzenia del. 2017/565",
+  "evidence": {
+    "kind": "measurement",
+    "summary": "Ostrzeżenie o ryzyku ma 7.0 px przy dominującej czcionce 16.0 px (44%).",
+    "measured": {
+      "risk_font_px": 7.0,
+      "dominant_font_px": 16.0,
+      "ratio": 0.44
+    },
+    "quote": null,
+    "viewport": "mobile",
+    "screenshot_crop": "s3://crops/11111111-rule4.png",
+    "transcript_ts": null
+  }
+}
