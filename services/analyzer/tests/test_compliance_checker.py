@@ -2,6 +2,12 @@
 
 Check, ktory tylko swieci na zielono, jest bezwartosciowy — te testy dowodza,
 ze detektory FAKTYCZNIE wylapuja naruszenia, a nie przechodza bo nic nie robia.
+
+compliance:allow-file
+Ten plik Z DEFINICJI zawiera zakazane wzorce jako dane testowe (openai, colab,
+minio, klucze sk-*), wiec checker zglaszalby sam siebie. Wyjatek jest jawny
+i wypisywany w raporcie checkera, zeby nie dalo sie po cichu wyciszyc
+prawdziwego problemu.
 """
 
 from __future__ import annotations
@@ -102,6 +108,49 @@ class TestNieZglaszaFalszywychAlarmow:
     def test_komentarze_i_puste_linie_sa_pomijane(self, tmp_path: Path) -> None:
         f = _file(tmp_path, "requirements.txt", "# komentarz\n\n-r base.txt\n")
         assert cc.check_pinned_versions([f]) == []
+
+
+class TestMechanizmuWyjatkow:
+    """Wyjatki sa furtka, wiec musza byc przetestowane dokladniej niz reszta."""
+
+    def test_marker_plikowy_pomija_caly_plik(self, tmp_path: Path) -> None:
+        f = _file(
+            tmp_path,
+            "fixtures.py",
+            "# compliance:allow-file\nURL = 'https://api.openai.com'",
+        )
+        assert cc.is_allowlisted_file(f) is True
+        assert cc.check_external_hosts([f]) == []
+
+    def test_marker_plikowy_dziala_tylko_w_naglowku(self, tmp_path: Path) -> None:
+        """Marker schowany na koncu dlugiego pliku NIE moze wyciszac calosci."""
+        body = "\n".join(f"line {i}" for i in range(40))
+        f = _file(
+            tmp_path,
+            "sneaky.py",
+            f"URL = 'https://api.openai.com'\n{body}\n# compliance:allow-file\n",
+        )
+        assert cc.is_allowlisted_file(f) is False
+        assert cc.check_external_hosts([f])
+
+    def test_marker_liniowy_pomija_tylko_swoja_linie(self, tmp_path: Path) -> None:
+        f = _file(
+            tmp_path,
+            "mixed.py",
+            "A = 'https://api.openai.com'  # compliance:allow\n"
+            "B = 'https://evil.example.com'\n",
+        )
+        problems = cc.check_external_hosts([f])
+        assert len(problems) == 1
+        assert "evil.example.com" in problems[0]
+
+    def test_plik_env_jest_zglaszany_nawet_z_markerem(self, tmp_path: Path) -> None:
+        """Obecnosc pliku .env w repo to problem niezaleznie od jego tresci —
+        marker nie moze tego wyciszyc."""
+        f = _file(tmp_path, ".env", "# compliance:allow-file\nSECRET=1")
+        problems = cc.check_secrets([f])
+        assert problems
+        assert "sekretami" in problems[0]
 
 
 class TestCalegoRepozytorium:
