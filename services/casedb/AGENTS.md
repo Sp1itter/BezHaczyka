@@ -1,18 +1,19 @@
 # AGENTS.md - services/casedb
 
-<!-- casedb-handoff v1 | autor: Claude (sesja Hacknation, 2026-11-21) | stan: dzialajacy, przetestowany E2E 2026-11-21 -->
+<!-- casedb-handoff v2 | autor: Claude (sesja Hacknation, 2026-11-21) | stan: dzialajacy, testy z pgvector/pg16 (18 passed) -->
 
 Notatka dla kolejnego modelu/agenta. Czytaj przed zmianami w tym katalogu.
 
 ## Rola
-Wspolna baza przypadkow (case) dla scraperow YouTube, Facebook i WWW. Zrodlo danych
-dla przyszlego modulu jobow, ktory rozdziela przypadki na endpointy modeli AI
-i zapisuje wyniki z powrotem (`ai_results`).
+Jedyna warstwa danych calego stosu (scraper, analyzer, raporty): przypadki (case) z YouTube,
+Facebook i WWW, rejestr KNF, findings, change_events, widok `module1_report`. Instalowana jako
+pakiet (`pip install ./services/casedb`, migracje i CSV w package-data). `infra/init.sql`
+tworzy tylko rozszerzenie `vector`; schemat tworzy `casedb init`.
 
 ## Kontrakt (nie zmieniaj bez uzgodnienia)
 - `case_id` = `uuid5(NAMESPACE_URL, kanoniczny_url)`. Dla FB to samo co `AdDocument.id`,
-  wiec `case_id == documents.id` (tabela osoby C w `infra/init.sql`, NIE ruszamy jej).
-- Tabele: `cases` (metadane + `status` + `extra`/`raw` JSONB), `case_content`
+  wiec `case_id == AdDocument.id`. Osobnej tabeli `documents` nie ma: dokument to `cases.raw`.
+- Tabele: `authorized_entities`, `findings`, `change_events` (migracja 002), `cases` (metadane + `status` + `extra`/`raw` JSONB), `case_content`
   (kind: title|description|text|transcript|clip|comment|evidence), `case_assets`
   (kind: link|html|screenshot|video|audio|image, `uri` = `s3://...` lub `https://...`),
   `ai_results` (unikalne po case_id, task, model, version).
@@ -25,7 +26,21 @@ i zapisuje wyniki z powrotem (`ai_results`).
 - `casedb/store.py` - caly SQL (save_case, save_ai_result, add_column, set_columns, set_status, claim).
 - `casedb/ingest.py` - mapowanie wynikow scraperow na `Case` (bez bazy).
 - `casedb/export.py` - JSON dla modulu jobow.
-- `casedb/cli.py` - `python -m casedb ...`.
+- `casedb/registry.py` - `read_registry_csv`; dane: `casedb/data/knf_registry.csv` (3 przykladowe wiersze,
+  pelna lista od koordynatora; loader nie zaklada liczby wierszy).
+- `casedb/cli.py` - `python -m casedb ...`: `init` (migrate + rejestr, idempotentnie, domyslne CMD),
+  `load-registry [plik]`, `report module1 [--source] [--format json|csv] [-o]`, `recheck-list --limit N`,
+  oraz dotychczasowe `migrate/ingest/export/add-column/ai-result/status`.
+
+## API modulu 1 (store.py)
+- `record_document(conn, doc, *, entity_resolution=None, extra_content=None, qualified=True) -> (case_id, "new"|"changed"|"unchanged")`
+  - porownanie `content_hash(doc)`; unchanged tylko podbija `last_seen_at/seen_count`, zeruje `gone_at`.
+- `get_document(conn, case_id)` (raw + embedding + simhash), `save_vectors(conn, case_id, embedding, simhash)`.
+- `save_finding(conn, finding, document_snapshot=None)` (upsert, `cases.status='done'`, `pg_notify('findings_high', id)`
+  dla risk_level high), `latest_finding`, `save_change_event`.
+- `mark_gone`, `cases_for_recheck(conn, limit, *, source=None, older_than_minutes=0)`.
+- `load_registry(conn, rows)`, `registry_entries(conn)`, `normalize_name`, `report_module1(conn, *, source, since, limit)`.
+- Wywolujacy odpowiada za `conn.commit()` (funkcje uzywaja `conn.transaction()`).
 
 ## Dla modulu jobow (nastepny krok)
 - Pobieranie pracy: `store.claim(conn, worker, limit, source=None)` - `FOR UPDATE SKIP LOCKED`,
@@ -44,7 +59,7 @@ i zapisuje wyniki z powrotem (`ai_results`).
   `fixtures/contract-examples/facebook_ad_document.json` (replay korpusu FB wymaga Chromium
   dla Playwrighta - niezainstalowany). ingest/export/claim/add-column dzialaja,
   ponowny ingest nie dubluje (upsert po `case_id`), status z `claim` zostaje.
-- `pytest`: 6 passed. Uzywaj `127.0.0.1`, nie `localhost` (Windows: 1 s vs 6,5 min).
+- `pytest`: 18 passed (pgvector/pg16, `TEST_DATABASE_URL`); bez bazy 6 passed, reszta skip. Uzywaj `127.0.0.1`, nie `localhost` (Windows: 1 s vs 6,5 min).
 - `pip-audit -r requirements.txt`: brak podatnosci. `check_compliance.py`: casedb czysty
   (bledy tylko w `services/scraper/youtube`, poza tym katalogiem).
 - Git Bash: `MSYS_NO_PATHCONV=1` przed `docker compose run casedb ... /data/...`.

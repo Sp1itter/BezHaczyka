@@ -15,7 +15,9 @@ from dataclasses import fields
 from analyzer.api_client import ApiClient, ApiError
 from pydantic import ValidationError
 
+from analyzer.change_detect import detect_change
 from analyzer.contracts import AdDocument, Finding, Relation, RuleResult
+from analyzer.db_store import DbStore
 from analyzer.pipeline import AnalyzerConfig, EntityResolution, analyze
 
 log = logging.getLogger("analyzer.worker")
@@ -62,11 +64,11 @@ def _build_det_results(raw: object) -> list[RuleResult]:
     return out
 
 
-def _resolve_document(payload: dict, api: ApiClient) -> tuple[AdDocument | None, str]:
+def _resolve_document(payload: dict, api) -> tuple[AdDocument | None, str]:
     """Zwroc (dokument, rozpoznany ksztalt payloadu).
 
-    Ksztalty: "document_id" (pobranie z API), "document" (zagniezdzony
-    AdDocument), "flat" (plaski AdDocument — tak enqueuje scraper).
+    Ksztalty: "document_id" (pobranie z magazynu: API albo casedb), "document"
+    (zagniezdzony AdDocument), "flat" (plaski AdDocument - stary format scrapera).
     Zly dokument -> (None, ksztalt) z ostrzezeniem, bez wyjatku.
     """
     raw_doc, shape = None, ""
@@ -106,12 +108,26 @@ def _save_finding(finding: Finding) -> None:
         log.warning("Zapis findingu do %s nieudany: %s", out_dir, exc)
 
 
-def handle_job(
-    payload: dict, *, api: ApiClient, config: AnalyzerConfig | None = None
-) -> Finding | None:
-    """Obsluz jedno zadanie. Zwraca Finding albo None (brak dokumentu / blad API).
+def _detect_and_save_change(store, document_id, prev, finding, prev_doc, doc) -> None:
+    """Porownaj z poprzednim przebiegiem i zapisz zdarzenia. Blad nie przerywa zadania."""
+    try:
+        result = detect_change(prev, finding, previous_doc=prev_doc, current_doc=doc)
+        events = [] if result is None else (result if isinstance(result, (list, tuple)) else [result])
+        for event in events:
+            store.save_change_event(event)
+    except Exception as exc:  # finding juz zapisany; zmiana to dodatek
+        log.error("Wykrywanie zmian dla %s nieudane: %s", document_id, exc)
 
-    Nigdy nie rzuca ApiError w gore: None oznacza zadanie do ponowienia.
+
+def handle_job(
+    payload: dict, *, api, config: AnalyzerConfig | None = None
+) -> Finding | None:
+    """Obsluz jedno zadanie. Zwraca Finding albo None (brak dokumentu / blad magazynu).
+
+    `api` to dowolny magazyn (ApiClient albo DbStore). Blad magazynu (ApiError)
+    nie leci w gore: None oznacza zadanie do ponowienia. Wyjatek analizy
+    ustawia status 'error' (gdy magazyn to umie) i jest rzucany dalej,
+    zeby RQ oznaczyl job jako failed.
     Akceptuje trzy ksztalty payloadu: {"document_id"}, {"document": {...}}
     oraz plaski AdDocument; kazdy moze miec "det_results".
     """
@@ -122,10 +138,12 @@ def handle_job(
     doc, shape = _resolve_document(payload, api)
     if doc is None:
         return None
-    log.info("Payload rozpoznany jako %r (dokument %s)", shape, doc.id)
+    document_id = doc.id
+    log.info("Payload rozpoznany jako %r (dokument %s)", shape, document_id)
 
     # Dokument z payloadu trzeba zapisac w API, inaczej finding dostanie 409.
-    if shape in ("flat", "document"):
+    # DbStore (casedb) nie ma post_document: migawke dokumentu zapisuje razem z findingiem.
+    if shape in ("flat", "document") and hasattr(api, "post_document"):
         try:
             api.post_document(doc)
         except ApiError as exc:
@@ -139,20 +157,66 @@ def handle_job(
         from analyzer.rules_llm.registry import default_config
 
         config = default_config()
-    finding = analyze(doc, entities, config, det_results=det_results)
+
+    try:
+        finding = analyze(doc, entities, config, det_results=det_results)
+    except Exception as exc:
+        log.exception("Analiza dokumentu %s nieudana", document_id)
+        if hasattr(api, "set_status"):
+            try:
+                api.set_status(document_id, "error", str(exc))
+            except ApiError as status_exc:
+                log.error("Nie ustawiono statusu error dla %s: %s", document_id, status_exc)
+        raise
 
     _save_finding(finding)
+
+    # Poprzedni przebieg pobieramy PRZED zapisem nowego Findingu.
+    previous = None
+    if hasattr(api, "previous"):
+        try:
+            previous = api.previous(document_id)
+        except ApiError as exc:
+            log.warning("Brak poprzedniego findingu %s: %s", document_id, exc)
+
     try:
-        api.post_finding(finding)
+        if hasattr(api, "save_vectors"):
+            api.save_vectors(doc)
+        if hasattr(api, "previous"):
+            api.post_finding(finding, doc)
+        else:
+            api.post_finding(finding)
     except ApiError as exc:
-        log.error("Wyslanie findingu dla %s nieudane: %s", doc.id, exc)
+        log.error("Zapis wyniku dla %s nieudany: %s", document_id, exc)
         return None
+
+    if previous is not None and hasattr(api, "save_change_event"):
+        prev_finding, prev_doc = previous
+        _detect_and_save_change(api, document_id, prev_finding, finding, prev_doc, doc)
     return finding
+
+
+
+def make_store():
+    """Wybor magazynu: ANALYZER_STORE=db|api; domyslnie db gdy jest DATABASE_URL."""
+    mode = (os.getenv("ANALYZER_STORE") or "").strip().lower()
+    if not mode:
+        mode = "db" if os.getenv("DATABASE_URL") else "api"
+    if mode == "db":
+        return DbStore()
+    if mode == "api":
+        return ApiClient()
+    raise ValueError(f"Nieznany ANALYZER_STORE: {mode!r} (dozwolone: db, api)")
 
 
 def analyze_document(payload: dict) -> bool:
     """Punkt wejscia zadania RQ (nazwa zadania: analyze_document)."""
-    return handle_job(payload, api=ApiClient()) is not None
+    store = make_store()
+    try:
+        return handle_job(payload, api=store) is not None
+    finally:
+        if hasattr(store, "close"):
+            store.close()
 
 
 def parse_args(argv: list[str] | None = None) -> str:

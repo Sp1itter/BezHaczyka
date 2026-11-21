@@ -1,5 +1,9 @@
 # Integracja serwisów — kto wywołuje kogo
 
+> **Aktualny przepływ Modułu 1** (baza `casedb`, resolver, harmonogram, payload kolejki `q:gpu`)
+> opisuje `docs/MODUL1-ARCHITEKTURA.md`. Poniższy diagram z `POST /documents` i `POST /findings`
+> to wersja pierwotna (tryb `ANALYZER_STORE=api`); kształt `entity_resolution` pozostaje ważny.
+
 Dokument dla **całego zespołu**. Doprecyzowuje §6.5 design doca.
 Jeśli coś tu się zmieni, trzeba ogłosić całej trójce.
 
