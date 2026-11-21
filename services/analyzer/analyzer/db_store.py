@@ -122,16 +122,23 @@ class DbStore:
                 conn, finding.model_dump(mode="json"), snapshot
             ),
         )
-        if summary is None:
-            return
-        # Osobna transakcja (kolumny z migracji 015; save_finding ich nie zna): blad
-        # podsumowania nie moze cofnac juz zapisanego findingu.
+        if summary is not None:
+            self.save_summary(finding.id, summary, summary_engine)
+
+    def save_summary(
+        self, finding_id: str, summary: str | None, summary_engine: str | None
+    ) -> None:
+        """Zapis (albo wyczyszczenie, gdy None) podsumowania findingu.
+
+        Osobna transakcja (kolumny z migracji 015): blad nie cofa zapisanego findingu
+        i nie leci wyzej.
+        """
         try:
             self._run(
-                f"Nie zapisano podsumowania {finding.id}",
+                f"Nie zapisano podsumowania {finding_id}",
                 lambda store, conn: conn.execute(
                     "UPDATE findings SET summary = %s, summary_engine = %s WHERE id = %s",
-                    (summary, summary_engine, finding.id),
+                    (summary, summary_engine if summary is not None else None, finding_id),
                 ),
             )
         except StoreError as exc:

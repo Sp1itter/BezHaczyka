@@ -61,3 +61,5 @@ Różnice względem SQLite, których pilnują te testy:
 - `id` w Postgresie to `UUID` — zapytanie o ID spoza formatu zwraca 404, zapis 422 (nie 500),
 - `embedding` to `vector(1024)` — wektor o innym wymiarze jest pomijany (dokument zapisuje się
   bez embeddingu, ostrzeżenie w logu); przykład kontraktowy `ad_document.json` ma skrócony wektor.
+
+Wymaga migracji 015 (casedb): po pullu uruchom `docker compose up -d --build` (albo co najmniej `casedb api analyzer dashboard`).
