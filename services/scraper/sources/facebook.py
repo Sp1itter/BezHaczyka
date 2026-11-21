@@ -58,6 +58,7 @@ from sources.meta_json import (
     merge_nodes,
     primary_body,
     publisher_from,
+    publisher_platforms,
     search_url,
     video_urls,
 )
@@ -273,6 +274,8 @@ class FacebookAdsSource:
         node_cache: MutableMapping[str, dict] | None = None,
     ) -> None:
         self.config = config or FacebookConfig.from_env()
+        # Metadane ostatniego fetch spoza kontraktu AdDocument (zamrozony) -> cases.extra.meta
+        self.last_meta: dict[str, Any] = {}
         self.store = store or LocalBlobStore("data/blobs")
         self.limiter = limiter or RateLimiter(self.config.min_interval_s)
         self.breaker = breaker or CircuitBreaker(
@@ -408,6 +411,7 @@ class FacebookAdsSource:
 
         canonical = canonical_ad_url(ad_id)
         doc_id = str(uuid.uuid5(uuid.NAMESPACE_URL, canonical))
+        self.last_meta = {}
         node = self._known_node(ad_id, replay)
         probes: dict[str, ViewportProbe] = {}
         shots: dict[str, str] = {}
@@ -490,6 +494,7 @@ class FacebookAdsSource:
             text = "\n".join(n.text for n in desktop.nodes if n.visible) if desktop else ""
             title, publisher = None, Publisher()
 
+        self.last_meta = {"publisher_platforms": publisher_platforms(node)}
         return AdDocument(
             id=doc_id,
             source=self.name,

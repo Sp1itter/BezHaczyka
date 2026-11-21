@@ -94,3 +94,19 @@ def test_build_source_youtube_uses_registry_rows():
     src = jobs.build_source("youtube", registry=Registry.from_rows(ROWS))
     assert any(e["type"] == "domain" for e in src.dictionary)
     assert src.limiter.key == "yt:ratelimit"
+
+
+def test_fetch_job_passes_source_meta(monkeypatch, env):
+    src = FakeSource(doc())
+    src.last_meta = {"publisher_platforms": ["FACEBOOK", "INSTAGRAM"]}
+    monkeypatch.setattr(jobs, "build_source", lambda *a, **k: src)
+    jobs.fetch_job("www", "https://blog.example/a")
+    (_, kw), = env["record"]
+    assert kw["meta"] == {"publisher_platforms": ["FACEBOOK", "INSTAGRAM"]}
+
+
+def test_fetch_job_without_meta(monkeypatch, env):
+    monkeypatch.setattr(jobs, "build_source", lambda *a, **k: FakeSource(doc()))
+    jobs.fetch_job("www", "https://blog.example/a")
+    (_, kw), = env["record"]
+    assert kw["meta"] is None

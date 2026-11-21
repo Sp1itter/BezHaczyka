@@ -141,7 +141,8 @@ def fetch_job(source: str, url: str, recheck: bool = False) -> dict:
     with db.connect() as conn:
         registry = Registry.from_db(conn)
         try:
-            doc, qualified, extra = _fetch(build_source(source, redis, registry), source, url)
+            src = build_source(source, redis, registry)
+            doc, qualified, extra = _fetch(src, source, url)
         except SourceGone:
             case_id = store.case_id_for(url)
             store.mark_gone(conn, case_id)
@@ -153,6 +154,7 @@ def fetch_job(source: str, url: str, recheck: bool = False) -> dict:
         case_id, outcome = store.record_document(
             conn, doc.model_dump(mode="json"), entity_resolution=resolution,
             extra_content=extra, qualified=qualified,
+            meta=getattr(src, "last_meta", None) or None,
         )
         conn.commit()
     log.info("%s %s -> %s%s", source, url, outcome, " (recheck)" if recheck else "")

@@ -163,7 +163,6 @@ def test_login_redirect_blocked_and_overlays_removed_without_clicks(source, capl
         assert "zablokowane nawigacje=1" in line  # skrypt /login/ nie opuscil strony
 
 
-
 def test_one_page_load_per_ad_for_all_viewports(source, monkeypatch):
     """Przepustowosc: jeden kontekst i jedno goto (= jedno zapytanie do Meta) na reklame."""
     from playwright.sync_api import Page
@@ -187,3 +186,8 @@ def test_one_page_load_per_ad_for_all_viewports(source, monkeypatch):
     assert set(probes) == {"desktop", "tablet", "mobile"}
     # sonda mobilna widzi inny uklad niz desktop (viewport naprawde zmieniony)
     assert probes["mobile"].model_dump() != probes["desktop"].model_dump()
+
+
+def test_fetch_records_meta_platforms(source):
+    source.fetch(canonical_ad_url(AD_ID))
+    assert source.last_meta == {"publisher_platforms": ["FACEBOOK", "INSTAGRAM"]}
