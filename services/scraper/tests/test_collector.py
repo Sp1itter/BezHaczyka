@@ -135,7 +135,7 @@ def test_analyzer_threshold_and_optional_instrument_lane(files):
 
 def test_keys():
     assert landing_key("https://www.example.invalid/kurs/?utm_campaign=a") == "example.invalid/kurs"
-    assert landing_key("http://fb.me/") is None
+    assert landing_key("https://www.facebook.com/x") is None
     assert creative_key("facebook:1", "Ta sama tresc reklamy, dluzsza niz dwadziescia znakow") == \
         creative_key("facebook:1", "ta  SAMA treść reklamy, dłuższa niż dwadzieścia znaków")
 
