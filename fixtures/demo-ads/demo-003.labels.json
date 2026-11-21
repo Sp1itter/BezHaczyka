@@ -1,0 +1,13 @@
+{
+  "id": "demo-003",
+  "source": "fixtures/demo-ads/demo-003.html",
+  "is_violation": true,
+  "note": "Ostrzeżenie dostępne dopiero po rozwinięciu <details> (R7); zwinięty tekst nie ma mierzalnego kontrastu (R5 nie dotyczy).",
+  "rule_labels": {
+    "4": "pass",
+    "5": "not_applicable",
+    "6": "pass",
+    "7": "fail",
+    "8": "pass"
+  }
+}

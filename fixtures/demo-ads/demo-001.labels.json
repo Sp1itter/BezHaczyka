@@ -1,0 +1,13 @@
+{
+  "id": "demo-001",
+  "source": "fixtures/demo-ads/demo-001.html",
+  "is_violation": true,
+  "note": "Ostrzeżenie o ryzyku czcionką 7 px przy dominującej 16 px (R4); na telefonie poniżej 9 px (R8).",
+  "rule_labels": {
+    "4": "fail",
+    "5": "pass",
+    "6": "pass",
+    "7": "pass",
+    "8": "fail"
+  }
+}
