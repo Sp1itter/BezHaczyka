@@ -4,14 +4,9 @@ import { AssigneeSelect } from "./Assignee.jsx";
 import Timeline from "./Timeline.jsx";
 import ReviewActions, { AiSuggestion } from "./ReviewActions.jsx";
 import { formatEvidence, safeHttpUrl } from "../../lib/evidence.js";
+import { VERDICT, ENGINE, RELATION, GROUPS, groupOf } from "../../lib/detail.js";
 import { MODULE, fmtDate, publisherName, sourceLabel } from "../../lib/labels.js";
 
-const ENGINE = {
-  LLM: "model językowy (Bielik)",
-  DET: "pomiar renderu",
-  HYBRID: "hybryda: pomiar + tekst",
-};
-const RELATION = { official: "oficjalny", third_party: "podmiot trzeci", unknown: "nieznana" };
 const yn = (v) => (v == null ? "—" : v ? "tak" : "nie");
 
 function summaryLabel(engine) {
@@ -57,14 +52,6 @@ function RulesTable({ rules }) {
   );
 }
 
-// Grupy: numeryczne id (w tym 12a/12b) = modul 2, M3 = modul 3, reszta = inne.
-const groupOf = (id) => (/^\d+[a-z]?$/i.test(id) ? "m2" : id === "M3" ? "m3" : "other");
-const GROUPS = [
-  ["m2", "Moduł 2 — informacja o ryzyku"],
-  ["m3", "Moduł 3 — doradztwo bez zezwolenia"],
-  ["other", "Inne"],
-];
-
 export default function FindingDetail({ finding: f, labels, onUpdate, onReview, onAssign, currentUser }) {
   if (!f) return <div className="empty">Ładowanie…</div>;
   const firm = f.entities?.investment_firm;
@@ -90,7 +77,7 @@ export default function FindingDetail({ finding: f, labels, onUpdate, onReview, 
       </div>
       <dl className="kv">
         <dt>Tytuł</dt><dd>{f.document?.title}</dd>
-        <dt>Źródło</dt><dd>{sourceLabel(f.document?.source)} · <a href={f.document?.url} target="_blank" rel="noreferrer">{f.document?.url}</a></dd>
+        <dt>Źródło</dt><dd>{sourceLabel(f.document?.source)} · {safeHttpUrl(f.document?.url) ? <a href={f.document.url} target="_blank" rel="noreferrer">{f.document.url}</a> : f.document?.url}</dd>
         <dt>Publikujący</dt><dd>{publisherName(f.document)}</dd>
         <dt>Wykryto</dt><dd>{fmtDate(f.created_at)}</dd>
         <dt>Moduły</dt><dd>{f.modules.map((m) => MODULE[m]).join(", ")}</dd>
