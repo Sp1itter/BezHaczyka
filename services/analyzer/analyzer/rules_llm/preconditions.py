@@ -32,6 +32,9 @@ from analyzer.router import normalize
 # Wyniki historyczne (reguly 12a, 12b, 14)
 # --------------------------------------------------------------------------- #
 
+# rok do 2025 wlacznie — pozniejsze to horyzont prognozy, nie wynik historyczny
+_PAST_YEAR = r"(?:19\d{2}|20[01]\d|202[0-5])"
+
 HISTORICAL_PATTERNS: tuple[str, ...] = (
     r"\bhistoryczn\w*",
     r"\bwynik\w*\s+(za|z)\s+(19|20)\d{2}",
@@ -49,6 +52,11 @@ HISTORICAL_PATTERNS: tuple[str, ...] = (
     r"\bw\s+(19\d{2}|20[01]\d|202[0-5])\s+roku",
     # "wyniosl 12%", "wzrosl o 8%", "spadl o 3%" — zdania o tym, co SIE STALO
     r"\b(wynios|wzros|spad)\w*\s+o?\s*\d+[.,]?\d*\s*%",
+    # zakres lat MINIONYCH ("pelne lata 2019-2023"); lata prognozy (2026+) nie wpadaja
+    rf"\b{_PAST_YEAR}\s*[–\-−—]\s*{_PAST_YEAR}\b",
+    # rok + zmiana procentowa ("2019 +6%", "2022 -5%")
+    rf"\b{_PAST_YEAR}\s*:?\s*[+\-−]\s*\d+[.,]?\d*\s*%",
+    r"\bstop\w*\s+zwrotu\s+w\s+(pelnych\s+)?latach",
 )
 
 HISTORICAL_REASON = (

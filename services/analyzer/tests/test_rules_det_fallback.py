@@ -110,3 +110,55 @@ def test_facebook_nie_dostaje_fallbacku_typografia_meta():
     d = _doc([_node(font=5.0)])
     d.source = "facebook"
     assert det_fallback_results(d, None) == []
+
+
+def _doc2(desktop_nodes, mobile_nodes) -> AdDocument:
+    vps = {
+        "desktop": ViewportProbe(dominant_font_px=16.0, page_height_px=2000.0, nodes=desktop_nodes),
+        "mobile": ViewportProbe(dominant_font_px=16.0, page_height_px=2400.0, nodes=mobile_nodes),
+    }
+    return AdDocument(id="d", source="web", url="https://example.invalid/a",
+                      fetched_at=datetime(2026, 11, 21, tzinfo=timezone.utc),
+                      text="x", render_probe=RenderProbe(viewports=vps))
+
+
+def test_regula_8_ostrzezenie_niewidoczne_i_przyciete_na_mobile_to_fail():
+    hidden = _node(font=9.0, y=2300, visible=False, clipped=True, in_footer=True)
+    r = _run(_doc2([_node()], [hidden]))["8"]
+    assert r.verdict is Verdict.FAIL and "mobile" in r.evidence.summary
+    assert _run(_doc2([_node()], [_node(font=12.0)]))["8"].verdict is Verdict.PASS
+
+
+def test_regula_6_ukryte_ostrzezenie_to_fail_a_wezel_za_interakcja_nie_dubluje_kary():
+    hidden = _node(y=300, visible=False)
+    assert _run(_doc([hidden]))["6"].verdict is Verdict.FAIL
+    behind = _node(y=300, visible=False, behind_interaction="accordion",
+                   collapsed_evidence="aria-expanded=false")
+    r = _run(_doc([behind]))
+    assert r["6"].verdict is Verdict.NOT_APPLICABLE  # ocenia go regula 7
+    assert r["8"].verdict is Verdict.NOT_APPLICABLE
+    assert r["7"].verdict is Verdict.FAIL
+
+
+def test_regula_4_uzywa_dominant_z_probe_a_bez_niego_liczy_z_wezlow():
+    # dominant z probe (28 px = naglowek) ma pierwszenstwo
+    assert _run(_doc([_node(font=14.0)], dominant=28.0))["4"].verdict is Verdict.FAIL
+    # brak dominant (0): liczone ze znakow widocznych wezlow -> 14 px dominuje
+    nodes = [_node(font=14.0), _node(text="x" * 80, font=14.0), _node(text="Naglowek", font=28.0)]
+    assert _run(_doc(nodes, dominant=0.0))["4"].verdict is Verdict.PASS
+
+
+def test_regula_4_dlugie_drobne_ostrzezenie_nie_dominuje_samo_siebie():
+    # probe.js liczy dominant po znakach RAZEM z ostrzezeniem: 8 px x 200 znakow
+    # wygrywa z trescia 16 px i dominant wychodzi 8 -> ratio 1.0 -> falszywy pass.
+    # Przewazajaca czcionke materialu liczymy BEZ wezlow ostrzezenia.
+    dlugie = _node(text=RISK + " " + "x" * 150, font=8.0, y=900)
+    tresc = _node(text="Fundusz akcji polskich dla kazdego inwestora.", font=16.0, y=100)
+    r = _run(_doc([tresc, dlugie], dominant=8.0))["4"]
+    assert r.verdict.value == "fail"
+    assert r.evidence.measured["dominant_font_px"] == 16.0
+
+
+def test_regula_4_bez_innych_wezlow_bierze_dominant_z_probe():
+    r = _run(_doc([_node(font=16.0)], dominant=16.0))["4"]
+    assert r.verdict.value == "pass"

@@ -1100,7 +1100,7 @@
     "render_probe": {
      "viewports": {
       "mobile": {
-       "dominant_font_px": 28,
+       "dominant_font_px": 14,
        "page_height_px": 2400.0,
        "nodes": [
         {
@@ -1206,7 +1206,7 @@
     "render_probe": {
      "viewports": {
       "desktop": {
-       "dominant_font_px": 28,
+       "dominant_font_px": 14,
        "page_height_px": 1600.0,
        "nodes": [
         {
@@ -1288,7 +1288,7 @@
        ]
       },
       "mobile": {
-       "dominant_font_px": 28,
+       "dominant_font_px": 14,
        "page_height_px": 2400.0,
        "nodes": [
         {
@@ -1397,7 +1397,7 @@
     "render_probe": {
      "viewports": {
       "desktop": {
-       "dominant_font_px": 28,
+       "dominant_font_px": 14,
        "page_height_px": 1600.0,
        "nodes": [
         {
@@ -1479,7 +1479,7 @@
        ]
       },
       "mobile": {
-       "dominant_font_px": 28,
+       "dominant_font_px": 14,
        "page_height_px": 2400.0,
        "nodes": [
         {
