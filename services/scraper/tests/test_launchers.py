@@ -1,10 +1,13 @@
 """Launchery workera i harmonogramu — bez Redisa (atrapa schedulera)."""
 from __future__ import annotations
 
+import re
+
 import pytest
 
 import scheduler_main
 import worker_main
+from jobs import _job_slug, schedule_facebook
 
 
 class _Job:
@@ -45,3 +48,22 @@ def test_register_empty_queries(monkeypatch):
 def test_worker_requires_queue():
     with pytest.raises(SystemExit):
         worker_main.main([])
+
+
+def test_job_slug_strips_polish_and_punctuation():
+    assert _job_slug("zarabiaj na giełdzie") == "zarabiaj-na-gieldzie"
+    assert _job_slug("ETF / akcje!") == "etf-akcje"
+
+
+def test_job_slug_fallback_hash_for_empty():
+    slug = _job_slug("!!!")
+    assert len(slug) == 12
+    assert all(c in "0123456789abcdef" for c in slug)
+
+
+def test_schedule_facebook_ids_match_rq_rule():
+    sch = FakeScheduler([])
+    schedule_facebook(sch, queries=["inwestycje", "zarabiaj na giełdzie"], interval_min=30)
+    ids = [s["id"] for s in sch.scheduled]
+    assert ids == ["fb-discover-inwestycje", "fb-discover-zarabiaj-na-gieldzie"]
+    assert all(re.fullmatch(r"[A-Za-z0-9_-]+", i) for i in ids)
