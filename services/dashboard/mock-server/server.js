@@ -16,6 +16,23 @@ import http from "node:http";
 import { WebSocketServer } from "ws";
 import { makeFindings, makeFinding, makeGold, STATUSES, HUMAN_ONLY } from "./data.js";
 
+// Kopia slownika z services/api/api/review.py (value, opis, werdykt, grupa).
+const REVIEW_LABELS = [
+  ["true_positive", "Trafne (TP): naruszenie potwierdzone", "confirmed", "tp"],
+  ["true_positive_wrong_entity", "Naruszenie, ale błędny podmiot / rejestr KNF", "confirmed", "tp"],
+  ["true_positive_wrong_rule", "Naruszenie, ale błędna reguła lub podstawa prawna", "confirmed", "tp"],
+  ["true_positive_wrong_risk", "Naruszenie, ale zły poziom ryzyka", "confirmed", "tp"],
+  ["false_negative", "Przeoczone (FN): model zaniżył ocenę, a to naruszenie", "confirmed", "fn"],
+  ["false_positive", "Fałszywy alarm (FP): brak naruszenia", "dismissed", "fp"],
+  ["out_of_scope", "Poza zakresem: to nie reklama usług inwestycyjnych", "dismissed", "fp"],
+  ["duplicate", "Duplikat innego zgłoszenia", "dismissed", "other"],
+  ["bad_data", "Błąd danych: zły materiał, transkrypcja lub zrzut", "dismissed", "other"],
+  ["other", "Inny błąd modelu (opisz w notatce)", "dismissed", "other"],
+].map(([value, label, verdict, group]) => ({ value, label, verdict, group }));
+const VERDICT = Object.fromEntries(REVIEW_LABELS.map((l) => [l.value, l.verdict]));
+const events = {}; // finding_id -> [{at, actor, action, detail}]
+const logEvent = (id, actor, action, detail) => (events[id] ||= []).push({ at: new Date().toISOString(), actor: actor || null, action, detail });
+
 const PORT = Number(process.env.MOCK_PORT || 4000);
 const ALERT_EVERY_MS = Number(process.env.MOCK_ALERT_MS || 25000);
 
@@ -116,28 +133,31 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "GET") return send(res, 200, f);
     if (req.method === "PATCH") {
       const body = await readBody(req);
-      if (body.status && !body.review) {
+      if (body.review) {
+        if (!body.actor) return send(res, 422, { detail: "Ocena wymaga osoby (actor)" });
+        const decision = VERDICT[body.review.label];
+        if (!decision) return send(res, 422, { detail: "Nieznana etykieta" });
+        f.status = decision;
+        f.review = { decision, label: body.review.label, note: body.review.note || null, by: body.actor, at: new Date().toISOString() };
+        if (!f.assignee && !("assignee" in body)) { f.assignee = body.actor; f.assigned_by = "human"; }
+        logEvent(f.id, body.actor, "review", { decision, label: body.review.label, note: body.review.note || null });
+      } else if (body.status) {
         if (!STATUSES.includes(body.status)) return send(res, 422, { detail: "Zly status" });
-        if (HUMAN_ONLY.includes(body.status) && body.status !== f.status)
-          return send(res, 422, { detail: "Potwierdzenie/odrzucenie tylko przez weryfikacje czlowieka (review)" });
         f.status = body.status;
+        logEvent(f.id, body.actor, "status", { status: body.status });
       }
       if ("assignee" in body) {
         f.assignee = body.assignee || null;
         f.assigned_by = f.assignee ? "human" : null;
-      }
-      if (body.review) {
-        if (!body.actor) return send(res, 422, { detail: "Weryfikacja wymaga osoby (actor)" });
-        const { decision, note } = body.review;
-        if (!HUMAN_ONLY.includes(decision)) return send(res, 422, { detail: "decision: confirmed | dismissed" });
-        f.status = decision;
-        f.review = { decision, by: body.actor, at: new Date().toISOString(), note: note || null };
-        if (!f.assignee) { f.assignee = body.actor; f.assigned_by = "human"; }
+        logEvent(f.id, body.actor, "assign", { assignee: f.assignee });
       }
       io.emit("finding.updated", { finding_id: f.id, status: f.status, assignee: f.assignee });
       return send(res, 200, f);
     }
   }
+  const ev = p.match(/^\/findings\/([\w-]+)\/events$/);
+  if (ev) return send(res, 200, { items: events[ev[1]] || [] });
+  if (req.method === "GET" && p === "/review-labels") return send(res, 200, { items: REVIEW_LABELS });
   if (req.method === "GET" && p === "/stats") return send(res, 200, stats(applyFilters(findings, sp)));
   if (req.method === "GET" && p === "/stats/trend") return send(res, 200, { items: trend(applyFilters(findings, sp)) });
   if (req.method === "GET" && p === "/calibration") return send(res, 200, { items: gold, source: "mock", available: true });

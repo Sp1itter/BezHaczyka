@@ -38,6 +38,12 @@ class InvalidId(ValueError):
 
 _DOC_JSON = ("publisher", "screenshots", "media", "transcript", "render_probe", "scope")
 _FINDING_JSON = ("routing", "rule_results", "entities")
+# Praca czlowieka nad findingiem (migracja casedb 011_review.sql). Nie naleza do kontraktu Finding.
+_REVIEW_COLS = (
+    "assignee", "assigned_by", "assigned_at",
+    "review_verdict", "review_label", "review_note", "reviewed_by", "reviewed_at",
+)
+UNSET: Any = object()  # "pole nie przyszlo w PATCH" (rozne od None = wyczysc)
 
 
 @dataclass
@@ -207,12 +213,17 @@ class SqlStore:
     def upsert_finding(self, f: Finding) -> UpsertResult:
         self._require_ids(f.id, f.document_id)
         row = finding_row(f)
-        prev = self._execute(f"SELECT risk_level FROM findings WHERE id = {self.ph}", [row["id"]])
+        prev = self._execute(
+            f"SELECT risk_level, reviewed_by FROM findings WHERE id = {self.ph}", [row["id"]]
+        )
         values = {
             **row,
             "modules": self._modules_value(row["modules"]),
             **{k: self._dump_json(row[k]) for k in _FINDING_JSON},
         }
+        if prev and prev[0]["reviewed_by"]:
+            # Ponowna analiza nie nadpisuje decyzji czlowieka.
+            values.pop("status")
         cols = list(values)
         if prev:
             sets = ", ".join(f"{c} = {self.ph}" for c in cols[1:])
@@ -231,11 +242,16 @@ class SqlStore:
         return (
             "SELECT f.id, f.document_id, f.primary_module, f.modules, f.routing, f.risk_score, "
             "f.risk_level, f.rule_results, f.entities, f.knn_score, f.status, f.created_at, "
-            f"{doc_cols} FROM findings f LEFT JOIN documents d ON d.id = f.document_id"
+            + "".join(f"f.{c}, " for c in _REVIEW_COLS)
+            + f"{doc_cols} FROM findings f LEFT JOIN documents d ON d.id = f.document_id"
         )
 
     def _hydrate(self, row: dict[str, Any]) -> dict[str, Any]:
-        out = {k: v for k, v in row.items() if not k.startswith("doc_")}
+        out = {k: v for k, v in row.items() if not k.startswith("doc_") and k not in _REVIEW_COLS}
+        rv = {k: row.get(k) for k in _REVIEW_COLS}
+        for k in ("assigned_at", "reviewed_at"):
+            if isinstance(rv[k], datetime):
+                rv[k] = _iso(rv[k])
         out["id"] = str(out["id"])
         out["document_id"] = str(out["document_id"])
         out["modules"] = self._load_modules(out["modules"])
@@ -256,6 +272,20 @@ class SqlStore:
                 "text_excerpt": text[:400],
             }
         finding["document"] = doc
+        finding["assignee"] = rv["assignee"]
+        finding["assigned_by"] = rv["assigned_by"]
+        finding["assigned_at"] = rv["assigned_at"]
+        finding["review"] = (
+            {
+                "decision": rv["review_verdict"],
+                "label": rv["review_label"],
+                "note": rv["review_note"],
+                "by": rv["reviewed_by"],
+                "at": rv["reviewed_at"],
+            }
+            if rv["reviewed_by"]
+            else None
+        )
         return finding
 
     def list_findings(self, flt: FindingFilter) -> tuple[list[dict[str, Any]], int]:
@@ -309,6 +339,67 @@ class SqlStore:
         self._execute(f"UPDATE findings SET status = {self.ph} WHERE id = {self.ph}", [status, finding_id])
         return True
 
+    def update_finding(
+        self,
+        finding_id: str,
+        *,
+        actor: str | None = None,
+        status: str | None = None,
+        assignee: Any = UNSET,
+        review: dict[str, Any] | None = None,
+    ) -> bool:
+        """Zmiana statusu, przypisania lub ocena czlowieka + wpis do finding_events."""
+        if not self.valid_id(finding_id):
+            return False
+        if not self._execute(f"SELECT 1 AS x FROM findings WHERE id = {self.ph}", [finding_id]):
+            return False
+        now = _iso(datetime.now(timezone.utc))
+        sets: dict[str, Any] = {}
+        events: list[tuple[str, dict[str, Any]]] = []
+        if status is not None and review is None:
+            sets["status"] = status
+            events.append(("status", {"status": status}))
+        if assignee is not UNSET:
+            sets.update(assignee=assignee, assigned_by="human" if assignee else None,
+                        assigned_at=now if assignee else None)
+            events.append(("assign", {"assignee": assignee}))
+        if review is not None:
+            sets.update(status=review["decision"], review_verdict=review["decision"],
+                        review_label=review["label"], review_note=review.get("note"),
+                        reviewed_by=actor, reviewed_at=now)
+            events.append(("review", {k: review.get(k) for k in ("decision", "label", "note")}))
+        if not sets:
+            return True
+        cols = ", ".join(f"{c} = {self.ph}" for c in sets)
+        self._execute(f"UPDATE findings SET {cols} WHERE id = {self.ph}", list(sets.values()) + [finding_id])
+        if review is not None and assignee is UNSET:
+            # Kto ocenil, ten sie tym zajal - jesli nikt nie byl przypisany.
+            self._execute(
+                f"UPDATE findings SET assignee = {self.ph}, assigned_by = 'human', assigned_at = {self.ph}"
+                f" WHERE id = {self.ph} AND assignee IS NULL",
+                [actor, now, finding_id],
+            )
+        for action, detail in events:
+            self._execute(
+                f"INSERT INTO finding_events (finding_id, at, actor, action, detail)"
+                f" VALUES ({self.ph}, {self.ph}, {self.ph}, {self.ph}, {self.ph})",
+                [finding_id, now, actor, action, self._dump_json(detail)],
+            )
+        return True
+
+    def list_events(self, finding_id: str) -> list[dict[str, Any]]:
+        if not self.valid_id(finding_id):
+            return []
+        rows = self._execute(
+            f"SELECT at, actor, action, detail FROM finding_events WHERE finding_id = {self.ph} ORDER BY at, id",
+            [finding_id],
+        )
+        return [
+            {"at": _iso(r["at"]) if isinstance(r["at"], datetime) else r["at"], "actor": r["actor"],
+             "action": r["action"], "detail": self._load_json(r["detail"])}
+            for r in rows
+        ]
+
     def all_findings(self) -> list[dict[str, Any]]:
         rows = self._execute(f"{self._finding_select()} ORDER BY f.created_at DESC")
         return [self._hydrate(r) for r in rows]
@@ -347,7 +438,12 @@ CREATE TABLE IF NOT EXISTS findings (
     primary_module INTEGER, modules TEXT NOT NULL DEFAULT '[]', routing TEXT NOT NULL DEFAULT '{}',
     risk_score REAL NOT NULL, risk_level TEXT NOT NULL, rule_results TEXT NOT NULL DEFAULT '[]',
     entities TEXT NOT NULL DEFAULT '{}', knn_score REAL, status TEXT NOT NULL DEFAULT 'new',
-    created_at TEXT NOT NULL
+    created_at TEXT NOT NULL, assignee TEXT, assigned_by TEXT, assigned_at TEXT,
+    review_verdict TEXT, review_label TEXT, review_note TEXT, reviewed_by TEXT, reviewed_at TEXT
+);
+CREATE TABLE IF NOT EXISTS finding_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, finding_id TEXT NOT NULL, at TEXT NOT NULL,
+    actor TEXT, action TEXT NOT NULL, detail TEXT NOT NULL DEFAULT '{}'
 );
 CREATE INDEX IF NOT EXISTS idx_findings_risk_level ON findings (risk_level);
 CREATE INDEX IF NOT EXISTS idx_findings_created_at ON findings (created_at DESC);
@@ -362,6 +458,12 @@ class SqliteStore(SqlStore):
         self._conn.row_factory = sqlite3.Row
         self._conn.execute("PRAGMA foreign_keys = ON")
         self._conn.executescript(_SQLITE_SCHEMA)
+        # Stary plik dev (sprzed 011_review): dopisz brakujace kolumny.
+        have = {r[1] for r in self._conn.execute("PRAGMA table_info(findings)")}
+        for col in _REVIEW_COLS:
+            if col not in have:
+                self._conn.execute(f"ALTER TABLE findings ADD COLUMN {col} TEXT")
+        self._conn.commit()
         self._lock = threading.Lock()
 
     def _execute(self, sql: str, params: Iterable[Any] = ()) -> list[dict[str, Any]]:

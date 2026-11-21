@@ -1,7 +1,7 @@
 import { RiskBadge } from "../common/Badge.jsx";
 import StatusSelect from "./StatusSelect.jsx";
 import { AssigneeTag } from "./Assignee.jsx";
-import { SOURCE, fmtDate } from "../../lib/labels.js";
+import { SOURCE, fmtDate, publisherName } from "../../lib/labels.js";
 
 // Tabela rekordow. columns sterowane z zewnatrz nie sa potrzebne w placeholderze.
 export default function FindingsTable({ items, onOpen, onStatusChange, emptyText = "Brak wyników dla filtrów." }) {
@@ -22,7 +22,7 @@ export default function FindingsTable({ items, onOpen, onStatusChange, emptyText
             <td>{f.modules.map((m) => `M${m}`).join(", ")}</td>
             <td>
               <div className="cell-title">{f.document?.title}</div>
-              <div className="muted">{f.document?.publisher}</div>
+              <div className="muted">{publisherName(f.document)}</div>
             </td>
             <td>
               {f.entities?.investment_firm?.name_in_ad}

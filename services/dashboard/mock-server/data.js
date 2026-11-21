@@ -125,7 +125,7 @@ function withHistory(f) {
   else {
     const decision = rnd() < 0.8 ? f.ai_suggestion.status : f.ai_suggestion.status === "confirmed" ? "dismissed" : "confirmed";
     f.status = decision;
-    f.review = { decision, by: f.assignee, at: f.created_at, note: null };
+    f.review = { decision, label: decision === "confirmed" ? "true_positive" : "false_positive", by: f.assignee, at: f.created_at, note: null };
   }
   return f;
 }
