@@ -54,14 +54,23 @@ DISCLOSURE_PHRASES = (
     "#reklama", "#wspolpraca", "#ad", "#sponsored", "wspolpraca reklamowa",
     "material sponsorowany", "partnerem odcinka", "material promocyjny",
     "lokowanie produktu", "post sponsorowany",
+    "link afiliacyjny", "linki afiliacyjne", "link partnerski", "linki partnerskie",
+    "link polecajacy", "kod polecajacy", "kod rabatowy", "kod promocyjny",
+    "wspolpraca platna", "platna wspolpraca", "platne partnerstwo", "we wspolpracy z",
+    "odcinek powstal we wspolpracy", "sponsorem odcinka", "sponsor odcinka",
+    "partnerem materialu", "material reklamowy", "paid partnership",
+    "#wspolpracareklamowa", "#partner", "#sponsorowane",
 )
+# Hashtag zaczynajacy sie od #reklama (np. #reklamaxtb) oraz "reklama" w znacznikach.
+_HASHTAG_AD = r"(?<![\w#])#reklama\w*"
 _DISCLOSURE_RE = re.compile(
     "|".join(
-        (r"(?<![\w#])" if p.startswith("#") else r"(?<!\w)")
-        + r"\s+".join(re.escape(w) for w in p.split()) + r"(?!\w)"
-        for p in DISCLOSURE_PHRASES
+        [(r"(?<![\w#])" if p.startswith("#") else r"(?<!\w)")
+         + r"\s+".join(re.escape(w) for w in p.split()) + r"(?!\w)"
+         for p in DISCLOSURE_PHRASES] + [_HASHTAG_AD, r"[\[(]\s*reklama\s*[\])]"]
     )
 )
+_AD_WORD_RE = re.compile(r"(?<![\w#])reklama(?!\w)")  # tylko w pierwszej linii
 
 AFFILIATE_PARAMS = frozenset(
     {"ref", "aff", "affiliate", "partner", "utm_campaign", "utm_source", "promo", "code", "coupon"}
@@ -236,14 +245,30 @@ class Registry:
                 return firm
             if display and any(display == norm for _, norm in firm.names):
                 return firm
-        return None
+        return self._display_prefix(display)
+
+    def _display_prefix(self, display: str) -> Firm | None:
+        """Nazwa wyswietlana zaczyna sie od aliasu firmy (np. "XTB Online Investing"); najdluzszy alias."""
+        if not display:
+            return None
+        padded = display + " "
+        best: tuple[int, Firm] | None = None
+        for firm in self.firms:
+            if firm.source != "curated":
+                continue
+            for _, norm in firm.names:
+                if len(norm) >= MIN_NAME_LEN and padded.startswith(norm + " ") and (best is None or len(norm) > best[0]):
+                    best = (len(norm), firm)
+        return best[1] if best else None
 
 
 # ------------------------------------------------------------------------ API --
 
 
 def has_disclosure(text: str) -> bool:
-    return bool(_DISCLOSURE_RE.search(_fold(text or "")))
+    folded = _fold(text or "")
+    first_line = next((ln for ln in folded.splitlines() if ln.strip()), "")
+    return bool(_DISCLOSURE_RE.search(folded) or _AD_WORD_RE.search(first_line))
 
 
 def _is_affiliate(url: str) -> bool:
@@ -293,6 +318,8 @@ def resolve(doc: AdDocument, registry: Registry) -> dict:
     else:
         relation, publisher_authorized = "third_party", publisher_known
 
+    disclosure = has_disclosure(text)
+    affiliate = find_affiliate_link(extract_urls(text), best.firm) if best else None
     return {
         "publisher_relation": relation,
         "publisher_is_authorized": publisher_authorized,
@@ -304,8 +331,9 @@ def resolve(doc: AdDocument, registry: Registry) -> dict:
         "registry_knf_id": best.firm.knf_id if best else None,
         "registry_official_name": best.firm.name if best else None,
         "registry_score": round(best.score, 3) if best else 0.0,
-        "disclosure_found": has_disclosure(text),
-        "affiliate_link": find_affiliate_link(extract_urls(text), best.firm) if best else None,
+        "disclosure_found": disclosure,
+        "affiliate_link": affiliate,
+        "affiliate_without_disclosure": affiliate is not None and not disclosure,
     }
 
 
