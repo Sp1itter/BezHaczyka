@@ -15,10 +15,13 @@ Uruchomienie lokalne (bez Dockera, SQLite):
 from __future__ import annotations
 
 import asyncio
+import csv
+import io
 import json
 import logging
 import os
 from collections import Counter
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Literal
 
@@ -29,7 +32,7 @@ from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
 
 from api.contracts import AdDocument, Finding
-from api.store import FindingFilter, InvalidId, SqlStore, open_store
+from api.store import FindingFilter, FlagsUnavailable, InvalidId, ReportUnavailable, SqlStore, open_store
 
 log = logging.getLogger("api")
 
@@ -222,6 +225,53 @@ def create_app(store: SqlStore | None = None, gold_path: Path | None = None) -> 
             for it in data.get("items", [])
         ]
         return {"items": items, "source": path.name, "available": True}
+
+    # --- raport Modulu 1 (JSON + CSV) ---------------------------------------------
+    async def _report(source, relation, flag, since, limit, offset):
+        try:
+            return await run_in_threadpool(
+                lambda: st().module1_report(source=source, relation=relation, flag=flag,
+                                            since=since, limit=limit, offset=offset))
+        except ReportUnavailable as e:
+            raise HTTPException(503, str(e))
+        except FlagsUnavailable as e:
+            raise HTTPException(400, str(e))
+
+    @app.get("/reports/module1")
+    async def report_module1(
+        source: str | None = None,
+        relation: str | None = None,
+        flag: str | None = None,
+        since: datetime | None = None,
+        limit: int = Query(200, ge=1, le=1000),
+        offset: int = Query(0, ge=0),
+    ) -> dict[str, Any]:
+        items, total = await _report(source, relation, flag, since, limit, offset)
+        return {"items": items, "total": total}
+
+    @app.get("/reports/module1.csv")
+    async def report_module1_csv(
+        source: str | None = None,
+        relation: str | None = None,
+        flag: str | None = None,
+        since: datetime | None = None,
+        limit: int = Query(200, ge=1, le=1000),
+        offset: int = Query(0, ge=0),
+    ) -> Response:
+        items, _ = await _report(source, relation, flag, since, limit, offset)
+        buf = io.StringIO()
+        if items:
+            w = csv.DictWriter(buf, fieldnames=list(items[0]))
+            w.writeheader()
+            for it in items:
+                w.writerow({k: ";".join(str(x) for x in v) if isinstance(v, list)
+                            else ("" if v is None else v) for k, v in it.items()})
+        stamp = datetime.now(timezone.utc).strftime("%Y%m%d")
+        return Response(
+            content="﻿" + buf.getvalue(),
+            media_type="text/csv; charset=utf-8",
+            headers={"Content-Disposition": f'attachment; filename="modul1-raport-{stamp}.csv"'},
+        )
 
     # --- alerty na zywo -----------------------------------------------------------
     @app.websocket("/ws/alerts")
