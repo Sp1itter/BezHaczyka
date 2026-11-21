@@ -95,7 +95,7 @@ const readBody = (req) =>
   });
 
 const server = http.createServer(async (req, res) => {
-  const url = new URL(req.url, "http://x");
+  const url = new URL(req.url, "http://localhost");
   const p = url.pathname.replace(/^\/api/, "");
   const sp = url.searchParams;
   if (req.method === "OPTIONS") {

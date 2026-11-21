@@ -44,7 +44,7 @@ def pg():
         conn.execute(
             "INSERT INTO cases (case_id, source, source_item_id, url, title, last_seen_at, entity_resolution)"
             " VALUES (%s, %s, %s, %s, %s, %s, %s::jsonb)",
-            (str(uuid.uuid4()), src, f"i{i}", f"https://x/{i}", f"t{i}", seen,
+            (str(uuid.uuid4()), src, f"i{i}", f"https://x.example.invalid/{i}", f"t{i}", seen,
              f'{{"publisher_relation": "{rel}", "mentions_authorized_firm": true}}'),
         )
     conn.commit()
@@ -89,7 +89,7 @@ def test_csv_exports_all_rows_beyond_page(pg) -> None:
         conn.execute(
             "INSERT INTO cases (case_id, source, source_item_id, url, entity_resolution)"
             " VALUES (%s, 'www', %s, %s, %s::jsonb)",
-            (str(uuid.uuid4()), f"b{i}", f"https://y/{i}", '{"publisher_relation": "third_party"}'),
+            (str(uuid.uuid4()), f"b{i}", f"https://y.example.invalid/{i}", '{"publisher_relation": "third_party"}'),
         )
     conn.commit()
     r = client.get("/reports/module1.csv?limit=5&offset=3")  # limit/offset ignorowane
