@@ -184,3 +184,60 @@ def test_agent_publisher_is_authorized():
     assert r["publisher_relation"] == "third_party" and r["publisher_is_authorized"]
     other = resolve(doc("Zaloz konto w XTB.", handle="x", display_name="Ktos Inny"), reg)
     assert not other["publisher_is_authorized"]
+
+
+# ---- relacja: nazwa wyswietlana zaczyna sie od aliasu firmy; ujawnienia; afiliacja ----
+
+
+def test_display_name_prefix_is_official(reg):
+    r = resolve(doc("Nowa oferta XTB.", handle="@kanal", display_name="XTB Online Investing"), reg)
+    assert r["publisher_relation"] == "official" and r["registry_knf_id"] == "DM-XTB"
+
+
+def test_finfluencer_with_firm_inside_name_is_third_party(reg):
+    r = resolve(doc("Zaloz konto w XTB.", handle="@kanal", display_name="Inwestuj z XTB"), reg)
+    assert r["publisher_relation"] == "third_party" and not r["publisher_is_authorized"]
+
+
+def test_display_prefix_needs_whole_word_and_curated_only():
+    reg2 = Registry.from_rows(ROWS + [{"knf_id": "KNF-1", "name": "Kowalski Investments", "aliases": [],
+                                       "domains": [], "handles": [], "source": "knf"}])
+    assert reg2.match_publisher(Publisher(handle="@a", display_name="XTBX Fans")) is None
+    assert reg2.match_publisher(Publisher(handle="@a", display_name="Kowalski Investments Blog")) is None
+    assert reg2.match_publisher(Publisher(handle="@a", display_name="XTB Polska")).knf_id == "DM-XTB"
+
+
+def test_display_prefix_longest_alias_wins():
+    rows = [{"knf_id": "A", "name": "Alfa", "aliases": [], "domains": [], "handles": []},
+            {"knf_id": "AB", "name": "Alfa Beta", "aliases": [], "domains": [], "handles": []}]
+    reg2 = Registry.from_rows(rows)
+    assert reg2.match_publisher(Publisher(handle="@a", display_name="Alfa Beta Gamma")).knf_id == "AB"
+
+
+@pytest.mark.parametrize("text", [
+    "Link afiliacyjny w opisie", "Moje linki partnerskie", "Uzyj kodu rabatowego: kod rabatowy XYZ",
+    "kod polecajacy ABC", "Płatna współpraca z XTB", "Odcinek powstał we współpracy z XTB",
+    "Sponsorem odcinka jest XTB", "Partnerem materiału jest XTB", "Materiał reklamowy",
+    "paid partnership with XTB", "#wspolpracareklamowa", "#partner", "#sponsorowane", "#reklamaxtb",
+    "Reklama\nzaloz konto", "Tresc [reklama] tresc", "tresc (Reklama) tresc",
+])
+def test_new_disclosure_phrases(text):
+    assert has_disclosure(text)
+
+
+@pytest.mark.parametrize("text", [
+    "Zlozylem reklamacje", "reklamacja u brokera", "Partnerstwo roku", "#partnerzy", "#sponsoring",
+    "Pierwsza linia\nreklama w drugiej linii", "kod rabatowych", "nie ma tu nic",
+])
+def test_non_disclosures(text):
+    assert not has_disclosure(text)
+
+
+def test_affiliate_without_disclosure(reg):
+    text = "Zaloz konto w XTB: https://www.xtb.com/pl?ref=abc"
+    r = resolve(doc(text, handle="blog.example", display_name="Blog"), reg)
+    assert r["affiliate_link"] and r["affiliate_without_disclosure"] is True
+    r2 = resolve(doc(text + " #reklama", handle="blog.example", display_name="Blog"), reg)
+    assert r2["disclosure_found"] and r2["affiliate_without_disclosure"] is False
+    r3 = resolve(doc("Zaloz konto w XTB.", handle="blog.example", display_name="Blog"), reg)
+    assert r3["affiliate_without_disclosure"] is False
