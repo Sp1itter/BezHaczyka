@@ -74,6 +74,29 @@ def test_report_filters_and_csv(pg) -> None:
     assert lines[0].startswith("case_id,source,url") and len(lines) == 2
 
 
+def test_csv_empty_has_bom_and_header(pg) -> None:
+    client, _ = pg
+    r = client.get("/reports/module1.csv?source=nieistniejace")
+    assert r.status_code == 200 and r.headers["x-total-count"] == "0"
+    assert r.content.startswith(b"\xef\xbb\xbf")
+    lines = r.content.decode("utf-8-sig").strip().splitlines()
+    assert lines[0].startswith("case_id,source,url") and len(lines) == 1
+
+
+def test_csv_exports_all_rows_beyond_page(pg) -> None:
+    client, conn = pg
+    for i in range(205):
+        conn.execute(
+            "INSERT INTO cases (case_id, source, source_item_id, url, entity_resolution)"
+            " VALUES (%s, 'www', %s, %s, %s::jsonb)",
+            (str(uuid.uuid4()), f"b{i}", f"https://y/{i}", '{"publisher_relation": "third_party"}'),
+        )
+    conn.commit()
+    r = client.get("/reports/module1.csv?limit=5&offset=3")  # limit/offset ignorowane
+    assert r.headers["x-total-count"] == "208"
+    assert len(r.content.decode("utf-8-sig").strip().splitlines()) == 1 + 208
+
+
 def test_flag_filter(pg) -> None:
     client, conn = pg
     # brak kolumny m1_flags -> 400

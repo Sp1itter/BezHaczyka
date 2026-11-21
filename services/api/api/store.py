@@ -319,6 +319,9 @@ class SqlStore:
                        limit: int = 200, offset: int = 0) -> tuple[list[dict[str, Any]], int]:
         raise ReportUnavailable("Raport Modulu 1 wymaga Postgresa (widok module1_report z migracji casedb)")
 
+    def module1_columns(self) -> list[str]:
+        raise ReportUnavailable("Raport Modulu 1 wymaga Postgresa (widok module1_report z migracji casedb)")
+
     def ping(self) -> bool:
         try:
             self._execute("SELECT 1 AS x")
@@ -446,6 +449,14 @@ class PostgresStore(SqlStore):
                 elif hasattr(v, "hex") and not isinstance(v, (bytes, str)):  # UUID
                     r[k] = str(v)
         return rows, int(total)
+
+    def module1_columns(self) -> list[str]:
+        rows = self._execute(
+            "SELECT column_name FROM information_schema.columns WHERE table_name = 'module1_report'"
+            " ORDER BY ordinal_position")
+        if not rows:
+            raise ReportUnavailable("Brak widoku module1_report - uruchom migracje casedb")
+        return [r["column_name"] for r in rows]
 
     # pgvector bez dodatkowego pakietu: literal tekstowy '[a,b,...]' rzutowany na vector.
     def _embedding_value(self, vec: list[float] | None) -> Any:
