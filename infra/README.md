@@ -1,28 +1,28 @@
-# infra - punkt startowy dla Osoby C (API + dashboard)
+# infra - stos docker-compose (projekt `investwatch`)
 
-> **Zweryfikowane 21.11 (Docker Desktop 29.9.3 + WSL2): postgres, api, web.** Pozostałe
-> serwisy (valkey, seaweedfs, nginx, analyzer, casedb) nadal czekają na pierwsze uruchomienie.
->
-> **Pierwotna uwaga: ten stos był NIEPRZETESTOWANY.** Autor nie miał Dockera na swojej
-> maszynie, więc `docker-compose.yml`, `init.sql` i `nginx.conf` nigdy nie zostały
-> uruchomione. Sprawdzono tylko składnię YAML i zgodność licencyjną
-> (`tools/check_compliance.py`). Lista rzeczy do sprawdzenia jest na końcu.
+Komendy uruchomienia, adresy i procedura „po git pull”: `README.md` w korzeniu repo.
 
-## Szybki start: same bazy
+## Serwisy
 
-```
-cd infra
-cp .env.example .env
-docker compose up postgres valkey seaweedfs nginx
-```
+| Serwis | Rola | Start |
+|---|---|---|
+| postgres (`pgvector/pgvector:pg16`) | dokumenty, findingi, casedb | długotrwały |
+| valkey | kolejki RQ, stan scrapera | długotrwały |
+| seaweedfs | S3 :8333: zrzuty, mp4 | długotrwały |
+| nginx | korpus demo offline :8080 | długotrwały |
+| casedb | migracje casedb | jednorazowy |
+| api | FastAPI :8000 | długotrwały |
+| web | dashboard :8090 | długotrwały |
+| analyzer | worker kolejki `q:gpu` | długotrwały |
+| scraper-ingest | worker `q:ingest` (discover) | długotrwały, repliki |
+| scraper-render | worker `q:render` (Playwright) | długotrwały, repliki |
+| scheduler | rq-scheduler: CronJob scrapera | długotrwały |
+| ollama | opcja bez natywnej Ollamy | tylko `--profile ollama` |
 
-To **wystarczy do zbudowania całego API i frontu**. Nie potrzebujesz analyzera,
-Bielika, Ollamy ani pobierania 6,3 GB modeli. Dostajesz: Postgres+pgvector
-(`localhost:5432`, schemat z `init.sql`), Valkey (`6379`), SeaweedFS S3 (`8333`)
-i korpus demo jako statyczne pliki (`http://localhost:8080/`).
-
-`api` i `web` są w compose bez profilu, więc zwykłe `docker compose up` je poda:
-API na `localhost:${API_PORT}` (8000), dashboard na `localhost:${WEB_PORT}` (8090).
+Przepływ: `scheduler` co `FB_REFRESH_MIN` zleca discover do `q:ingest` → `scraper-ingest` zleca
+fetch do `q:render` → `scraper-render` buduje `AdDocument`, zapisuje zrzuty w SeaweedFS i zleca
+analizę do `q:gpu` → `analyzer` robi `POST /documents`, analizuje (Ollama na hoście) i robi
+`POST /findings` → `api` zapisuje i wysyła alert WebSocket → `web` pokazuje.
 Praca bez Dockera (SQLite + vite): `services/api/README.md`, `services/web/README.md`.
 
 ## Budowanie na kontrakcie bez uruchamiania analizy

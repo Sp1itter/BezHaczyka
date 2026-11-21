@@ -158,9 +158,13 @@ def test_worker_imports_without_rq():
 # --- ksztalty payloadu: document / flat, fallback FINDINGS_OUT_DIR ---------- #
 
 
-def _api_no_get(posted=None, post_status=200) -> ApiClient:
+def _api_no_get(posted=None, post_status=200, doc_status=201, calls=None) -> ApiClient:
     def handler(request: httpx.Request) -> httpx.Response:
         assert request.method == "POST", "get_document nie powinien byc wolany"
+        if calls is not None:
+            calls.append(request.url.path)
+        if request.url.path == "/documents":
+            return httpx.Response(doc_status, json={})
         if posted is not None:
             posted.append(json.loads(request.content))
         return httpx.Response(post_status, json={})
@@ -187,6 +191,48 @@ def test_flat_payload_z_det_results():
 @pytest.mark.parametrize("payload", [{"document": {"id": "x"}}, {"id": "x", "url": "u"}])
 def test_niepoprawny_dokument_w_payloadzie_daje_none(payload):
     assert handle_job(payload, api=_api_no_get()) is None
+
+
+def test_flat_zapisuje_dokument_przed_findingiem():
+    calls: list = []
+    assert handle_job(dict(DOC), api=_api_no_get(calls=calls)) is not None
+    assert calls == ["/documents", "/findings"]
+
+
+def test_document_id_nie_wola_post_document():
+    paths: list = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        paths.append((request.method, request.url.path))
+        if request.method == "GET":
+            return httpx.Response(200, json=DOC)
+        return httpx.Response(201, json={})
+
+    client = httpx.Client(transport=httpx.MockTransport(handler), base_url="http://fake")
+    api = ApiClient(base_url="http://api:8000", client=client)
+    assert handle_job({"document_id": DOC["id"]}, api=api) is not None
+    assert ("POST", "/documents") not in paths
+
+
+def test_blad_post_document_daje_none_bez_findingu():
+    calls: list = []
+    assert handle_job(dict(DOC), api=_api_no_get(doc_status=500, calls=calls)) is None
+    assert calls == ["/documents"]
+
+
+@pytest.mark.parametrize("status", [200, 201])
+def test_post_document_sukces(status):
+    from analyzer.contracts import AdDocument
+
+    api = _api_no_get(doc_status=status)
+    api.post_document(AdDocument.model_validate(DOC))
+
+
+def test_post_document_500_to_api_error():
+    from analyzer.contracts import AdDocument
+
+    with pytest.raises(ApiError):
+        _api_no_get(doc_status=500).post_document(AdDocument.model_validate(DOC))
 
 
 def test_findings_out_dir_zapisuje_json_nawet_gdy_api_pada(tmp_path, monkeypatch):
