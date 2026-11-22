@@ -1,7 +1,7 @@
 """Benchmark czasu analizy jednego dokumentu (Bielik na zywo).
 
 Mierzy `analyze()` (wsady LLM) i opcjonalnie `build_summary` dla N dokumentow
-z fixtures. Kazdy pomiar powtarzany --repeat razy, raportujemy min.
+z fixtures. Kazdy pomiar powtarzany --repeat razy; raportujemy NAJLEPSZY z N (best-of-N).
 Dziala na starym i nowym kodzie (steruj LLM_BATCH_CONCURRENCY w srodowisku).
 
     LLM_BATCH_CONCURRENCY=1 python tools/bench_llm.py --n 5 --repeat 2 --summary
@@ -46,7 +46,7 @@ def main() -> None:
         best_a = best_s = float("inf")
         for _ in range(args.repeat):
             t = time.perf_counter()
-            finding = analyze(doc, config)
+            finding = analyze(doc, None, config)
             best_a = min(best_a, time.perf_counter() - t)
             if args.summary:
                 t = time.perf_counter()
@@ -54,8 +54,8 @@ def main() -> None:
                 best_s = min(best_s, time.perf_counter() - t)
         tot = best_a + (best_s if args.summary else 0)
         totals.append(tot)
-        s = f" summary={best_s:5.1f}s" if args.summary else ""
-        print(f"{e['id'][:40]:40} len={len(doc.text):5} analyze={best_a:5.1f}s{s}")
+        s = f" summary(best of N)={best_s:5.1f}s" if args.summary else ""
+        print(f"{e['id'][:40]:40} len={len(doc.text):5} analyze(best of N)={best_a:5.1f}s{s}")
     print(f"MEDIANA={sorted(totals)[len(totals)//2]:.1f}s SREDNIA={sum(totals)/len(totals):.1f}s")
 
 

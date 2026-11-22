@@ -37,7 +37,7 @@ def test_opcje_wysylane_przy_kazdym_wywolaniu(monkeypatch):
         bodies.append(json.loads(req.content))
         return httpx.Response(200, json={"response": "{}"})
 
-    c = OllamaClient(client=httpx.Client(transport=httpx.MockTransport(handler), base_url="http://f"))
+    c = OllamaClient(client=httpx.Client(transport=httpx.MockTransport(handler), base_url="http://fake"))
     c.generate_json("x")
     b = bodies[0]
     assert b["keep_alive"] == "10m"
@@ -57,10 +57,10 @@ def test_domyslne_opcje(monkeypatch):
         bodies.append(json.loads(req.content))
         return httpx.Response(200, json={"response": "{}"})
 
-    c = OllamaClient(client=httpx.Client(transport=httpx.MockTransport(handler), base_url="http://f"))
+    c = OllamaClient(client=httpx.Client(transport=httpx.MockTransport(handler), base_url="http://fake"))
     c.generate_json("x")
     assert bodies[0]["options"]["num_ctx"] == 4096
-    assert bodies[0]["options"]["num_predict"] == 400
+    assert bodies[0]["options"]["num_predict"] == 768
     assert bodies[0]["keep_alive"] == "30m"
 
 
@@ -146,3 +146,77 @@ def test_awaria_runnera_w_trybie_rownoleglym(monkeypatch):
     crashed = [r for r in f.rule_results if r.rule_id == "?"]
     assert len(crashed) == 1
     assert ids.index("a") < f.rule_results.index(crashed[0]) < ids.index("c")
+
+
+# --- runda 1 poprawek --------------------------------------------------- #
+import pytest  # noqa: E402
+
+from analyzer.llm import LlmError, LlmTruncatedError  # noqa: E402
+from analyzer.rules_llm import batching  # noqa: E402
+from analyzer.rules_llm.batch_3 import RULE_META as META3  # noqa: E402
+
+
+def _mock(handler):
+    return OllamaClient(client=httpx.Client(transport=httpx.MockTransport(handler), base_url="http://fake"))
+
+
+def test_domyslny_num_predict_768(monkeypatch):
+    monkeypatch.delenv("LLM_NUM_PREDICT", raising=False)
+    from analyzer.llm import _num_predict
+
+    assert _num_predict() == 768
+
+
+def test_done_reason_length_rzuca_osobny_blad():
+    c = _mock(lambda req: httpx.Response(200, json={"response": '{"a":', "done_reason": "length"}))
+    with pytest.raises(LlmTruncatedError):
+        c.generate_json("x")
+    assert issubclass(LlmTruncatedError, LlmError)
+
+
+def test_options_nadpisuja_domyslne():
+    bodies = []
+
+    def handler(req):
+        bodies.append(json.loads(req.content))
+        return httpx.Response(200, json={"response": "{}"})
+
+    _mock(handler).generate_json("x", options={"num_predict": 99})
+    assert bodies[0]["options"]["num_predict"] == 99
+    assert bodies[0]["options"]["seed"] == 42
+
+
+def test_budzet_z_ratio_2_8():
+    out, tr = fit_material("a" * 50000, prompt_chars=3000, num_ctx=4096, num_predict=768)
+    assert tr
+    assert (3000 + len(out)) / 2.8 <= 4096 - 768
+
+
+def test_ucieta_odpowiedz_ponawiana_z_podwojonym_limitem():
+    calls = []
+
+    class C:
+        def generate_json(self, prompt, options=None):
+            calls.append(options)
+            if options is None:
+                raise LlmTruncatedError("x")
+            return {"results": []}
+
+    batching.evaluate_batch(
+        _doc("tekst reklamy o funduszu"), C(), prompt_file="batch_3.txt",
+        rule_meta=META3, fail_means_absence=set(),
+    )
+    assert calls[0] is None and calls[1] == {"num_predict": batching._num_predict() * 2}
+
+
+def test_przyciety_material_obniza_pewnosc_i_fail_braku_to_na():
+    a = batching._mark_truncated(_res("14", Verdict.FAIL), {"14"})
+    b = batching._mark_truncated(_res("12a", Verdict.FAIL), {"14"})
+    assert a.verdict is Verdict.NOT_APPLICABLE and "przyciety" in a.evidence.summary
+    assert b.verdict is Verdict.FAIL and b.confidence == 0.7
+
+
+def test_zla_wspolbieznosc_wraca_do_4(monkeypatch):
+    monkeypatch.setenv("LLM_BATCH_CONCURRENCY", "abc")
+    f = analyze(_doc(), ENT, AnalyzerConfig(module2_runners=(_mk_runner(["a"], 0),)))
+    assert "a" in [r.rule_id for r in f.rule_results]

@@ -235,7 +235,11 @@ def _run_module2(doc: AdDocument, config: AnalyzerConfig) -> list[RuleResult]:
     po indeksie runnera, nie po czasie zakonczenia.
     """
     runners = list(config.module2_runners)
-    workers = min(int(os.getenv("LLM_BATCH_CONCURRENCY", "4")), len(runners))
+    try:
+        conc = int(os.getenv("LLM_BATCH_CONCURRENCY", "4"))
+    except ValueError:
+        conc = 4
+    workers = min(conc, len(runners))
     if workers <= 1:
         return [r for runner in runners for r in _run_one(runner, doc)]
     with ThreadPoolExecutor(max_workers=workers) as pool:
