@@ -13,7 +13,7 @@ from analyzer.module3 import advisory_signals, assess_shadow_advisory
 from analyzer.pipeline import AnalyzerConfig, EntityResolution, analyze
 
 DISCLAIMER = "Nasze wpisy nie stanowią porady inwestycyjnej ani rekomendacji. Dziś omawiamy rynek."
-ADVICE = "Przygotujemy dla Ciebie indywidualną rekomendację portfela akcji, doradzimy co kupić."
+ADVICE = "Za opłatą wskażemy Ci obligacje i fundusze, które warto kupić w tym kwartale. Rekomendujemy akcje Beta."
 VIRTUNE = "Virtune Solana ETP. Dostępny w XTB, BOŚ oraz Alior Banku. Inwestowanie wiąże się z ryzykiem."
 
 
@@ -56,7 +56,7 @@ def _runner(rule_id: str = "2"):
     return run
 
 
-M3_FAIL = {"verdict": "fail", "confidence": 0.9, "summary": "rekomendacja", "quote": "doradzimy co kupić"}
+M3_FAIL = {"verdict": "fail", "confidence": 0.9, "summary": "rekomendacja", "quote": "Rekomendujemy akcje Beta"}
 
 
 def test_disclaimer_nie_daje_sygnalu():
@@ -157,3 +157,49 @@ def test_reanalyze_payload_jak_scraper():
     assert set(p) == {"document_id", "enqueued_at", "entity_resolution", "det_results"}
     assert p["document_id"] == "abc" and p["det_results"] == []
     assert mod.QUEUE_NAME == "q:gpu" and mod.FUNC_NAME == "analyzer.worker.analyze_document"
+
+
+# --- zbior deweloperski bramki (10 tekstow: 5 doradczych, 5 nie) ----------- #
+DEV_ADVISORY = [
+    "Zapisz się na nasz płatny kanał: w każdy poniedziałek podajemy 3 spółki do kupienia i cenę, przy której trzeba je sprzedać.",
+    "Wypełnij ankietę, a nasz ekspert ułoży Ci portfel funduszy ETF dopasowany do Twojego wieku. Koszt 250 zł.",
+    "Kupuj obligacje skarbowe 10-letnie, sprzedawaj akcje banków — to nasza strategia na jesień.",
+    "Mamy dla Ciebie sygnały kupna na kontrakty terminowe. Wejście w pozycję długą na WIG20 zalecamy dziś.",
+    "Jako doradca wskażemy Ci, w które fundusze zainwestować oszczędności i jaką alokację przyjąć.",
+]
+DEV_NOT = [
+    "Prowadzimy kawiarnię w Gdańsku, zapraszamy na kawę.",
+    "Webinar edukacyjny: czym jest obligacja i jak liczy się jej rentowność. Bez rekomendacji.",
+    "Nie stanowimy rekomendacji ani porady inwestycyjnej. Inwestowanie wiąże się z ryzykiem.",
+    "Oferujemy doradztwo podatkowe i księgowe dla firm. Umów konsultację.",
+    "Fundusz Alfa osiągnął w 2025 roku wynik 8%. Dokument KID dostępny na stronie.",
+]
+# Z tej piatki do modelu docieraja tylko teksty z instrumentem (decyzje trafia model).
+DEV_NOT_REACH_LLM = {1, 4}  # indeksy: edukacja o obligacji, wynik funduszu
+
+
+import pytest
+
+
+@pytest.mark.parametrize("text", DEV_ADVISORY)
+def test_bramka_doradcze_docieraja_do_modelu(text):
+    calls: list = []
+    res = assess_shadow_advisory(
+        _doc(text), publisher_is_authorized=False, client=_fake_client(M3_FAIL, calls)
+    )
+    assert calls, text
+
+
+@pytest.mark.parametrize("i", range(len(DEV_NOT)))
+def test_bramka_niedoradcze(i):
+    calls: list = []
+    assess_shadow_advisory(
+        _doc(DEV_NOT[i]), publisher_is_authorized=False, client=_fake_client(M3_FAIL, calls)
+    )
+    assert bool(calls) == (i in DEV_NOT_REACH_LLM), DEV_NOT[i]
+
+
+def test_brak_rekomendacji_to_negacja_bez_sygnalu():
+    # Decyzja: "Brak rekomendacji" to zaprzeczenie (jak "nie stanowi rekomendacji"),
+    # wiec nie jest sygnalem; bez wzmianki o instrumencie model nie jest wolany.
+    assert advisory_signals("Brak rekomendacji? Jest.") == []

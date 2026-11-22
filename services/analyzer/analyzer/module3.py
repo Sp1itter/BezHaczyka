@@ -55,7 +55,23 @@ _EXTRA_PATTERNS: list[tuple[str, str]] = [
     (r"\bsprzedaj(cie)?\s+" + _INSTRUMENT_OBJECT, "wezwanie do sprzedazy"),
     (r"co\s+kupowac|co\s+kupic", "co kupic"),
     (r"typ\w*\s+na\s+gield\w*", "typy na gielde"),
+    (r"\bkupuj\w*|\bkupcie\b|\bsprzedawaj\w*|\bsprzedajcie\b", "imperatyw kup/sprzedaj"),
+    (r"wskaz\w*\s+(\w+\s+){0,3}(obligacj|akcj|etf|fundusz)\w*", "wskazanie instrumentu"),
+    (r"alokacj\w*", "alokacja"),
+    (
+        r"w\s+(jakie|ktore)\s+(fundusz|etf|akcj|obligacj)\w*\s+(\w+\s+)?(wejsc|zainwestowac|inwestowac)",
+        "w co zainwestowac",
+    ),
+    (r"(ulozymy|uloze|zbudujemy|zbuduje)\s+(ci\s+|dla\s+ciebie\s+|ci\s+indywidualny\s+)?portfel", "budowa portfela"),
 ]
+
+# Rzeczownik instrumentu / portfela (wezsze niz scope_gate.INSTRUMENT_HINT, ktore
+# lapie kazde "inwest*" i otwieralo by bramke przy zastrzezeniach).
+_INSTRUMENT_MENTION_WORDS = re.compile(
+    r"\bakcj(?:a|e|i|ami|ach|om)\b|\betf\w*|\bcfd\w*|\bobligacj\w*|\bfundusz\w*"
+    r"|\bkontrakt\w*|\bportfel\w*|\bwalor\w*|\bcertyfikat\w*|\bfutures\b"
+    r"|\bopcj(?:a|e|i|ami|ach|om)\b|\bpapier\w*\s+wartosciow\w*|\bspolk\w*"
+)
 
 
 def advisory_signals(text: str) -> list[str]:
@@ -78,6 +94,14 @@ def mentions_financial_instrument(text: str) -> bool:
     """Czy tresc wskazuje konkretny instrument finansowy (opakowanie ze scope_gate)."""
     norm = _normalize(text or "")
     return any(re.search(p, norm) for p, _w, _b in INSTRUMENT_WRAPPERS)
+
+
+def has_instrument_mention(text: str) -> bool:
+    """Szersze niz mentions_financial_instrument: slowa-klucze instrumentow/portfela."""
+    norm = _normalize(text or "")
+    return mentions_financial_instrument(text) or bool(
+        _INSTRUMENT_MENTION_WORDS.search(norm)
+    )
 
 
 def _result(
@@ -121,11 +145,12 @@ def assess_shadow_advisory(
     if not material.strip():
         return _na("Material nie zawiera tekstu do oceny.")
 
-    signals = advisory_signals(material)
-    if not signals:
+    # Regex to tylko skrot kosztowy dla materialow BEZ wzmianki o instrumentach.
+    # Gdy instrument pada w tekscie, ocenia model (regex mial zbyt duzo FN).
+    if not advisory_signals(material) and not has_instrument_mention(material):
         return _na(
-            "W tresci nie wykryto sygnalow rekomendacji — sama oferta uslug "
-            "doradczych bez rekomendacji nie jest doradztwem z art. 76."
+            "W tresci nie wykryto sygnalow rekomendacji ani wzmianki o instrumentach "
+            "— sama oferta uslug doradczych bez rekomendacji nie jest doradztwem z art. 76."
         )
 
     client = client or OllamaClient()
