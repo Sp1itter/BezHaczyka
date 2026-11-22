@@ -61,7 +61,8 @@ def test_risk_score_spada_przy_partial():
     rules = [_rule("1", sev=5), _rule("18", Verdict.PASS, sev=5)]
     full, _ = _run(_doc("faster-whisper"), rules)
     part, _ = _run(_doc("y:partial"), rules)
-    assert full.risk_score == 40.0 and part.risk_score == 0.0
+    # pelny fail wagi 5 podnosi score do progu HIGH (spojnosc z poziomem), partial -> 0
+    assert full.risk_score == 70.0 and part.risk_score == 0.0
 
 
 def test_lista_regul_braku():

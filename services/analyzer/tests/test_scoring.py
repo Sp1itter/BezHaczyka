@@ -9,6 +9,7 @@ from analyzer.contracts import (
     Verdict,
 )
 from analyzer.scoring import (
+    HIGH_THRESHOLD,
     MEDIUM_THRESHOLD,
     coverage,
     failed_rules,
@@ -142,7 +143,9 @@ class TestEskalacjiPoNajciezszymNaruszeniu:
             _rule(str(i), Verdict.PASS, severity=3) for i in range(8)
         ]
         score = risk_score(results)
-        assert score < MEDIUM_THRESHOLD, "score ma byc niski — o to w tym tescie chodzi"
+        # Spojnosc: poziom HIGH wymusza score >= HIGH_THRESHOLD (floor), zeby
+        # lista nie pokazywala "high" przy 18.5.
+        assert score >= HIGH_THRESHOLD
         assert risk_level(score, results) is RiskLevel.HIGH
 
     def test_naruszenie_wagi_4_eskaluje_do_medium(self):

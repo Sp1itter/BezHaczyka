@@ -23,7 +23,7 @@ from analyzer.contracts import Relation, Routing, ScopeStatus
 # --------------------------------------------------------------------------- #
 
 PROFIT_CLAIM_SIGNALS = {
-    "zysk", "zarobisz", "zarabiaj", "stopa zwrotu", "rentownosc", "do 1", "%",
+    "zysk", "zarobisz", "zarabiaj", "stopa zwrotu", "rentownosc",
     "podwoj", "pomnoz", "pewny zwrot", "gwarantowany zwrot", "zwrot rocznie",
 }
 
@@ -56,6 +56,7 @@ RECOMMENDATION_PATTERNS: tuple[str, ...] = (
     r"\btyp\w*\s+na\s+gield\w*",
     r"\bdoradztw\w*\s+inwestycyjn\w*",
     r"\bdoradza\w*\s+w\s+inwestycj\w*",
+    r"\b(?:doradz|powie)\w*,?\s+w\s+co\s+(?:zainwestowac|inwestowac|lokowac)",
     r"\bzarzadza\w*\s+portfel\w*",
     r"\bwskaz\w*\s+instrument\w*",
     r"\bwybierz\w*\s+spolk\w*",
@@ -71,9 +72,10 @@ PROFIT_CLAIM_PATTERNS: tuple[str, ...] = (
     r"\bpomnoz\w*",
     r"\b(pewny|gwarantowany)\w*\s+zwrot\w*",
     r"\bzwrot\w*\s+rocznie",
-    # Dowolny procent. W reklamie inwestycyjnej liczba z procentem to praktycznie
-    # zawsze obietnica stopy zwrotu. Zastapilo to goly literal "%", ktory lapal
-    # kazdy znak procenta, i bezsensowny literal "do 1".
+    # Procent. Trafia tu tylko, gdy przezyl mask_non_claims(): procent bez slowa
+    # o zysku/zwrocie w poblizu albo w kontekscie straty, znizki, sprawy sadowej
+    # jest tam zamaskowany ("76% rachunkow traci pieniadze" to ostrzezenie, nie
+    # obietnica). Wiec pozostaje "oprocentowanie 7%", "nawet 15% zysku".
     r"\d+[.,]?\d*\s*%",
 )
 
@@ -96,6 +98,24 @@ _NEGATED_PROFIT = re.compile(
 _TAX_NAME = re.compile(r"\bzysk\w*\s+kapitalow\w*")
 _FEE_WORD = re.compile(r"\b(?:podatek|podatk\w*|opodatkowan\w*|prowizj\w*|oplat\w*|koszt\w*|marz[aey]\b)")
 _PERCENT = re.compile(r"\d+[.,]?\d*\s*%")
+# Slowa zwrotu/zysku: procent obok nich to stopa zwrotu.
+_RETURN_WORD = re.compile(
+    r"\b(?:zysk\w*|zwrot\w*|stop\w*\s+zwrotu|rentown\w*|oprocentowan\w*|odsetk\w*"
+    r"|zarob\w*|zarabia\w*|dochod\w*|wzrost\w*|przyrost\w*|podwoj\w*|pomnoz\w*"
+    r"|rocznie|miesiecznie|kwartalnie|w\s+skali\s+(?:roku|miesiaca)|p\.a\.)"
+)
+# Kontekst straty, znizki, sprawy sadowej, kodu promocyjnego: procent obok nich
+# to NIE stopa zwrotu.
+_NON_RETURN_WORD = re.compile(
+    r"\b(?:trac\w*|strat\w*|stracic|znizk\w*|rabat\w*|taniej|promocj\w*|kod\w*\s+promocyjn\w*"
+    r"|kupon\w*|spraw\w*|wyrok\w*|wygra\w*|przegra\w*|sadow\w*|pozw\w*)"
+)
+# Program partnerski / polecen: bonus za polecenie to nie zwrot z inwestycji.
+_REFERRAL = re.compile(
+    r"\bprogram\w*\s+(?:partnersk|polecaj|afiliac)\w*|\b(?:kod|link)\w*\s+polecaj\w*"
+    r"|\bpolec\w*\s+znajomym|\bbonus\w*\s+za\s+polecen\w*"
+)
+_WINDOW = 50
 # Granica zdania; kropka po skrocie ("min. 3 zl") i przed cyfra nie konczy zdania.
 _SENTENCE_BREAK = re.compile(
     r"(?<!\bmin)(?<!\bmln)(?<!\bmld)(?<!\btys)(?<!\bnp)(?<!\btj)(?<!\bok)"
@@ -123,11 +143,33 @@ def mask_non_claims(norm: str) -> str:
     bounds = [m.end() for m in _SENTENCE_BREAK.finditer(norm)] + [len(norm)]
     for end in bounds:
         sentence = norm[start:end]
-        if _FEE_WORD.search(sentence):
-            for pm in _PERCENT.finditer(sentence):
+        if _REFERRAL.search(sentence):
+            _blank(chars, start, end)  # cale zdanie o programie partnerskim
+            start = end
+            continue
+        fee = bool(_FEE_WORD.search(sentence))
+        for pm in _PERCENT.finditer(sentence):
+            if fee or not _percent_is_return(sentence, pm):
                 _blank(chars, start + pm.start(), start + pm.end())
         start = end
     return "".join(chars)
+
+
+def _percent_is_return(sentence: str, pm: re.Match[str]) -> bool:
+    """Czy procent w zdaniu jest stopa zwrotu: slowo zysku w poblizu, i blizej
+    niz slowo straty/znizki/sprawy."""
+    lo, hi = max(0, pm.start() - _WINDOW), pm.end() + _WINDOW
+    window = sentence[lo:hi]
+    centre = pm.start() - lo
+
+    def nearest(rx: re.Pattern[str]) -> int | None:
+        ds = [min(abs(m.start() - centre), abs(m.end() - centre)) for m in rx.finditer(window)]
+        return min(ds) if ds else None
+
+    ret, non = nearest(_RETURN_WORD), nearest(_NON_RETURN_WORD)
+    if ret is None:
+        return False
+    return non is None or ret <= non
 
 
 ADVISORY_BUSINESS_PATTERNS: tuple[str, ...] = (
@@ -185,10 +227,43 @@ def has_investment_recommendation(text: str) -> bool:
     rekomendacji nie jest jeszcze doradztwem inwestycyjnym w rozumieniu
     art. 76 ustawy o obrocie.
     """
-    norm = normalize(text)
-    return _has_any(norm, RECOMMENDATION_SIGNALS) or _matches_any(
-        norm, RECOMMENDATION_PATTERNS
-    )
+    return bool(find_recommendations(normalize(text)))
+
+
+# Negacja tuz przed slowem kluczowym zamienia rekomendacje w zastrzezenie:
+# "nie stanowi porady ani rekomendacji", "wpisy nie sa rekomendacjami".
+_NEGATION_TOKENS = frozenset(
+    {"nie", "ani", "zadna", "zadne", "zadnej", "zadnych", "zadnym", "bez", "brak"}
+)
+_NEGATION_WINDOW = 6
+_CLAUSE_BREAK = re.compile(r"[.!?;:,]")
+_RECOMMENDATION_ALL: tuple[str, ...] = tuple(
+    re.escape(sig) for sig in sorted(RECOMMENDATION_SIGNALS)
+) + RECOMMENDATION_PATTERNS
+
+
+def _is_negated(norm: str, start: int) -> bool:
+    """Czy w ~6 tokenach przed `start` (w tej samej frazie) stoi zaprzeczenie."""
+    before = norm[max(0, start - 80) : start]
+    breaks = list(_CLAUSE_BREAK.finditer(before))
+    if breaks:
+        before = before[breaks[-1].end() :]
+    tokens = re.findall(r"[a-z0-9]+", before)[-_NEGATION_WINDOW:]
+    return any(t in _NEGATION_TOKENS for t in tokens)
+
+
+def find_recommendations(norm: str) -> list[str]:
+    """Dopasowania sygnalow rekomendacji w tekscie PO normalize(), bez zaprzeczonych.
+
+    Publiczne: korzysta z tego rowniez Modul 3, zeby zastrzezenia "nie stanowi
+    rekomendacji" nie liczyly sie jako rekomendacja.
+    """
+    hits: list[str] = []
+    for p in _RECOMMENDATION_ALL:
+        for m in re.finditer(p, norm):
+            if not _is_negated(norm, m.start()):
+                hits.append(m.group(0))
+    return hits
 
 
 def looks_like_advisory_business(text: str) -> bool:
