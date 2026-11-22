@@ -103,6 +103,7 @@ SPOT_CRYPTO_SIGNALS = {
 
 NON_FINANCIAL_ASSETS = {
     "nieruchomosc", "apartament", "mieszkanie na wynajem", "dzialka", "grunt",
+    "garaz", "miejsce postojowe", "miejsca postojowe", "komorka lokatorsk", "hala magazynow",
     "dzielo sztuki", "obraz inwestycyjny", "whisky inwestycyjna", "wino inwestycyjne",
     "zloto fizyczne", "sztabka", "moneta kolekcjonerska", "diament",
 }
@@ -225,8 +226,13 @@ def _normalize(text: str) -> str:
 
 
 def _find_any(haystack: str, needles: set[str]) -> str | None:
+    """Pierwsze trafienie od poczatku slowa ("eth" nie lapie "assethome").
+
+    Krotkie skroty (do 4 znakow: btc, eth, nft) musza byc calym slowem.
+    """
     for n in needles:
-        if n in haystack:
+        tail = r"\b" if len(n) <= 4 else ""
+        if re.search(r"\b" + re.escape(n) + tail, haystack):
             return n
     return None
 

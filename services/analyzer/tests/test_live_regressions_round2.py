@@ -99,3 +99,28 @@ def test_rozrywka_i_promocje_bankowe_poza_zakresem(text):
 )
 def test_promocje_brokerskie_zostaja_w_zakresie(text):
     assert classify_scope(text).status is not ScopeStatus.OUT_OF_SCOPE
+
+
+# --- test 20 min (22.11): fałszywe wysokie ryzyka spoza instrumentów finansowych ---
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Apartamenty inwestycyjne przy plaży to pewny zysk. Harmony Resort w Kołobrzegu. "
+        "Regulamin strony Assethome - Premium Real Estate",
+        "Jak mieć dochód pasywny Inwestując w garaże? #inwestowanie #garaże #dochód",
+    ],
+)
+def test_nieruchomosci_i_garaze_poza_zakresem(text):
+    assert classify_scope(text).status is ScopeStatus.OUT_OF_SCOPE
+
+
+def test_skrot_eth_tylko_jako_cale_slowo():
+    # "assethome" zawiera "eth", ale to nie Ethereum
+    assert classify_scope("Kupuj ETH i BTC na giełdzie kryptowalut").underlying == "crypto"
+    assert classify_scope("Assethome - apartamenty nad morzem").underlying != "crypto"
+
+
+def test_reklama_vinted_bez_sygnalu_finansowego_poza_zakresem():
+    text = ("Zarabiaj na Vinted już dziś – zrób zdjęcie, dodaj ogłoszenie, powtórz. "
+            "Więcej miejsca, więcej gotówki. Dużo miejsca, brak opłat. vinted.pl")
+    assert classify_scope(text).status is ScopeStatus.OUT_OF_SCOPE
