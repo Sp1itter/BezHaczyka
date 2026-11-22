@@ -77,18 +77,23 @@ export default function Operator({ refreshKey }) {
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
-                {data.queues.map((q) => (
-                  <Table.Tr key={q.name}>
-                    <Table.Td><code>{q.name}</code></Table.Td>
-                    <Table.Td ta="right">{q.backlog}</Table.Td>
-                    <Table.Td ta="right">{q.running}</Table.Td>
-                    <Table.Td ta="right">{q.min}</Table.Td>
-                    <Table.Td><NumberInput size="xs" w={90} min={q.min} max={64} value={value(q, "max")} onChange={set(q, "max")} aria-label={`Maksimum kontenerów ${q.name}`} /></Table.Td>
-                    <Table.Td><NumberInput size="xs" w={90} min={0.25} step={0.25} decimalScale={2} value={value(q, "cpus")} onChange={set(q, "cpus")} aria-label={`CPU ${q.name}`} /></Table.Td>
-                    <Table.Td><NumberInput size="xs" w={110} min={256} step={256} value={value(q, "memory_mb")} onChange={set(q, "memory_mb")} aria-label={`RAM ${q.name}`} /></Table.Td>
-                    <Table.Td ta="right">{q.scale_up_backlog}</Table.Td>
-                  </Table.Tr>
-                ))}
+                {data.queues.map((q) => {
+                  // Kolejki tylko do odczytu (q:ingest, q:render) maja cpus/memory_mb = null: bez edycji, "—".
+                  const readOnly = q.cpus == null && q.memory_mb == null;
+                  const dash = <Text size="sm" c="dimmed">—</Text>;
+                  return (
+                    <Table.Tr key={q.name}>
+                      <Table.Td><code>{q.name}</code>{readOnly && <Text span size="xs" c="dimmed"> · tylko odczyt</Text>}</Table.Td>
+                      <Table.Td ta="right">{q.backlog ?? "—"}</Table.Td>
+                      <Table.Td ta="right">{q.running ?? "—"}</Table.Td>
+                      <Table.Td ta="right">{q.min ?? "—"}</Table.Td>
+                      <Table.Td>{readOnly ? (q.max ?? "—") : <NumberInput size="xs" w={90} min={q.min ?? 0} max={64} value={value(q, "max")} onChange={set(q, "max")} aria-label={`Maksimum kontenerów ${q.name}`} />}</Table.Td>
+                      <Table.Td>{readOnly ? dash : <NumberInput size="xs" w={90} min={0.25} step={0.25} decimalScale={2} value={value(q, "cpus")} onChange={set(q, "cpus")} aria-label={`CPU ${q.name}`} />}</Table.Td>
+                      <Table.Td>{readOnly ? dash : <NumberInput size="xs" w={110} min={256} step={256} value={value(q, "memory_mb")} onChange={set(q, "memory_mb")} aria-label={`RAM ${q.name}`} />}</Table.Td>
+                      <Table.Td ta="right">{q.scale_up_backlog ?? "—"}</Table.Td>
+                    </Table.Tr>
+                  );
+                })}
               </Table.Tbody>
             </Table>
             {saveError && <Text c="red" size="sm" mt="xs" role="alert">{saveError}</Text>}

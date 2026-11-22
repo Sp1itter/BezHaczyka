@@ -292,7 +292,12 @@ def _contract_mock() -> dict[str, Any]:
     return {
         "source": "atrapa", "executor": "compose", "ollama_parallel": 4,
         "queues": [{"name": "q:gpu", "backlog": 12, "running": 2, "min": 1, "max": 4,
-                    "cpus": 2.0, "memory_mb": 3072, "scale_up_backlog": 3}],
+                    "cpus": 2.0, "memory_mb": 3072, "scale_up_backlog": 3},
+                   # kolejki tylko do odczytu (B4): bez limitow zasobow
+                   {"name": "q:ingest", "backlog": 5, "running": 1, "min": 1, "max": 1,
+                    "cpus": None, "memory_mb": None, "scale_up_backlog": None},
+                   {"name": "q:render", "backlog": 3, "running": 1, "min": 1, "max": 1,
+                    "cpus": None, "memory_mb": None, "scale_up_backlog": None}],
         "workers": [{"id": "analyzer-1", "queue": "q:gpu", "state": "busy", "job": None, "since": None},
                     {"id": "analyzer-2", "queue": "q:gpu", "state": "idle", "job": None, "since": None}],
         "throughput_per_min": 7.5,
