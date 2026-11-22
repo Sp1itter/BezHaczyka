@@ -277,11 +277,57 @@ def main(argv: list[str] | None = None) -> None:
     # Bez tego HEALTHCHECK z Dockerfile puka w pustke i kontener jest unhealthy,
     # mimo ze worker dziala poprawnie.
     _start_health_server()
+    # Kontenery dokladane przez autoskaler startuja bez zaleznosci compose, wiec przy
+    # pierwszym uruchomieniu moglyby analizowac, zanim modele sie pobiora (wyniki "nie oceniono").
+    wait_for_models()
 
     conn = Redis.from_url(os.getenv("VALKEY_URL", DEFAULT_VALKEY_URL))
     queue = Queue(queue_name, connection=conn)
     logging.info("Worker wystartowal na kolejce %s", queue_name)
     Worker([queue], connection=conn).work()
+
+
+def wait_for_models(fetch_tags=None, sleep=None, clock=None) -> bool:
+    """Czekaj, az Ollama ma model jezykowy i model embeddingow. Zwraca True, gdy sa.
+
+    Limit czasu: ANALYZER_MODEL_WAIT_S (domyslnie 3600 s); po nim worker rusza mimo to.
+    Pusty OLLAMA_BASE_URL wylacza czekanie (praca bez modelu, reguly LLM = nie oceniono).
+    """
+    import time
+
+    from analyzer.llm import DEFAULT_BASE_URL, DEFAULT_EMBED_MODEL, DEFAULT_MODEL
+
+    base = os.getenv("OLLAMA_BASE_URL", DEFAULT_BASE_URL).strip()
+    if not base:
+        return False
+    limit = float(os.getenv("ANALYZER_MODEL_WAIT_S", "3600"))
+    sleep = sleep or time.sleep
+    clock = clock or time.monotonic
+
+    def _default_fetch() -> list[str]:
+        import httpx
+
+        resp = httpx.get(f"{base.rstrip('/')}/api/tags", timeout=5)
+        resp.raise_for_status()
+        return [m.get("name", "") for m in resp.json().get("models", [])]
+
+    fetch_tags = fetch_tags or _default_fetch
+    wanted = [DEFAULT_MODEL, DEFAULT_EMBED_MODEL]
+    start = clock()
+    while True:
+        try:
+            names = fetch_tags()
+        except Exception:  # noqa: BLE001 - Ollama jeszcze nie wstala
+            names = []
+        missing = [w for w in wanted if not any(n == w or n.startswith(w + ":") for n in names)]
+        if not missing:
+            logging.info("Modele gotowe: %s", ", ".join(wanted))
+            return True
+        if clock() - start >= limit:
+            logging.warning("Brak modeli po %.0f s (%s) - start bez nich", limit, ", ".join(missing))
+            return False
+        logging.info("Czekam na modele: %s", ", ".join(missing))
+        sleep(10)
 
 
 def _start_health_server() -> None:
