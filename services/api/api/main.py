@@ -151,7 +151,8 @@ async def poll_alerts_once(app: FastAPI, seed: bool = False) -> int:
 
     seed=True tylko zapamietuje istniejace id (start API), niczego nie rozglasza.
     """
-    rows = await run_in_threadpool(app.state.store.new_high_findings, app.state.alert_lookback_s)
+    threshold = await run_in_threadpool(app.state.store.alert_threshold)
+    rows = await run_in_threadpool(app.state.store.new_high_findings, app.state.alert_lookback_s, threshold)
     sent = 0
     for f in rows:
         if _mark_alerted(app, f["id"]) and not seed:
@@ -233,6 +234,18 @@ def s3_reader_from_env() -> BlobReader | None:
         return obj["Body"].read(), obj.get("ContentType") or "image/png"
 
     return read
+
+
+def meets_alert(level: str | None, score: float | None, threshold: float | None) -> bool:
+    """Warunek alertu: bez progu `high` z analyzera, z progiem z kalibracji `risk_score >= prog`."""
+    if threshold is None:
+        return level == "high"
+    return score is not None and score >= threshold
+
+
+class ThresholdIn(BaseModel):
+    value: float = Field(ge=0, le=100)
+    actor: str | None = None
 
 
 def create_app(store: SqlStore | None = None, gold_path: Path | None = None,
@@ -324,9 +337,12 @@ def create_app(store: SqlStore | None = None, gold_path: Path | None = None,
         result = await run_in_threadpool(st().upsert_finding, finding)
         if not result.created:
             response.status_code = 200
-        # Alert przy nowym 'high' albo przy eskalacji do 'high' — nie przy kazdym odswiezeniu.
+        # Alert przy nowym wyniku spelniajacym warunek albo przy przejsciu przez prog - nie przy odswiezeniu.
         alerted = 0
-        if finding.risk_level.value == "high" and result.previous_risk_level != "high":
+        threshold = await run_in_threadpool(st().alert_threshold)
+        now_meets = meets_alert(finding.risk_level.value, finding.risk_score, threshold)
+        before = (not result.created) and meets_alert(result.previous_risk_level, result.previous_risk_score, threshold)
+        if now_meets and not before:
             if _mark_alerted(app, finding.id):
                 stored = await run_in_threadpool(st().get_finding, finding.id)
                 alerted = await app.state.hub.broadcast(alert_payload(stored))
@@ -421,6 +437,17 @@ def create_app(store: SqlStore | None = None, gold_path: Path | None = None,
             row[f["risk_level"]] = row.get(f["risk_level"], 0) + 1
             row["total"] += 1
         return {"bucket": bucket, "items": [days[d] for d in sorted(days)]}
+
+    @app.get("/settings/threshold")
+    async def get_threshold() -> dict[str, Any]:
+        value = await run_in_threadpool(st().alert_threshold)
+        return {"value": value, "rule": "risk_level=high" if value is None else f"risk_score>={value:g}"}
+
+    @app.put("/settings/threshold")
+    async def put_threshold(body: ThresholdIn) -> dict[str, Any]:
+        """Prog alertow z panelu kalibracji. Alerty WS (POST i odpytywanie bazy) liczone wg niego."""
+        await run_in_threadpool(st().set_setting, "alert_threshold", f"{body.value:g}", body.actor)
+        return {"value": body.value, "rule": f"risk_score>={body.value:g}"}
 
     # --- panel kalibracji: zbior zloty, progi liczy front --------------------
     @app.get("/calibration")
