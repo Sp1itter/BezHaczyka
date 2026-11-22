@@ -71,3 +71,31 @@ def test_gra_bez_sygnalu_finansowego_poza_zakresem():
 )
 def test_procent_ze_znakiem_z_kontekstem_finansowym_to_zysk(text):
     assert has_profit_claims(text)
+
+
+# --- zywy stos 22.11 03:00: rozrywka ze sponsorem cashback i promocje bankowe jako HIGH ---
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Wariograf: Bad Boy o Miłosnych Zdradach Labrygi! Sponsor odcinka: Kupujesz jak zawsze, "
+        "zyskujesz WIĘCEJ! Patron medialny: Super Express",
+        "Najlepszy Bank - Jak Szybko Zarobić 430zł na Konto w Banku. Darmowe konto osobiste, "
+        "promocje bankowe krok po kroku.",
+        "Warunki i nagrody w programie poleceń PolecamBank mBank. Poleć znajomym konto i odbierz nagrodę.",
+        "Jak otrzymać 100 zł od aplikacji Revolut – poradnik krok po kroku, załóż konto i zamów kartę.",
+    ],
+)
+def test_rozrywka_i_promocje_bankowe_poza_zakresem(text):
+    assert classify_scope(text).status is ScopeStatus.OUT_OF_SCOPE
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Odbierz darmową akcję o wartości nawet do 100 PLN! Prowadzę Cię krok po kroku przez konto w XTB.",
+        "Załóż konto maklerskie i zyskaj 8% rocznie na obligacjach",
+        "Interactive Brokers: TLT PUT SELL na 1 dzień, premia z opcji",
+    ],
+)
+def test_promocje_brokerskie_zostaja_w_zakresie(text):
+    assert classify_scope(text).status is not ScopeStatus.OUT_OF_SCOPE

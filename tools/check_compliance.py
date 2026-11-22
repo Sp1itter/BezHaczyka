@@ -66,6 +66,8 @@ ALLOWED_HOSTS = {
     "scraper",
     "dashboard",
     "dashboard-mock",
+    "autoscaler",
+    "docker-socket-proxy",
     # atrapy w testach i przykladach
     "fake",
     "example.invalid",

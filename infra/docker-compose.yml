@@ -256,12 +256,23 @@ services:
         condition: service_healthy
       casedb:
         condition: service_completed_successfully
+      seaweedfs:
+        condition: service_healthy
     restart: unless-stopped
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       GOLD_LABELS_PATH: /data/gold/labels.json
       ALERT_POLL_S: ${ALERT_POLL_S:-3}
       ALERT_LOOKBACK_S: ${ALERT_LOOKBACK_S:-3600}
+      # Zrzuty i media reklam z SeaweedFS (panel: szuflada findingu).
+      S3_ENDPOINT: http://seaweedfs:8333
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+      # Panel operatora: API proxuje /ops/scaling do autoskalera (port wewnetrzny).
+      AUTOSCALER_URL: ${AUTOSCALER_URL:-http://autoscaler:8090}
+      # Proxy mediow tylko z tych domen CDN (https, bez przekierowan); pusto = wylaczone.
+      MEDIA_PROXY_HOSTS: ${MEDIA_PROXY_HOSTS:-fbcdn.net,ytimg.com,tiktokcdn.com}
+      YOUTUBE_FRAME_URLS: ${YOUTUBE_FRAME_URLS:-}
     volumes:
       - ../fixtures/gold:/data/gold:ro
       # przyklady kontraktowe: docker compose exec api python -m api.seed --dir /data/contract-examples

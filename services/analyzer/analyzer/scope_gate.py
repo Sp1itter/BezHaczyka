@@ -126,6 +126,12 @@ OUT_OF_SCOPE_SIGNALS: list[tuple[str, str]] = [
      "kupony_i_znizki"),
     (r"\bkart\w*\s+(?:walutow|kredytow|debetow|platnicz|przedplacon)\w*",
      "produkt_bankowy_karta"),
+    # Bonusy za konto osobiste / programy polecen bankow: konto bankowe to nie instrument.
+    (r"\bpromocj\w*\s+bankow\w*|\bkont\w*\s+(?:osobist|oszczednosciow|bankow)\w*"
+     r"|\bkont\w*\s+w\s+bank\w*|\bbonus\w*\s+za\s+(?:otwarci|zalozeni)\w*\s+kont\w*"
+     r"|\bprogram\w*\s+(?:polecen|partnersk)\w*|\bpolecambank\b|\blink\w*\s+partnersk\w*"
+     r"|\bzaloz\w*\s+kont\w*\s+i\s+zamow\w*\s+kart\w*",
+     "promocje_bankowe"),
     (r"\bpodaj\w*\s+sie\s+za\b|\bpodszywa\w*|\boszust\w*|\boszukan\w*"
      r"|\bphishing\w*|\bwyludz\w*",
      "ostrzezenie_o_oszustwie"),
@@ -155,7 +161,8 @@ BROKER_NAMES = re.compile(
     r"\b(?:saxo|bossa|lightyear|revolut(?:\s+trading)?)\b"
 )
 FINANCE_CONTEXT = re.compile(
-    r"\w*inwest\w*|\bakcj\w*|\betf\w*|\bkont[oaue]\b|\brachun\w*|\bplatform\w*"
+    # bez "konto"/"rachunek": konto bankowe to nie kontekst inwestycyjny (maklerskie lapie INSTRUMENT_HINT)
+    r"\w*inwest\w*|\bakcj\w*|\betf\w*|\bplatform\w*\s+(?:inwestycyj|transakcyj|tradingow)\w*"
     r"|\bbroker\w*|\bgield\w*|\btrading\w*|\bportfel\w*"
 )
 _CONTEXT_WINDOW = 80  # znakow wokol nazwy brokera
@@ -191,8 +198,17 @@ def has_financial_signal(norm: str, raw: str) -> bool:
         INSTRUMENT_HINT.search(norm)
         or SERVICE_HINT.search(norm)
         or _broker_with_context(norm)
-        or has_profit_claims(raw)
+        # sama obietnica zysku ("zyskujesz WIECEJ" w reklamie cashbacku) to za malo:
+        # potrzebny kontekst finansowy albo procent, ktory router uznal za stope zwrotu
+        or (has_profit_claims(raw) and (bool(FINANCE_CONTEXT.search(norm)) or _has_return_rate(raw)))
     )
+
+
+def _has_return_rate(raw: str) -> bool:
+    """Czy zostal procent-stopa zwrotu po maskowaniu routera ("18% rocznie", nie "-90% znizki")."""
+    from analyzer.router import mask_non_claims, normalize
+
+    return bool(re.search(r"\d+[.,]?\d*\s*%", mask_non_claims(normalize(raw))))
 
 
 def _normalize(text: str) -> str:
