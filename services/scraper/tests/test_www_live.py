@@ -35,9 +35,10 @@ class FakeSession:
         return r
 
 
-def _source(session, search=None, render=False, registry_domains=()):
+def _source(session, search=None, render=False, registry_domains=(), suffixes=("",)):
     return LiveWebSource(search=search or (lambda q, n: []), session=session, store=None,
-                         registry_domains=set(registry_domains), render=render, respect_robots=False)
+                         registry_domains=set(registry_domains), render=render, respect_robots=False,
+                         suffixes=suffixes)
 
 
 def test_keep_url_drops_noise_registry_and_binary():
@@ -97,3 +98,15 @@ def test_schedule_has_live_www_job():
 
     spec = next(s for s in scheduler.load_schedule() if s.name == "www-live")
     assert spec.source == "www_live" and spec.enabled and len(spec.queries) >= 7
+
+
+def test_discover_queries_variants_and_dedups():
+    asked = []
+
+    def search(q, n):
+        asked.append(q)
+        return ["https://a.pl/", f"https://{len(asked)}.example.pl/"]
+
+    src = _source(FakeSession({}), search=search, suffixes=("", "cennik"))
+    assert src.discover("family office") == ["https://a.pl/", "https://1.example.pl/", "https://2.example.pl/"]
+    assert asked == ["family office", "family office cennik"]

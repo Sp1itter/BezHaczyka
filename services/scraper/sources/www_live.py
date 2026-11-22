@@ -52,6 +52,8 @@ _CANDIDATE_RE = re.compile(
     re.IGNORECASE,
 )
 MIN_SIGNALS = 3
+# Warianty frazy: ddgs zwraca ~10 wynikow na zapytanie, warianty daja nowe domeny (oferty, cenniki, miasta).
+DEFAULT_SUFFIXES = ("", "oferta", "cennik", "opinie", "Warszawa", "Kraków")
 
 
 def host_of(url: str) -> str:
@@ -114,6 +116,7 @@ class LiveWebSource:
         redis: Any = None,
         rotator: Rotator | None = None,
         results_per_query: int = RESULTS_PER_QUERY,
+        suffixes: tuple[str, ...] | None = None,
     ) -> None:
         self.search = search
         self._session = session
@@ -124,6 +127,10 @@ class LiveWebSource:
         self.redis = redis
         self.rotator = rotator or Rotator.from_env()
         self.results_per_query = results_per_query
+        if suffixes is None:
+            env = os.getenv("WWW_QUERY_SUFFIXES")
+            suffixes = tuple(x.strip() for x in env.split(",")) if env is not None else DEFAULT_SUFFIXES
+        self.suffixes = suffixes or ("",)
         self._robots: dict[str, RobotFileParser | None] = {}
         self.last_meta: dict[str, Any] = {}
 
@@ -196,10 +203,16 @@ class LiveWebSource:
     # -------------------------------------------------------- interfejs --
 
     def discover(self, query: str) -> list[str]:
-        try:
-            found = self.search(query, self.results_per_query)
-        except Exception as exc:  # noqa: BLE001
-            raise SourceError(f"wyszukiwarka: {query!r}: {exc}") from exc
+        found: list[str] = []
+        errors = []
+        for suffix in self.suffixes:
+            q = f"{query} {suffix}".strip()
+            try:
+                found += self.search(q, self.results_per_query)
+            except Exception as exc:  # noqa: BLE001 — jeden wariant nie blokuje reszty
+                errors.append(exc)
+        if errors and not found:
+            raise SourceError(f"wyszukiwarka: {query!r}: {errors[0]}") from errors[0]
         urls: dict[str, None] = {}
         for url in found:
             url = urldefrag(url)[0]
