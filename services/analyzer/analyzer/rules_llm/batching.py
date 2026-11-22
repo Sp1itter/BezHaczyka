@@ -21,7 +21,7 @@ from analyzer.contracts import (
     Verdict,
 )
 from analyzer.llm import LlmError, LlmTruncatedError, OllamaClient, _num_predict, fit_material, load_prompt
-from analyzer.rules_llm.guards import apply_guards
+from analyzer.rules_llm.guards import apply_guards, platform_ad_meta
 
 # rule_id -> (nazwa, severity, podstawa prawna)
 RuleMeta = Mapping[str, tuple[str, int, str]]
@@ -242,7 +242,7 @@ def evaluate_batch(
                 _build_result(rule_id, entry, material, rule_meta, fail_means_absence)
             )
     # Straznicy: obiektywne elementy rozstrzygamy w kodzie po odpowiedzi modelu.
-    results = apply_guards(results, material, rule_meta)
+    results = apply_guards(results, material, rule_meta, doc_meta=platform_ad_meta(doc))
     if truncated:
         results = [_mark_truncated(r, fail_means_absence) for r in results]
     return results

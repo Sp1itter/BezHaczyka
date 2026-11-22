@@ -331,9 +331,8 @@ def route(inp: RoutingInput) -> RoutingDecision:
 
     # --- R3: doradztwo bez zezwolenia (najpowazniejsze) -------------------- #
     if not inp.publisher_is_authorized and has_investment_recommendation(inp.text):
-        modules = [3]
-        if profit:
-            modules.append(2)
+        # Modul 2 (art. 44) dla kazdego materialu w zakresie, nie tylko z zyskami.
+        modules = [3, 2]
         return RoutingDecision(
             modules=modules,
             primary_module=3,
@@ -357,9 +356,7 @@ def route(inp: RoutingInput) -> RoutingDecision:
 
     # --- R2: podmiot trzeci reklamuje cos nieswojego ----------------------- #
     if inp.publisher_relation is not Relation.OFFICIAL and inp.mentions_authorized_firm:
-        modules = [1]
-        if profit:
-            modules.append(2)
+        modules = [1, 2]
         return RoutingDecision(
             modules=modules,
             primary_module=1,
