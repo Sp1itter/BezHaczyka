@@ -295,35 +295,6 @@ services:
       - "127.0.0.1:${WEB_PORT}:8080"
     networks: [investwatch]
 
-  # --- dashboard: panel nadzorcy (React, nginx 8080) -> services/api ------------
-  # /api i /ws idą do DASHBOARD_API_UPSTREAM (domyslnie api:8000, czyli Postgres).
-  # Bez bazy: `docker compose --profile mock up -d dashboard-mock` i
-  # DASHBOARD_API_UPSTREAM=http://dashboard-mock:4000 w .env.
-  dashboard-mock:
-    build:
-      context: ../services/dashboard
-      dockerfile: Dockerfile.mock
-    profiles: [mock]
-    restart: unless-stopped
-    networks: [investwatch]
-
-  dashboard:
-    # Stary panel - zastapiony przez services/web; start tylko na zadanie: --profile legacy
-    profiles: [legacy]
-    build:
-      context: ../services/dashboard
-    cpus: ${DASHBOARD_CPUS:-0.5}
-    mem_limit: ${DASHBOARD_MEM:-256m}
-    depends_on:
-      api:
-        condition: service_healthy
-    environment:
-      API_UPSTREAM: ${DASHBOARD_API_UPSTREAM:-http://api:8000}
-    restart: unless-stopped
-    ports:
-      - "${DASHBOARD_BIND:-127.0.0.1}:${DASHBOARD_PORT:-7080}:8080"
-    networks: [investwatch]
-
   # --- autoscaler: skaluje kontenery `analyzer` wg backlogu q:gpu + HTTP /scaling -------
   # Petla co AUTOSCALER_INTERVAL_S czyta kolejke z Valkeya i dodaje/zdejmuje KLONY
   # kontenera `analyzer` (ten sam obraz/env/siec, limity cpus/memory_mb z panelu operatora).
