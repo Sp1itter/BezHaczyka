@@ -113,6 +113,13 @@ Parametry serwera (`OLLAMA_NUM_PARALLEL`, `OLLAMA_KEEP_ALIVE` itd.) i lista mode
 Potrzebna tylko regułom LLM analyzera.
 Limity zasobów kontenerów (`*_CPUS`, `*_MEM`) są w `.env`.
 
+## Autoskaler analyzerów
+
+- `autoscaler` (port 8090, tylko sieć compose) skaluje kontenery `analyzer` wg backlogu `q:gpu`; do Dockera idzie wyłącznie przez `docker-socket-proxy` w wewnętrznej sieci `scaler`.
+- Panel operatora woła `GET/PUT /scaling` przez proxy API (autoscaler nie ma portu na hoście). PUT nie ma uwierzytelniania - dostęp tylko z sieci wewnętrznej.
+- `docker compose up -d` resetuje `analyzer` do 1 kontenera (autoskaler dodaje klony ponownie wg backlogu).
+- Nowe limity (cpus, memory_mb) dostają nowe klony; działające zachowują stare.
+
 ## Uwagi eksploatacyjne
 
 - Dockerfile'e `analyzer` i `scraper` mają kontekst `services/` (obok kodu potrzebny pakiet `casedb`).

@@ -38,7 +38,7 @@ class DryRunExecutor:
     def __init__(self, config: ScalingConfig) -> None:
         self.config = config
 
-    def apply(self, decisions: list[ScalingDecision]) -> dict[str, int]:
+    def apply(self, decisions: list[ScalingDecision], busy_ids=()) -> dict[str, int]:
         result: dict[str, int] = {}
         for d in decisions:
             if d.desired != d.current:
@@ -82,7 +82,7 @@ class PoolExecutor:
         except Exception as exc:  # noqa: BLE001 - zamykanie jednego workera nie moze zatrzymac reszty
             logger.warning("Nie udalo sie czysto zamknac workera: %s", exc)
 
-    def apply(self, decisions: list[ScalingDecision]) -> dict[str, int]:
+    def apply(self, decisions: list[ScalingDecision], busy_ids=()) -> dict[str, int]:
         """Uzgodnij liczbe workerow z decyzjami. Idempotentne. Zwraca stan faktyczny."""
         result: dict[str, int] = {}
         for d in decisions:
@@ -118,10 +118,16 @@ LABEL_NUMBER = "com.docker.compose.container-number"
 # NIGDY nie sa zdejmowane.
 LABEL_AUTOSCALED = "investwatch.autoscaled"
 
-# Warm shutdown RQ: SIGTERM (docker stop) i czekanie tyle sekund na dokonczenie zadania.
-STOP_TIMEOUT_S = 30
+# Warm shutdown RQ: SIGTERM (docker stop) i czekanie tyle sekund na dokonczenie zadania
+# (analiza potrafi trwac dluzej niz 30 s; zgodne ze stop_grace_period w compose).
+STOP_TIMEOUT_S = 180
 
 _ACTIVE_STATES = frozenset({"running", "created", "restarting"})
+
+
+def _is_busy(container, busy_ids) -> bool:
+    cid = getattr(container, "id", "") or ""
+    return any(cid.startswith(b) or b.startswith(cid[:12]) for b in busy_ids if b and cid)
 
 
 def _number(container) -> int:
@@ -233,7 +239,7 @@ class ComposeExecutor:
         except Exception as exc:  # noqa: BLE001
             logger.warning("Usuniecie %s nieudane: %s", container.name, exc)
 
-    def apply(self, decisions: list[ScalingDecision]) -> dict[str, int]:
+    def apply(self, decisions: list[ScalingDecision], busy_ids=()) -> dict[str, int]:
         """Uzgodnij liczbe kontenerow analyzer z decyzja dla q:gpu. Zwraca stan faktyczny."""
         result: dict[str, int] = {}
         for d in decisions:
@@ -252,11 +258,16 @@ class ComposeExecutor:
                     active = self.containers()
                     if len(active) <= before:
                         break  # klon nie wystartowal - nie kreci sie w kolko
-                while len(active) > d.desired:
+                # Zdejmujemy najpierw klony BEZCZYNNE (hostname workera = prefiks id kontenera);
+                # zajete tylko gdy bezczynnych brak, i nigdy wiecej niz (current - desired).
+                budget = max(0, len(active) - d.desired)
+                while budget > 0 and len(active) > d.desired:
                     extras = [c for c in active if c.labels.get(LABEL_AUTOSCALED) == "1"]
                     if not extras:
                         break  # zostaje tylko bazowy kontener compose
-                    self._stop_and_remove(max(extras, key=_number))
+                    idle = [c for c in extras if not _is_busy(c, busy_ids)]
+                    self._stop_and_remove(max(idle or extras, key=_number))
+                    budget -= 1
                     active = self.containers()
                 result[d.queue] = len(active)
             except Exception as exc:  # noqa: BLE001 - awaria Dockera nie przewraca petli

@@ -13,6 +13,7 @@ ale konfiguracja wewnetrznie SPRZECZNA to blad operatora - ScalingConfigError.
 from __future__ import annotations
 
 import logging
+import math
 import os
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -29,6 +30,9 @@ DEFAULT_SCALING_PATH = Path(__file__).resolve().parent / "config" / "scaling.yam
 
 GPU_QUEUE = "q:gpu"
 DEFAULT_OLLAMA_PARALLEL = 4
+# Granice zasobow klonow q:gpu (operator nie moze zabic hosta ani ustawic 0 = bez limitu).
+GPU_CPUS_RANGE = (0.25, 8.0)
+GPU_MEM_RANGE = (256, 16384)
 
 VALID_EXECUTORS = frozenset({"dry-run", "pool", "compose"})
 
@@ -91,6 +95,8 @@ def _int(value: Any, what: str) -> int:
 def _num(value: Any, what: str) -> float:
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         raise ScalingConfigError(f"Pole {what} musi byc liczba, a jest: {value!r}.")
+    if not math.isfinite(value):
+        raise ScalingConfigError(f"Pole {what} musi byc liczba skonczona, a jest: {value!r}.")
     return float(value)
 
 
@@ -119,6 +125,15 @@ def validate_scaling_config(config: ScalingConfig) -> None:
     if config.ollama_parallel < 1:
         raise ScalingConfigError("ollama_parallel musi byc >= 1.")
     gpu = config.queues.get(GPU_QUEUE)
+    if gpu is not None:
+        if gpu.min_workers < 1:
+            raise ScalingConfigError(f"{GPU_QUEUE}: min musi byc >= 1 (bazowy kontener zawsze dziala).")
+        if not GPU_CPUS_RANGE[0] <= gpu.cpus <= GPU_CPUS_RANGE[1]:
+            raise ScalingConfigError(f"{GPU_QUEUE}: cpus musi miescic sie w {GPU_CPUS_RANGE[0]}..{GPU_CPUS_RANGE[1]}.")
+        if not GPU_MEM_RANGE[0] <= gpu.memory_mb <= GPU_MEM_RANGE[1]:
+            raise ScalingConfigError(
+                f"{GPU_QUEUE}: memory_mb musi miescic sie w {GPU_MEM_RANGE[0]}..{GPU_MEM_RANGE[1]}."
+            )
     if gpu is not None and gpu.max_workers > config.gpu_capacity:
         n_end = len(config.ollama_endpoints)
         limit = (
@@ -204,7 +219,7 @@ def apply_overrides(config: ScalingConfig, overrides: dict[str, dict[str, Any]])
         if name not in queues:
             raise ScalingConfigError(f"Nieznana kolejka '{name}'.")
         if name != GPU_QUEUE:
-            raise ScalingConfigError(f"Kolejka '{name}' jest tylko do odczytu; skalowac mozna {GPU_QUEUE}.")
+            continue  # kolejki tylko do odczytu: ignorujemy (UI moze odsylac caly payload)
         if not isinstance(fields, dict):
             raise ScalingConfigError(f"Nadpisania kolejki '{name}' musza byc slownikiem.")
         changes: dict[str, Any] = {}

@@ -168,6 +168,8 @@ services:
       timeout: 5s
       start_period: 20s
       retries: 3
+    # Warm shutdown RQ: autoskaler zdejmuje klony SIGTERM-em i czeka na dokonczenie zadania.
+    stop_grace_period: 180s
     restart: unless-stopped
     networks: [investwatch]
 
@@ -349,7 +351,9 @@ services:
       start_period: 10s
       retries: 3
     restart: unless-stopped
-    networks: [investwatch]
+    # `scaler` to siec wewnetrzna tylko dla autoskalera i proxy Dockera (reszta stosu
+    # nie ma sciezki do gniazda Dockera).
+    networks: [investwatch, scaler]
 
   # --- docker-socket-proxy (Apache-2.0): waski, filtrowany dostep do Dockera -----------
   # Jedyny kontener z gniazdem Dockera (tylko do odczytu na poziomie montowania; zakres
@@ -370,7 +374,7 @@ services:
     cpus: 0.25
     mem_limit: 64m
     restart: unless-stopped
-    networks: [investwatch]
+    networks: [scaler]
 
   # --- ollama: LLM + embeddingi w kontenerze z GPU NVIDIA (domyslnie) ----------
   # Wymaga Docker Desktop (WSL2) lub nvidia-container-toolkit. Bez GPU: docker-compose.cpu.yml.
@@ -439,6 +443,8 @@ services:
 
 networks:
   investwatch: {}
+  scaler:
+    internal: true
 
 volumes:
   pgdata:
