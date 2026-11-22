@@ -28,7 +28,7 @@ def test_lokata_i_kod_promocyjny_poza_zakresem():
 
 def test_jedna_znizka_nie_wyklucza():
     assert classify_scope("zniżka na prowizje, handluj akcjami").status is not ScopeStatus.OUT_OF_SCOPE
-    late = ("opis dlugiego filmu o rynku " * 15) + "znizka na prowizje"
+    late = ("opis dlugiego filmu o inwestowaniu " * 15) + "znizka na prowizje"
     assert classify_scope(late).status is not ScopeStatus.OUT_OF_SCOPE
 
 

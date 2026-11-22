@@ -247,6 +247,7 @@ class TestBudowanieZCasedb:
         d = (ANALYZER_ROOT / "Dockerfile").read_text(encoding="utf-8")
         assert "COPY analyzer/requirements.txt" in d
         assert "COPY analyzer/analyzer/" in d
+        assert "COPY analyzer/tools/ ./tools/" in d
         assert "COPY casedb /tmp/casedb" in d and "pip install --no-cache-dir /tmp/casedb" in d
 
     def test_psycopg_ta_sama_wersja_co_casedb(self) -> None:

@@ -51,7 +51,7 @@ from analyzer.completeness import is_partial
 from analyzer.det_placeholders import missing_det_placeholders
 from analyzer.rules_det_fallback import det_fallback_results
 from analyzer.router import RoutingInput, route
-from analyzer.scope_gate import classify_scope
+from analyzer.scope_gate import NO_SIGNAL_REASON, classify_scope
 from analyzer.scoring import risk_level, risk_score
 
 # Regula = cokolwiek, co ma `.rule_id` i `.evaluate(doc)`. Nie importujemy
@@ -165,9 +165,19 @@ def analyze(
     scope = classify_scope(doc.analyzable_text)
     if config.scope_override is not None:
         scope.status = config.scope_override
+    # Wideo/audio bez transkryptu (awaria STT): brak sygnalu w samym tytule nie
+    # dowodzi braku sygnalu w narracji, wiec nie wykluczamy - zostaje do oceny.
+    if (
+        scope.status is ScopeStatus.OUT_OF_SCOPE
+        and scope.reason == NO_SIGNAL_REASON
+        and doc.transcript is None
+        and any(m.kind in AUDIO_KINDS for m in doc.media)
+    ):
+        scope.status = ScopeStatus.UNCERTAIN
+        scope.reason = "brak transkryptu wideo - nie mozna wykluczyc sygnalu w narracji"
     doc.scope = scope
 
-    # --- ③ router ------------------------------------------------------- #
+    # ---③ router ------------------------------------------------------- #
     decision = route(
         RoutingInput(
             scope_status=scope.status,
@@ -179,6 +189,10 @@ def analyze(
             publisher_name=entities.publisher_name,
         )
     )
+
+    if scope.status is ScopeStatus.OUT_OF_SCOPE and scope.reason:
+        # powod wykluczenia widoczny w routing (UI/API czyta routing, nie doc.scope)
+        decision.routing.reason = f"{decision.routing.reason} Powod: {scope.reason}."
 
     # --- ④ ewaluacja regul --------------------------------------------- #
     results: list[RuleResult] = []

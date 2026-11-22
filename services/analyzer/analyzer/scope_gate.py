@@ -143,9 +143,56 @@ INSTRUMENT_HINT = re.compile(
 
 # Nazwy brokerow tez wylaczaja wykluczenie, ale NIE dla ostrzezen o oszustwie
 # ("podaje sie za przedstawiciela XTB" to ostrzezenie, nie oferta brokera).
-BROKER_HINT = re.compile(
-    r"\b(?:xtb|degiro|trading\s?212|saxo|ibkr|bossa|revolut\s+trading)\b"
+# Nazwa brokera liczy sie WYLACZNIE jako cale slowo i z kontekstem finansowym
+# w poblizu ("Buzz Lightyear", "Bossa Nova" to nie brokerzy).
+# Jednoznaczne nazwy brokerow: wystarcza same (jako cale slowo).
+BROKER_NAMES_STRONG = re.compile(
+    r"\b(?:xtb|degiro|trading\s?212|ibkr|etoro|freedom24|plus500|interactive\s+brokers?)\b"
 )
+# Nazwy wieloznaczne ("Bossa Nova", "Buzz Lightyear", "Saxo" jako nazwisko):
+# licza sie TYLKO z kontekstem finansowym w poblizu.
+BROKER_NAMES = re.compile(
+    r"\b(?:saxo|bossa|lightyear|revolut(?:\s+trading)?)\b"
+)
+FINANCE_CONTEXT = re.compile(
+    r"\w*inwest\w*|\bakcj\w*|\betf\w*|\bkont[oaue]\b|\brachun\w*|\bplatform\w*"
+    r"|\bbroker\w*|\bgield\w*|\btrading\w*|\bportfel\w*"
+)
+_CONTEXT_WINDOW = 80  # znakow wokol nazwy brokera
+
+
+def _broker_with_context(norm: str) -> bool:
+    if BROKER_NAMES_STRONG.search(norm):
+        return True
+    for m in BROKER_NAMES.finditer(norm):
+        lo, hi = max(0, m.start() - _CONTEXT_WINDOW), m.end() + _CONTEXT_WINDOW
+        around = norm[lo:m.start()] + " " + norm[m.end():hi]
+        if FINANCE_CONTEXT.search(around):
+            return True
+    return False
+
+
+# Ogolny sygnal uslugi inwestycyjnej / nadzoru (poza INSTRUMENT_HINT).
+SERVICE_HINT = re.compile(
+    r"\bbroker\w*|\btrading\w*|\bknf\b|\buknf\b|komisj\w*\s+nadzoru"
+    r"|nadzor\w*\s+finansow\w*|\bgieldow\w*|\bmaklersk\w*|\bkantor\w*\s+walut\w*"
+    r"|\bpasywn\w*\s+doch\w*|\bgieldzi\w*"
+)
+
+
+NO_SIGNAL_REASON = "brak sygnalu finansowego"
+
+
+def has_financial_signal(norm: str, raw: str) -> bool:
+    """Czy w tekscie jest CHOCIAZ JEDEN sygnal finansowy (tekst po normalizacji)."""
+    from analyzer.router import has_profit_claims
+
+    return bool(
+        INSTRUMENT_HINT.search(norm)
+        or SERVICE_HINT.search(norm)
+        or _broker_with_context(norm)
+        or has_profit_claims(raw)
+    )
 
 
 def _normalize(text: str) -> str:
@@ -225,7 +272,7 @@ def classify_scope(text: str) -> Scope:
     if not INSTRUMENT_HINT.search(norm):
         for pattern, reason in OUT_OF_SCOPE_SIGNALS:
             hits = list(re.finditer(pattern, norm))
-            if reason != "ostrzezenie_o_oszustwie" and BROKER_HINT.search(norm):
+            if reason != "ostrzezenie_o_oszustwie" and _broker_with_context(norm):
                 continue
             if reason == "kupony_i_znizki" and not (
                 len(hits) >= 2 or (hits and hits[0].start() < 200)
@@ -238,6 +285,15 @@ def classify_scope(text: str) -> Scope:
                     reason=reason,
                     legal_basis="brak opakowania bedacego instrumentem finansowym",
                 )
+
+    # --- 2c. zadnego sygnalu finansowego -> poza zakresem ------------------ #
+    if not has_financial_signal(norm, text):
+        return Scope(
+            status=ScopeStatus.OUT_OF_SCOPE,
+            underlying=underlying,
+            reason=NO_SIGNAL_REASON,
+            legal_basis="brak sygnalu instrumentu, uslugi inwestycyjnej ani nadzoru",
+        )
 
     # --- 3. nie wiemy -> triage, nie kosz ---------------------------------- #
     return Scope(
