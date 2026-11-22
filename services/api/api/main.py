@@ -27,7 +27,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Literal
 
-from fastapi import FastAPI, HTTPException, Query, Response, WebSocket, WebSocketDisconnect
+from fastapi import Depends, FastAPI, HTTPException, Query, Response, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
@@ -180,7 +180,63 @@ def _csv_cell(v: Any) -> Any:
     return v
 
 
-def create_app(store: SqlStore | None = None, gold_path: Path | None = None) -> FastAPI:
+# --------------------------------------------------------------------------- #
+# Filtry listy wspolne dla /findings, /stats i /stats/trend
+# --------------------------------------------------------------------------- #
+
+
+def finding_filter(
+    risk_level: list[str] | None = Query(None),
+    status: list[str] | None = Query(None),
+    module: int | None = None,
+    source: str | None = None,
+    min_score: float | None = None,
+    max_score: float | None = None,
+    q: str | None = None,
+    date_from: str | None = Query(None, alias="from", description="ISO 8601, wlacznie"),
+    date_to: str | None = Query(None, alias="to", description="ISO 8601, wlacznie"),
+    reviewed: bool | None = None,
+) -> FindingFilter:
+    return FindingFilter(risk_level=risk_level, status=status, module=module, source=source,
+                         min_score=min_score, max_score=max_score, q=q,
+                         date_from=date_from, date_to=date_to, reviewed=reviewed)
+
+
+# --------------------------------------------------------------------------- #
+# Zrzuty reklam z SeaweedFS (S3). URI w AdDocument: s3://<bucket>/<klucz>.
+# --------------------------------------------------------------------------- #
+
+BlobReader = Any  # Callable[[str], tuple[bytes, str]]; FileNotFoundError gdy brak obiektu
+_FROM_ENV = object()
+
+
+def s3_reader_from_env() -> BlobReader | None:
+    """Czytnik zrzutow z S3_ENDPOINT/S3_ACCESS_KEY/S3_SECRET_KEY; bez konfiguracji None (503)."""
+    endpoint = os.getenv("S3_ENDPOINT")
+    if not endpoint or not os.getenv("S3_ACCESS_KEY") or not os.getenv("S3_SECRET_KEY"):
+        return None
+    import boto3  # import leniwy: testy i dev bez S3 nie wymagaja boto3
+    from botocore.exceptions import ClientError
+
+    client = boto3.client("s3", endpoint_url=endpoint, aws_access_key_id=os.environ["S3_ACCESS_KEY"],
+                          aws_secret_access_key=os.environ["S3_SECRET_KEY"],
+                          region_name=os.getenv("S3_REGION", "us-east-1"))
+
+    def read(uri: str) -> tuple[bytes, str]:
+        bucket, _, key = uri.removeprefix("s3://").partition("/")
+        try:
+            obj = client.get_object(Bucket=bucket, Key=key)
+        except ClientError as exc:
+            if exc.response.get("Error", {}).get("Code") in ("NoSuchKey", "NoSuchBucket", "404"):
+                raise FileNotFoundError(uri) from exc
+            raise
+        return obj["Body"].read(), obj.get("ContentType") or "image/png"
+
+    return read
+
+
+def create_app(store: SqlStore | None = None, gold_path: Path | None = None,
+               blob_reader: BlobReader | None = _FROM_ENV) -> FastAPI:
     @asynccontextmanager
     async def lifespan(a: FastAPI):
         task = None
@@ -202,6 +258,7 @@ def create_app(store: SqlStore | None = None, gold_path: Path | None = None) -> 
     app.state.alerted = OrderedDict()
     app.state.alert_lookback_s = _env_float("ALERT_LOOKBACK_S", 3600)
     app.state.gold_path = gold_path or Path(os.getenv("GOLD_LABELS_PATH", str(DEFAULT_GOLD)))
+    app.state.blob_reader = s3_reader_from_env() if blob_reader is _FROM_ENV else blob_reader
 
     # Front w trybie dev (vite, :5173) wola API z innego originu. W compose idzie przez nginx.
     origins = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",")
@@ -235,6 +292,29 @@ def create_app(store: SqlStore | None = None, gold_path: Path | None = None) -> 
             raise HTTPException(404, f"Brak dokumentu {document_id}")
         return doc.model_dump(mode="json")
 
+    @app.get("/documents/{document_id}/screenshot")
+    async def document_screenshot(
+        document_id: str, viewport: Literal["mobile", "desktop"] = "mobile",
+    ) -> Response:
+        """Zrzut reklamy z S3 przez API (przegladarka nie widzi SeaweedFS). Domyslnie maly widok mobilny."""
+        doc = await run_in_threadpool(st().get_document, document_id)
+        if doc is None:
+            raise HTTPException(404, f"Brak dokumentu {document_id}")
+        uri = (doc.screenshots or {}).get(viewport)
+        if not uri or not str(uri).startswith("s3://"):
+            raise HTTPException(404, f"Dokument nie ma zrzutu ({viewport})")
+        reader = app.state.blob_reader
+        if reader is None:
+            raise HTTPException(503, "Magazyn zrzutow (S3) nie jest skonfigurowany")
+        try:
+            data, content_type = await run_in_threadpool(reader, uri)
+        except FileNotFoundError:
+            raise HTTPException(404, "Zrzut nie istnieje w magazynie") from None
+        except Exception:  # noqa: BLE001 - blad magazynu nie moze wywrocic API
+            log.exception("Nie udalo sie pobrac zrzutu %s", uri)
+            raise HTTPException(502, "Magazyn zrzutow nie odpowiada") from None
+        return Response(content=data, media_type=content_type, headers={"Cache-Control": "private, max-age=3600"})
+
     # --- findingi (analyzer -> api -> web) -------------------------------------
     @app.post("/findings", status_code=201)
     async def post_finding(finding: Finding, response: Response) -> dict[str, Any]:
@@ -254,18 +334,11 @@ def create_app(store: SqlStore | None = None, gold_path: Path | None = None) -> 
 
     @app.get("/findings")
     async def list_findings(
-        risk_level: list[str] | None = Query(None),
-        status: list[str] | None = Query(None),
-        module: int | None = None,
-        source: str | None = None,
-        min_score: float | None = None,
-        max_score: float | None = None,
-        q: str | None = None,
+        flt: FindingFilter = Depends(finding_filter),
         limit: int = Query(100, ge=1, le=500),
         offset: int = Query(0, ge=0),
     ) -> dict[str, Any]:
-        flt = FindingFilter(risk_level=risk_level, status=status, module=module, source=source,
-                            min_score=min_score, max_score=max_score, q=q, limit=limit, offset=offset)
+        flt.limit, flt.offset = limit, offset
         items, total = await run_in_threadpool(st().list_findings, flt)
         for it in items:
             it["coverage"] = coverage(it["rule_results"])
@@ -316,8 +389,8 @@ def create_app(store: SqlStore | None = None, gold_path: Path | None = None) -> 
 
     # --- agregaty dla wykresow --------------------------------------------------
     @app.get("/stats")
-    async def stats() -> dict[str, Any]:
-        items = await run_in_threadpool(st().all_findings)
+    async def stats(flt: FindingFilter = Depends(finding_filter)) -> dict[str, Any]:
+        items = await run_in_threadpool(st().query_findings, flt)
         failed = Counter()
         rule_names: dict[str, str] = {}
         for f in items:
@@ -334,6 +407,20 @@ def create_app(store: SqlStore | None = None, gold_path: Path | None = None) -> 
             "failed_rules": [{"rule_id": k, "rule_name": rule_names[k], "count": v}
                              for k, v in failed.most_common()],
         }
+
+    @app.get("/stats/trend")
+    async def stats_trend(
+        flt: FindingFilter = Depends(finding_filter), bucket: Literal["day"] = "day",
+    ) -> dict[str, Any]:
+        """Liczba wynikow na dzien (UTC) wg poziomu ryzyka, z tymi samymi filtrami co lista."""
+        items = await run_in_threadpool(st().query_findings, flt)
+        days: dict[str, dict[str, Any]] = {}
+        for f in items:
+            day = str(f["created_at"])[:10]
+            row = days.setdefault(day, {"date": day, "high": 0, "medium": 0, "low": 0, "total": 0})
+            row[f["risk_level"]] = row.get(f["risk_level"], 0) + 1
+            row["total"] += 1
+        return {"bucket": bucket, "items": [days[d] for d in sorted(days)]}
 
     # --- panel kalibracji: zbior zloty, progi liczy front --------------------
     @app.get("/calibration")
