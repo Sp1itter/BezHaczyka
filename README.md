@@ -1,5 +1,8 @@
-<p align="center"><img src="docs/brand/1_glowne.png" alt="BezHaczyka" width="520"></p>
-<p align="center"><img src="docs/brand/4_mono.png" alt="BezHaczyka" width="520"></p>
+<p align="center">
+  <img src="docs/brand/1_glowne.png" alt="BezHaczyka" height="72">
+  &nbsp;&nbsp;&nbsp;
+  <img src="docs/brand/4_mono.png" alt="BezHaczyka mono" height="72">
+</p>
 
 <h1 align="center">Zadanie InvestWatch – BezHaczyka</h1>
 
