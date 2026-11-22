@@ -348,6 +348,43 @@ class ScalingIn(BaseModel):
     queues: list[ScalingQueueIn]
 
 
+# --------------------------------------------------------------------------- #
+# Media dokumentu: z magazynu (s3://) albo proxy starszych adresow CDN platform
+# --------------------------------------------------------------------------- #
+
+MEDIA_MAX_BYTES = 30 * 1024 * 1024
+_MEDIA_TYPES = {".mp4": "video/mp4", ".webm": "video/webm", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+                ".png": "image/png", ".webp": "image/webp", ".m4a": "audio/mp4"}
+
+
+def media_proxy_hosts() -> tuple[str, ...]:
+    """Domeny CDN, z ktorych API moze pobrac media zapisane w dokumencie (MEDIA_PROXY_HOSTS, po przecinku).
+    Domyslnie pusto: proxy wylaczone (on-premise; nowe rekordy maja media w magazynie)."""
+    return tuple(h.strip().lower().lstrip(".") for h in os.getenv("MEDIA_PROXY_HOSTS", "").split(",") if h.strip())
+
+
+def _host_allowed(host: str, allowed: tuple[str, ...]) -> bool:
+    host = (host or "").lower()
+    return any(host == a or host.endswith("." + a) for a in allowed)
+
+
+def _fetch_external_media(url: str) -> tuple[bytes, str]:
+    """Pobranie z CDN bez przekierowan (zadnych skokow na inne hosty), limit rozmiaru i czasu."""
+    import urllib.request
+
+    class _NoRedirect(urllib.request.HTTPRedirectHandler):
+        def redirect_request(self, *args, **kwargs):  # noqa: ANN002, ANN003
+            return None
+
+    opener = urllib.request.build_opener(_NoRedirect)
+    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (InvestWatch media proxy)"})
+    with opener.open(req, timeout=10) as resp:  # noqa: S310 - host sprawdzony wczesniej
+        data = resp.read(MEDIA_MAX_BYTES + 1)
+        if len(data) > MEDIA_MAX_BYTES:
+            raise ValueError("plik przekracza limit")
+        return data, resp.headers.get_content_type()
+
+
 def create_app(store: SqlStore | None = None, gold_path: Path | None = None,
                blob_reader: BlobReader | None = _FROM_ENV) -> FastAPI:
     @asynccontextmanager
@@ -407,7 +444,7 @@ def create_app(store: SqlStore | None = None, gold_path: Path | None = None,
 
     @app.get("/documents/{document_id}/screenshot")
     async def document_screenshot(
-        document_id: str, viewport: Literal["mobile", "desktop"] = "mobile",
+        document_id: str, viewport: Literal["creative", "mobile", "desktop"] = "mobile",
     ) -> Response:
         """Zrzut reklamy z S3 przez API (przegladarka nie widzi SeaweedFS). Domyslnie maly widok mobilny."""
         doc = await run_in_threadpool(st().get_document, document_id)
@@ -427,6 +464,42 @@ def create_app(store: SqlStore | None = None, gold_path: Path | None = None,
             log.exception("Nie udalo sie pobrac zrzutu %s", uri)
             raise HTTPException(502, "Magazyn zrzutow nie odpowiada") from None
         return Response(content=data, media_type=content_type, headers={"Cache-Control": "private, max-age=3600"})
+
+    @app.get("/documents/{document_id}/media/{index}")
+    async def document_media(document_id: str, index: int) -> Response:
+        """Media dokumentu dla panelu: z magazynu (s3://) albo przez proxy, jesli to stary adres CDN
+        z listy MEDIA_PROXY_HOSTS (tylko https, bez przekierowan). Zadnych dowolnych adresow z zapytania."""
+        from urllib.parse import urlsplit
+
+        doc = await run_in_threadpool(st().get_document, document_id)
+        if doc is None:
+            raise HTTPException(404, f"Brak dokumentu {document_id}")
+        media = doc.media or []
+        if index < 0 or index >= len(media):
+            raise HTTPException(404, "Brak takiego pliku multimedialnego")
+        item = media[index]
+        path = str(item.path)
+        suffix = Path(urlsplit(path).path).suffix.lower()
+        if path.startswith("s3://"):
+            reader = app.state.blob_reader
+            if reader is None:
+                raise HTTPException(503, "Magazyn mediow (S3) nie jest skonfigurowany")
+            try:
+                data, _ = await run_in_threadpool(reader, path)
+            except FileNotFoundError:
+                raise HTTPException(404, "Plik nie istnieje w magazynie") from None
+            ctype = _MEDIA_TYPES.get(suffix) or ("video/mp4" if item.kind == "video" else "application/octet-stream")
+            return Response(content=data, media_type=ctype, headers={"Cache-Control": "private, max-age=3600"})
+        parts = urlsplit(path)
+        if parts.scheme != "https" or not _host_allowed(parts.hostname or "", media_proxy_hosts()):
+            raise HTTPException(403, "Adres mediow spoza dozwolonych hostow (MEDIA_PROXY_HOSTS) albo bez https")
+        try:
+            data, ctype = await run_in_threadpool(_fetch_external_media, path)
+        except Exception:  # noqa: BLE001 - wygasly link CDN nie moze wywrocic API
+            raise HTTPException(502, "Platforma nie udostepnia juz tego pliku") from None
+        if not ctype.startswith(("image/", "video/", "audio/")):
+            raise HTTPException(502, "Platforma zwrocila cos innego niz media")
+        return Response(content=data, media_type=ctype, headers={"Cache-Control": "private, max-age=3600"})
 
     # --- findingi (analyzer -> api -> web) -------------------------------------
     @app.post("/findings", status_code=201)
