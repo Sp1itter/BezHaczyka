@@ -61,3 +61,10 @@ Thumbs.db
 
 # dzienne kopie grafu graphify (duplikaty graph.json)
 graphify-out/20*/
+
+# duze archiwa mediow demo trzymamy w wydaniu na GitHubie
+demo/*/media.tar
+
+# lokalne ustawienia asystenta
+.claude/
+CLAUDE.md
