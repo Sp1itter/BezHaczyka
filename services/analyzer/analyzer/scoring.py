@@ -34,7 +34,11 @@ def risk_score(results: list[RuleResult]) -> float:
 
     if denominator == 0.0:
         return 0.0
-    return round(100.0 * numerator / denominator, 1)
+    score = round(100.0 * numerator / denominator, 1)
+    # Spojnosc z poziomem: risk_level() eskaluje po najciezszym potwierdzonym
+    # naruszeniu, wiec score nie moze zostac ponizej progu tego poziomu
+    # (inaczej lista pokazuje "high" przy 18.5 i "low" przy 20.8).
+    return max(score, _escalation_floor(results))
 
 
 # Progi eskalacji po NAJCIEZSZYM potwierdzonym naruszeniu.
@@ -43,6 +47,16 @@ def risk_score(results: list[RuleResult]) -> float:
 ESCALATION_MIN_CONFIDENCE = 0.7
 ESCALATION_HIGH_SEVERITY = 5
 ESCALATION_MEDIUM_SEVERITY = 4
+
+
+def _escalation_floor(results: list[RuleResult]) -> float:
+    """Minimalny score wynikajacy z eskalacji poziomu (0.0, gdy brak eskalacji)."""
+    severity = max_breach_severity(results)
+    if severity >= ESCALATION_HIGH_SEVERITY:
+        return HIGH_THRESHOLD
+    if severity >= ESCALATION_MEDIUM_SEVERITY:
+        return MEDIUM_THRESHOLD
+    return 0.0
 
 
 def max_breach_severity(results: list[RuleResult]) -> int:

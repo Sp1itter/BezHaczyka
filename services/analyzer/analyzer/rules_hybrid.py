@@ -58,6 +58,11 @@ DEFAULT_MAX_DISTANCE_PX = 600.0  # mniej wiecej jeden ekran telefonu
 DEFAULT_MAX_OFFSET_CHARS = 300
 DEFAULT_MAX_GAP_SECONDS = 5.0
 
+# Lagodzenie reguly 3 na osi tekstowej, gdy ostrzezenie jest w dokumencie, ale
+# dalej niz prog (patrz assess_rule_3). Progi znakow zostaja w thresholds.yaml.
+SOFT_TEXT_CONFIDENCE = 0.6
+SOFT_TEXT_SEVERITY_DROP = 2
+
 # Kolejnosc preferencji viewportow: mobile jest najbardziej restrykcyjny,
 # bo to na telefonie ostrzezenie najlatwiej wypchnac poza ekran.
 VIEWPORT_ORDER = ("mobile", "tablet", "desktop")
@@ -258,14 +263,19 @@ def assess_rule_3(doc: AdDocument) -> RuleResult:
     """Oceń regule 3: czy ostrzezenie o ryzyku towarzyszy obietnicy zysku."""
     name, severity, basis = RULE_3_META
 
-    def _result(verdict: Verdict, evidence: Evidence, confidence: float = 1.0) -> RuleResult:
+    def _result(
+        verdict: Verdict,
+        evidence: Evidence,
+        confidence: float = 1.0,
+        sev: int | None = None,
+    ) -> RuleResult:
         return RuleResult(
             rule_id="3",
             rule_name=name,
             engine=Engine.HYBRID,
             verdict=verdict,
             confidence=confidence,
-            severity=severity,
+            severity=severity if sev is None else sev,
             legal_basis=basis,
             evidence=evidence,
         )
@@ -333,6 +343,12 @@ def assess_rule_3(doc: AdDocument) -> RuleResult:
             ),
         )
 
+    # Sama odleglosc w znakach (brak geometrii, brak czasu) nie dowodzi, ze
+    # ostrzezenie nie towarzyszy zyskowi: w dlugim opisie (YouTube, 700-3200 zn.)
+    # ostrzezenie bywa w innym akapicie. Ostrzezenie ISTNIEJE w dokumencie, wiec
+    # lagodzimy: pewnosc 0.6 (< ESCALATION_MIN_CONFIDENCE, wiec nie eskaluje
+    # poziomu) i waga obnizona o 2. Brak ostrzezenia w ogole zostaje pelnym fail.
+    soft = prox.axis == "tekst"
     return _result(
         Verdict.FAIL,
         Evidence(
@@ -347,6 +363,8 @@ def assess_rule_3(doc: AdDocument) -> RuleResult:
             quote=prox.risk_quote[:300],
             viewport=prox.viewport,  # type: ignore[arg-type]
         ),
+        confidence=SOFT_TEXT_CONFIDENCE if soft else 1.0,
+        sev=max(1, severity - SOFT_TEXT_SEVERITY_DROP) if soft else None,
     )
 
 

@@ -107,7 +107,41 @@ AD_MARKER_PATTERNS: tuple[str, ...] = (
 )
 
 
-def _guard_rule_2(current: RuleResult, text: str) -> RuleResult:
+# Zrodla, w ktorych sama platforma oznacza reklame platna (Meta Ad Library:
+# kazdy element biblioteki to reklama oznaczona przez Mete jako "Sponsorowane").
+PLATFORM_AD_SOURCES = frozenset({"facebook", "meta", "meta_ad_library", "instagram"})
+
+
+def platform_ad_meta(doc: object) -> dict:
+    """Metadane dokumentu istotne dla reguly 2, z AdDocument (lub casedb)."""
+    extra = getattr(doc, "extra", None) or {}
+    return {
+        "source": getattr(doc, "source", None),
+        "is_paid_ad": bool(getattr(doc, "is_paid_ad", False) or extra.get("is_paid_ad")),
+        "meta": extra.get("meta") if isinstance(extra, dict) else None,
+    }
+
+
+def _platform_labelled(doc_meta: Mapping | None) -> bool:
+    if not doc_meta:
+        return False
+    if doc_meta.get("is_paid_ad") or doc_meta.get("meta"):
+        return True
+    return str(doc_meta.get("source") or "").lower() in PLATFORM_AD_SOURCES
+
+
+def _guard_rule_2(
+    current: RuleResult, text: str, doc_meta: Mapping | None = None
+) -> RuleResult:
+    if _platform_labelled(doc_meta):
+        return _replace(
+            current,
+            Verdict.PASS,
+            "rozstrzygniete w kodzie: oznaczenie platformy — material pochodzi "
+            "z biblioteki reklam platformy, ktora sama oznacza reklame platna.",
+            None,
+            1.0,
+        )
     m = _norm_with_map(text)
     for p in AD_MARKER_PATTERNS:
         hit = re.search(p, m[0])
@@ -366,7 +400,10 @@ def _no_supervision_reference(current: RuleResult) -> RuleResult:
 
 
 def apply_guards(
-    results: list[RuleResult], text: str, rule_meta: RuleMeta | None = None
+    results: list[RuleResult],
+    text: str,
+    rule_meta: RuleMeta | None = None,
+    doc_meta: Mapping | None = None,
 ) -> list[RuleResult]:
     """Zastosuj straznikow do wynikow wsadu. `not_applicable` zostaje bez zmian."""
     has_supervision = bool(_SUPERVISION.search(normalize(text)))
@@ -378,6 +415,8 @@ def apply_guards(
         guard = _GUARDS.get(r.rule_id)
         if guard is None or r.verdict is Verdict.NOT_APPLICABLE:
             out.append(r)
+        elif r.rule_id == "2":
+            out.append(_guard_rule_2(r, text, doc_meta))
         else:
             out.append(guard(r, text))
     return out
