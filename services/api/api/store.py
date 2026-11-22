@@ -76,6 +76,7 @@ class FlagsUnavailable(RuntimeError):
 class UpsertResult:
     created: bool
     previous_risk_level: str | None
+    previous_risk_score: float | None = None
 
 
 def _iso(dt: datetime) -> str:
@@ -219,7 +220,7 @@ class SqlStore:
         self._require_ids(f.id, f.document_id)
         row = finding_row(f)
         prev = self._execute(
-            f"SELECT risk_level, reviewed_by FROM findings WHERE id = {self.ph}", [row["id"]]
+            f"SELECT risk_level, risk_score, reviewed_by FROM findings WHERE id = {self.ph}", [row["id"]]
         )
         values = {
             **row,
@@ -235,7 +236,8 @@ class SqlStore:
             self._execute(
                 f"UPDATE findings SET {sets} WHERE id = {self.ph}", list(values.values())[1:] + [row["id"]]
             )
-            return UpsertResult(created=False, previous_risk_level=prev[0]["risk_level"])
+            return UpsertResult(created=False, previous_risk_level=prev[0]["risk_level"],
+                                previous_risk_score=prev[0]["risk_score"])
         self._execute(
             f"INSERT INTO findings ({', '.join(cols)}) VALUES ({', '.join([self.ph] * len(cols))})",
             list(values.values()),
@@ -361,18 +363,43 @@ class SqlStore:
         rows = self._execute(f"{self._finding_select()} WHERE f.id = {self.ph}", [finding_id])
         return self._hydrate(rows[0]) if rows else None
 
-    def new_high_findings(self, lookback_s: float) -> list[dict[str, Any]]:
-        """Findingi `high` z ostatnich `lookback_s` s (wg zegara bazy), od najstarszego."""
+    def new_high_findings(self, lookback_s: float, threshold: float | None = None) -> list[dict[str, Any]]:
+        """Findingi do alertu z ostatnich `lookback_s` s (wg zegara bazy), od najstarszego.
+
+        Bez progu: `risk_level = 'high'` (decyzja analyzera). Z progiem z kalibracji: `risk_score >= prog`.
+        """
+        if threshold is None:
+            alert, alert_params = "f.risk_level = 'high'", []
+        else:
+            alert, alert_params = f"f.risk_score >= {self.ph}", [threshold]
         if self.dialect == "postgresql":
             cond, param = f"f.created_at > now() - make_interval(secs => {self.ph})", lookback_s
         else:
             cond = f"f.created_at > {self.ph}"
             param = _iso(datetime.now(timezone.utc) - timedelta(seconds=lookback_s))
         rows = self._execute(
-            f"{self._finding_select()} WHERE f.risk_level = 'high' AND {cond} ORDER BY f.created_at, f.id",
-            [param],
+            f"{self._finding_select()} WHERE {alert} AND {cond} ORDER BY f.created_at, f.id",
+            alert_params + [param],
         )
         return [self._hydrate(r) for r in rows]
+
+    # --- ustawienia panelu (prog alertow) ---------------------------------------
+    def get_setting(self, key: str) -> str | None:
+        rows = self._execute(f"SELECT value FROM app_settings WHERE key = {self.ph}", [key])
+        return rows[0]["value"] if rows else None
+
+    def set_setting(self, key: str, value: str, actor: str | None = None) -> None:
+        now = _iso(datetime.now(timezone.utc))
+        self._execute(
+            f"INSERT INTO app_settings (key, value, updated_at, updated_by) VALUES ({self.ph}, {self.ph}, {self.ph}, {self.ph})"
+            " ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = EXCLUDED.updated_at,"
+            " updated_by = EXCLUDED.updated_by",
+            [key, value, now, actor],
+        )
+
+    def alert_threshold(self) -> float | None:
+        raw = self.get_setting("alert_threshold")
+        return float(raw) if raw not in (None, "") else None
 
     def update_status(self, finding_id: str, status: str) -> bool:
         if not self.valid_id(finding_id):
@@ -488,6 +515,9 @@ CREATE TABLE IF NOT EXISTS findings (
 CREATE TABLE IF NOT EXISTS finding_events (
     id INTEGER PRIMARY KEY AUTOINCREMENT, finding_id TEXT NOT NULL, at TEXT NOT NULL,
     actor TEXT, action TEXT NOT NULL, detail TEXT NOT NULL DEFAULT '{}'
+);
+CREATE TABLE IF NOT EXISTS app_settings (
+    key TEXT PRIMARY KEY, value TEXT, updated_at TEXT, updated_by TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_findings_risk_level ON findings (risk_level);
 CREATE INDEX IF NOT EXISTS idx_findings_created_at ON findings (created_at DESC);

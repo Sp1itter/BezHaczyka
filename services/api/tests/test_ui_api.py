@@ -76,3 +76,40 @@ def test_document_screenshot_errors(store) -> None:  # noqa: F811
     bare = dict(doc, id="22222222-2222-4222-8222-222222222299", screenshots={})
     c.post("/documents", json=bare)
     assert c.get(f"/documents/{bare['id']}/screenshot").status_code == 404
+
+
+# --- prog alertow (etap C3): PUT /settings/threshold, alerty WS po stronie serwera -----
+
+
+def test_threshold_default_put_and_validation(client: TestClient) -> None:  # noqa: F811
+    assert client.get("/settings/threshold").json() == {"value": None, "rule": "risk_level=high"}
+    r = client.put("/settings/threshold", json={"value": 40, "actor": "analityk.a"})
+    assert r.status_code == 200 and r.json()["value"] == 40
+    assert client.get("/settings/threshold").json() == {"value": 40, "rule": "risk_score>=40"}
+    assert client.put("/settings/threshold", json={"value": 150}).status_code == 422
+    assert client.put("/settings/threshold", json={"value": -1}).status_code == 422
+
+
+def test_ws_alert_respects_saved_threshold(client: TestClient) -> None:  # noqa: F811
+    import copy
+    import uuid
+
+    client.post("/documents", json=load("ad_document.json"))
+    base = load("finding.json")  # high, risk_score 78.5
+
+    def finding(level: str, score: float) -> dict:
+        f = copy.deepcopy(base)
+        f.update(id=str(uuid.uuid4()), risk_level=level, risk_score=score)
+        return f
+
+    client.put("/settings/threshold", json={"value": 90})
+    with client.websocket_connect("/ws/alerts") as ws:
+        ws.receive_json()
+        assert client.post("/findings", json=finding("high", 78.5)).json()["alerted_clients"] == 0  # ponizej progu
+        client.put("/settings/threshold", json={"value": 50})
+        assert client.post("/findings", json=finding("low", 60.0)).json()["alerted_clients"] == 1  # prog > poziom
+        assert ws.receive_json()["type"] == "finding.high"
+        same = finding("medium", 70.0)
+        assert client.post("/findings", json=same).json()["alerted_clients"] == 1
+        ws.receive_json()
+        assert client.post("/findings", json=same).json()["alerted_clients"] == 0  # odswiezenie, nie nowy alert
