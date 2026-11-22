@@ -9,6 +9,7 @@ nigdy nie zostawia findingu bez podsumowania.
 from __future__ import annotations
 
 import logging
+import os
 import re
 import unicodedata
 
@@ -237,13 +238,21 @@ def _correction(reason: str) -> str:
     return f"\n\nPoprzednia odpowiedź odrzucona: {why} — popraw i odpowiedz ponownie w JSON.\n"
 
 
+def _retries() -> int:
+    """SUMMARY_LLM_RETRIES: ile PONOWIEN po odrzuceniu (domyslnie 0 = jedna proba, potem szablon)."""
+    try:
+        return max(0, min(int(os.getenv("SUMMARY_LLM_RETRIES", "0")), 1))
+    except ValueError:
+        return 0
+
+
 def explain_summary(
     finding: Finding,
     doc: AdDocument | None,
     client: OllamaClient | None = None,
     use_llm: bool = True,
 ) -> tuple[str, str, str | None]:
-    """(tekst, engine, powod). Nigdy nie rzuca LlmError, najwyzej 2 wywolania modelu.
+    """(tekst, engine, powod). Nigdy nie rzuca LlmError, najwyzej 1 + SUMMARY_LLM_RETRIES wywolan modelu.
 
     Powod: None = LLM przyjety za pierwszym razem; "a" = LLM przyjety po ponowieniu
     (a = powod pierwszego odrzucenia); "a>b" albo "a" przy szablonie = odrzucenia/blad.
@@ -261,7 +270,7 @@ def explain_summary(
         prompt = _prompt(values)
         try:
             client = client or OllamaClient()
-            for attempt in (1, 2):
+            for attempt in range(1, 2 + _retries()):
                 text, why = check_llm_reply(client.generate_json(prompt), fails, data_block, auth)
                 if text:
                     return text, "llm", reason

@@ -27,7 +27,9 @@ ruszania tego pliku.
 from __future__ import annotations
 
 import logging
+import os
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Callable, Sequence
@@ -188,13 +190,7 @@ def analyze(
         fallback = det_fallback_results(doc, det_results)
         results.extend(fallback)
         results.extend(missing_det_placeholders(doc, [*(det_results or []), *fallback]))
-        for runner in config.module2_runners:
-            try:
-                results.extend(runner(doc))
-            except Exception as exc:  # noqa: BLE001
-                # Padnieta regula nie moze wywrocic calego potoku w trakcie
-                # demo. Logujemy przez evidence innych regul i idziemy dalej.
-                results.append(_crashed_rule_result(runner, exc))
+        results.extend(_run_module2(doc, config))
 
     # --- straz niekompletnego materialu -------------------------------- #
     if is_partial(doc):
@@ -220,6 +216,35 @@ def analyze(
         status="triage" if decision.routing.rule == "R4" else "new",
         created_at=datetime.now(timezone.utc),
     )
+
+
+def _run_one(runner: RuleRunner, doc: AdDocument) -> list[RuleResult]:
+    try:
+        return list(runner(doc))
+    except Exception as exc:  # noqa: BLE001
+        # Padnieta regula nie moze wywrocic calego potoku w trakcie
+        # demo. Logujemy przez evidence innych regul i idziemy dalej.
+        return [_crashed_rule_result(runner, exc)]
+
+
+def _run_module2(doc: AdDocument, config: AnalyzerConfig) -> list[RuleResult]:
+    """Uruchom runnery Modulu 2 rownolegle; wyniki w kolejnosci runnerow.
+
+    Wspolbieznosc: env LLM_BATCH_CONCURRENCY (domyslnie 4; 1 = sekwencyjnie).
+    Kolejnosc wyniku jest identyczna jak w wersji sekwencyjnej, bo zbieramy
+    po indeksie runnera, nie po czasie zakonczenia.
+    """
+    runners = list(config.module2_runners)
+    try:
+        conc = int(os.getenv("LLM_BATCH_CONCURRENCY", "4"))
+    except ValueError:
+        conc = 4
+    workers = min(conc, len(runners))
+    if workers <= 1:
+        return [r for runner in runners for r in _run_one(runner, doc)]
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        futures = [pool.submit(_run_one, runner, doc) for runner in runners]
+        return [r for f in futures for r in f.result()]
 
 
 AUDIO_KINDS = ("video", "audio")
