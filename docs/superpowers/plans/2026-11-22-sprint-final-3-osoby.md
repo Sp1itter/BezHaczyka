@@ -1,4 +1,4 @@
-# InvestWatch — sprint finałowy (3 osoby, 22.11 01:00 → 10:15)
+# InvestWatch — sprint finałowy (3 strumienie pracy, zespół 6 osób, 22.11 01:00 → 10:15)
 
 Stan na 22.11, 00:50. HEAD `6d9defd`. Źródła: wymagania z `DocsTaskINWESTWATCH/`, żywy test stosu
 (`scheduler --once` + analiza na prawdziwych danych), audyt kodu, audyt UI ze zrzutami, research open source.
@@ -164,7 +164,7 @@ Najtańsza naprawa: **zrzut + RenderProbe dla stron WWW i landingów z reklam** 
 
 ---
 
-## 6. Podział na 3 osoby — zasady merge'a
+## 6. Podział na 3 strumienie pracy — zasady merge'a
 
 **Każda osoba ma swoje katalogi. Nikt nie edytuje cudzych.** Jedyne współdzielone pliki mają właściciela:
 
