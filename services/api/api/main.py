@@ -617,7 +617,11 @@ def create_app(store: SqlStore | None = None, gold_path: Path | None = None,
 
     # --- panel operatora (proxy do autoskalera) ------------------------------------
     def _autoscaler() -> str:
-        return os.getenv("AUTOSCALER_URL", "http://autoscaler:8090")
+        """Adres autoskalera z compose (AUTOSCALER_URL); bez niego panel operatora dostaje 503."""
+        base = os.getenv("AUTOSCALER_URL", "").strip()
+        if not base:
+            raise HTTPException(503, "Autoskaler nieskonfigurowany (brak AUTOSCALER_URL w compose)")
+        return base
 
     @app.get("/ops/scaling")
     async def ops_scaling() -> Any:

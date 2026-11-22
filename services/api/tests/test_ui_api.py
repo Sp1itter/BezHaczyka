@@ -166,3 +166,10 @@ def test_ops_scaling_unreachable_autoscaler(store, monkeypatch) -> None:  # noqa
     c = TestClient(create_app(store=store, gold_path=GOLD, blob_reader=None))
     r = c.get("/ops/scaling")
     assert r.status_code == 503 and "Autoskaler" in r.json()["detail"]
+
+
+def test_ops_scaling_without_config(store, monkeypatch) -> None:  # noqa: F811
+    monkeypatch.delenv("AUTOSCALER_URL", raising=False)
+    c = TestClient(create_app(store=store, gold_path=GOLD, blob_reader=None))
+    r = c.get("/ops/scaling")
+    assert r.status_code == 503 and "AUTOSCALER_URL" in r.json()["detail"]
