@@ -110,6 +110,107 @@ NON_FINANCIAL_ASSETS = {
 LEVERAGE_SIGNALS = {"dzwignia", "leverage", "1:30", "1:100", "1:500", "margin"}
 
 
+# --------------------------------------------------------------------------- #
+# Deterministyczne sygnaly POZA zakresem (zywe dane 21.11: kancelarie
+# frankowe, kupony, karty bankowe, ostrzezenia o oszustwach). Obowiazuja
+# WYLACZNIE, gdy nie ma zadnego sygnalu instrumentu finansowego.
+# --------------------------------------------------------------------------- #
+
+# (wzorzec, powod). Wzorce na tekscie po normalizacji.
+OUT_OF_SCOPE_SIGNALS: list[tuple[str, str]] = [
+    (r"\bfrankowicz\w*|\bkredyt\w*\s+(?:we?\s+)?frank\w*|\bfrank\w*\s+szwajcarsk\w*"
+     r"|uniewazni\w*\s+umow\w*|\bsankcj\w*\s+kredyt\w*\s+darmow\w*",
+     "kredyt_frankowy_usluga_prawna"),
+    (r"\bkod\w*\s+(?:promocyjn|rabatow)\w*|\bkupon\w*|\bkody\s+promocyjn\w*"
+     r"|\bznizk\w*|\brabat\w*|\bvoucher\w*",
+     "kupony_i_znizki"),
+    (r"\bkart\w*\s+(?:walutow|kredytow|debetow|platnicz|przedplacon)\w*",
+     "produkt_bankowy_karta"),
+    # Bonusy za konto osobiste / programy polecen bankow: konto bankowe to nie instrument.
+    (r"\bpromocj\w*\s+bankow\w*|\bkont\w*\s+(?:osobist|oszczednosciow|bankow)\w*"
+     r"|\bkont\w*\s+w\s+bank\w*|\bbonus\w*\s+za\s+(?:otwarci|zalozeni)\w*\s+kont\w*"
+     r"|\bprogram\w*\s+(?:polecen|partnersk)\w*|\bpolecambank\b|\blink\w*\s+partnersk\w*"
+     r"|\bzaloz\w*\s+kont\w*\s+i\s+zamow\w*\s+kart\w*",
+     "promocje_bankowe"),
+    (r"\bpodaj\w*\s+sie\s+za\b|\bpodszywa\w*|\boszust\w*|\boszukan\w*"
+     r"|\bphishing\w*|\bwyludz\w*",
+     "ostrzezenie_o_oszustwie"),
+]
+
+# Jakikolwiek sygnal instrumentu / uslugi inwestycyjnej wylacza wykluczenie.
+INSTRUMENT_HINT = re.compile(
+    r"\bakcj(?:a|e|i|ami|ach|om)\b|\betf\w*|\bcfd\w*|\bobligacj\w*|\bfundusz\w*"
+    r"|\bkontrakt\w*|\bforex\b|\bfx\b|\bdzwigni\w*|\bleverage\b"
+    r"|(?:rachun\w*|kont\w*|dom\w*)\s+maklersk\w*|\bmaklersk\w*"
+    r"|portfel\w*\s+inwestycyjn\w*|\bgield\w*|\bpapier\w*\s+wartosciow\w*"
+    r"|\w*inwest\w*|\bopcj(?:a|e|i|ami|ach|om)\b|\bfutures\b|\bswap\w*|\bwarrant\w*"
+)
+
+
+# Nazwy brokerow tez wylaczaja wykluczenie, ale NIE dla ostrzezen o oszustwie
+# ("podaje sie za przedstawiciela XTB" to ostrzezenie, nie oferta brokera).
+# Nazwa brokera liczy sie WYLACZNIE jako cale slowo i z kontekstem finansowym
+# w poblizu ("Buzz Lightyear", "Bossa Nova" to nie brokerzy).
+# Jednoznaczne nazwy brokerow: wystarcza same (jako cale slowo).
+BROKER_NAMES_STRONG = re.compile(
+    r"\b(?:xtb|degiro|trading\s?212|ibkr|etoro|freedom24|plus500|interactive\s+brokers?)\b"
+)
+# Nazwy wieloznaczne ("Bossa Nova", "Buzz Lightyear", "Saxo" jako nazwisko):
+# licza sie TYLKO z kontekstem finansowym w poblizu.
+BROKER_NAMES = re.compile(
+    r"\b(?:saxo|bossa|lightyear|revolut(?:\s+trading)?)\b"
+)
+FINANCE_CONTEXT = re.compile(
+    # bez "konto"/"rachunek": konto bankowe to nie kontekst inwestycyjny (maklerskie lapie INSTRUMENT_HINT)
+    r"\w*inwest\w*|\bakcj\w*|\betf\w*|\bplatform\w*\s+(?:inwestycyj|transakcyj|tradingow)\w*"
+    r"|\bbroker\w*|\bgield\w*|\btrading\w*|\bportfel\w*"
+)
+_CONTEXT_WINDOW = 80  # znakow wokol nazwy brokera
+
+
+def _broker_with_context(norm: str) -> bool:
+    if BROKER_NAMES_STRONG.search(norm):
+        return True
+    for m in BROKER_NAMES.finditer(norm):
+        lo, hi = max(0, m.start() - _CONTEXT_WINDOW), m.end() + _CONTEXT_WINDOW
+        around = norm[lo:m.start()] + " " + norm[m.end():hi]
+        if FINANCE_CONTEXT.search(around):
+            return True
+    return False
+
+
+# Ogolny sygnal uslugi inwestycyjnej / nadzoru (poza INSTRUMENT_HINT).
+SERVICE_HINT = re.compile(
+    r"\bbroker\w*|\btrading\w*|\bknf\b|\buknf\b|komisj\w*\s+nadzoru"
+    r"|nadzor\w*\s+finansow\w*|\bgieldow\w*|\bmaklersk\w*|\bkantor\w*\s+walut\w*"
+    r"|\bpasywn\w*\s+doch\w*|\bgieldzi\w*"
+)
+
+
+NO_SIGNAL_REASON = "brak sygnalu finansowego"
+
+
+def has_financial_signal(norm: str, raw: str) -> bool:
+    """Czy w tekscie jest CHOCIAZ JEDEN sygnal finansowy (tekst po normalizacji)."""
+    from analyzer.router import has_profit_claims
+
+    return bool(
+        INSTRUMENT_HINT.search(norm)
+        or SERVICE_HINT.search(norm)
+        or _broker_with_context(norm)
+        # sama obietnica zysku ("zyskujesz WIECEJ" w reklamie cashbacku) to za malo:
+        # potrzebny kontekst finansowy albo procent, ktory router uznal za stope zwrotu
+        or (has_profit_claims(raw) and (bool(FINANCE_CONTEXT.search(norm)) or _has_return_rate(raw)))
+    )
+
+
+def _has_return_rate(raw: str) -> bool:
+    """Czy zostal procent-stopa zwrotu po maskowaniu routera ("18% rocznie", nie "-90% znizki")."""
+    from analyzer.router import mask_non_claims, normalize
+
+    return bool(re.search(r"\d+[.,]?\d*\s*%", mask_non_claims(normalize(raw))))
+
+
 def _normalize(text: str) -> str:
     """Male litery, bez ogonkow, znormalizowane biale znaki.
 
@@ -181,6 +282,33 @@ def classify_scope(text: str) -> Scope:
             underlying="non_financial",
             reason="not_financial_instrument",
             legal_basis="nie jest instrumentem finansowym wg art. 2 ustawy o obrocie",
+        )
+
+    # --- 2b. sygnaly poza zakresem, o ile brak sygnalu instrumentu -------- #
+    if not INSTRUMENT_HINT.search(norm):
+        for pattern, reason in OUT_OF_SCOPE_SIGNALS:
+            hits = list(re.finditer(pattern, norm))
+            if reason != "ostrzezenie_o_oszustwie" and _broker_with_context(norm):
+                continue
+            if reason == "kupony_i_znizki" and not (
+                len(hits) >= 2 or (hits and hits[0].start() < 200)
+            ):
+                continue  # pojedyncza, pozna wzmianka o znizce to za malo
+            if hits:
+                return Scope(
+                    status=ScopeStatus.OUT_OF_SCOPE,
+                    underlying=underlying,
+                    reason=reason,
+                    legal_basis="brak opakowania bedacego instrumentem finansowym",
+                )
+
+    # --- 2c. zadnego sygnalu finansowego -> poza zakresem ------------------ #
+    if not has_financial_signal(norm, text):
+        return Scope(
+            status=ScopeStatus.OUT_OF_SCOPE,
+            underlying=underlying,
+            reason=NO_SIGNAL_REASON,
+            legal_basis="brak sygnalu instrumentu, uslugi inwestycyjnej ani nadzoru",
         )
 
     # --- 3. nie wiemy -> triage, nie kosz ---------------------------------- #

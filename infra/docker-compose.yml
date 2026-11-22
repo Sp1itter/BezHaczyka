@@ -6,7 +6,8 @@
 #   docker compose up -d --build                           (bazy, casedb, analyzer, scraper, scheduler, nginx, api, web)
 #   docker compose up -d postgres valkey seaweedfs nginx   (same bazy, do pracy nad API i frontem)
 #   docker compose exec scheduler python -m scheduler --once   (jednorazowy przebieg zadan, demo)
-# Profil `ollama` jest opcjonalny (Ollama w kontenerze, CPU): docker compose --profile ollama up -d
+# Ollama (GPU NVIDIA) startuje domyslnie i sama pobiera modele. Bez GPU: COMPOSE_FILE w .env
+# (docker-compose.cpu.yml), z Ollama natywna: docker-compose.native.yml (infra/README.md).
 #
 # LICENCJE (par. 3.1): tylko permisywne obrazy, przypiete tagiem, zadnego `latest`.
 # AGPL / SSPL sa zakazane - tools/check_compliance.py je odrzuca.
@@ -18,6 +19,8 @@ services:
   # --- Postgres + pgvector (PostgreSQL License) --------------------------------
   postgres:
     image: pgvector/pgvector:pg16
+    cpus: ${POSTGRES_CPUS:-2}
+    mem_limit: ${POSTGRES_MEM:-1g}
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -40,6 +43,8 @@ services:
   # Fork Redisa (LF), API-kompatybilny; nowe Redisy to SSPL/AGPL - nie uzywamy.
   valkey:
     image: valkey/valkey:8-alpine
+    cpus: ${VALKEY_CPUS:-1}
+    mem_limit: ${VALKEY_MEM:-512m}
     volumes:
       - valkeydata:/data
     ports:
@@ -60,6 +65,8 @@ services:
   # i serwer odpowiada wtedy `no free volumes left` (kazdy bucket tworzy wlasne woluminy).
   seaweedfs:
     image: chrislusf/seaweedfs:3.68
+    cpus: ${SEAWEED_CPUS:-1}
+    mem_limit: ${SEAWEED_MEM:-1g}
     entrypoint:
       - /bin/sh
       - -c
@@ -88,6 +95,8 @@ services:
   # Serwuje fixtures/demo-ads/, zeby demo dzialalo offline.
   nginx:
     image: nginx:1.27-alpine
+    cpus: ${NGINX_CPUS:-0.5}
+    mem_limit: ${NGINX_MEM:-128m}
     volumes:
       - ../fixtures/demo-ads:/usr/share/nginx/html:ro
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
@@ -115,16 +124,17 @@ services:
     networks: [investwatch]
 
   # --- analyzer: worker analizy reklam (nasz obraz) ----------------------------
-  # OLLAMA NIE JEST SERWISEM - swiadoma decyzja architektoniczna.
-  # Ollama dziala NATYWNIE na hoscie (jedna komenda instalatora, sama obsluguje GPU),
-  # a kontener celuje w nia przez host.docker.internal:11434 (alternatywa: profil `ollama`, CPU).
-  # Bez Ollamy analyzer dziala:
-  # reguly LLM zwracaja not_applicable z powodem (brak danych nie jest naruszeniem).
+  # Ollama jest serwisem compose (ponizej, domyslnie z GPU NVIDIA); analyzer czeka, az bedzie
+  # zdrowa i az `ollama-pull` pobierze modele. Tryb bez GPU / z Ollama natywna: patrz
+  # docker-compose.cpu.yml i docker-compose.native.yml (infra/README.md, sekcja Ollama).
+  # Bez Ollamy analyzer i tak dziala: reguly LLM zwracaja not_applicable z powodem.
   # Kontekst budowania to services/ (obok analyzera potrzebny pakiet casedb).
   analyzer:
     build:
       context: ../services
       dockerfile: analyzer/Dockerfile
+    cpus: ${ANALYZER_CPUS:-4}
+    mem_limit: ${ANALYZER_MEM:-4g}
     depends_on:
       postgres:
         condition: service_healthy
@@ -134,11 +144,15 @@ services:
         condition: service_completed_successfully
       api:
         condition: service_healthy
+      ollama:
+        condition: service_healthy
+      ollama-pull:
+        condition: service_completed_successfully
     # Wymaga wczesniejszego `cp .env.example .env` - bez tego pliku compose odmowi startu.
     env_file: .env
     environment:
       # Nadpisania, zeby adresy w kontenerze byly poprawne niezaleznie od .env.
-      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://ollama:11434}
       VALKEY_URL: redis://valkey:6379/0
       API_BASE_URL: http://api:8000
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
@@ -154,6 +168,8 @@ services:
       timeout: 5s
       start_period: 20s
       retries: 3
+    # Warm shutdown RQ: autoskaler zdejmuje klony SIGTERM-em i czeka na dokonczenie zadania.
+    stop_grace_period: 180s
     restart: unless-stopped
     networks: [investwatch]
 
@@ -166,6 +182,8 @@ services:
       context: ../services
       dockerfile: scraper/Dockerfile
     image: investwatch-scraper:local
+    cpus: ${SCRAPER_CPUS:-2}
+    mem_limit: ${SCRAPER_MEM:-3g}
     depends_on: &scraper-deps
       postgres:
         condition: service_healthy
@@ -210,6 +228,8 @@ services:
   scheduler:
     <<: *scraper
     command: ["python", "-m", "scheduler"]
+    cpus: ${SCHEDULER_CPUS:-1}
+    mem_limit: ${SCHEDULER_MEM:-512m}
     healthcheck:
       test: ["CMD", "python", "worker.py", "--ping"]
       interval: 30s
@@ -229,17 +249,30 @@ services:
   api:
     build:
       context: ../services/api
+    cpus: ${API_CPUS:-1}
+    mem_limit: ${API_MEM:-512m}
     depends_on:
       postgres:
         condition: service_healthy
       casedb:
         condition: service_completed_successfully
+      seaweedfs:
+        condition: service_healthy
     restart: unless-stopped
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       GOLD_LABELS_PATH: /data/gold/labels.json
       ALERT_POLL_S: ${ALERT_POLL_S:-3}
       ALERT_LOOKBACK_S: ${ALERT_LOOKBACK_S:-3600}
+      # Zrzuty i media reklam z SeaweedFS (panel: szuflada findingu).
+      S3_ENDPOINT: http://seaweedfs:8333
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+      # Panel operatora: API proxuje /ops/scaling do autoskalera (port wewnetrzny).
+      AUTOSCALER_URL: ${AUTOSCALER_URL:-http://autoscaler:8090}
+      # Proxy mediow tylko z tych domen CDN (https, bez przekierowan); pusto = wylaczone.
+      MEDIA_PROXY_HOSTS: ${MEDIA_PROXY_HOSTS:-fbcdn.net,ytimg.com,tiktokcdn.com}
+      YOUTUBE_FRAME_URLS: ${YOUTUBE_FRAME_URLS:-}
     volumes:
       - ../fixtures/gold:/data/gold:ro
       # przyklady kontraktowe: docker compose exec api python -m api.seed --dir /data/contract-examples
@@ -252,6 +285,8 @@ services:
   web:
     build:
       context: ../services/web
+    cpus: ${WEB_CPUS:-0.5}
+    mem_limit: ${WEB_MEM:-256m}
     depends_on:
       api:
         condition: service_healthy
@@ -275,6 +310,8 @@ services:
   dashboard:
     build:
       context: ../services/dashboard
+    cpus: ${DASHBOARD_CPUS:-0.5}
+    mem_limit: ${DASHBOARD_MEM:-256m}
     depends_on:
       api:
         condition: service_healthy
@@ -285,17 +322,139 @@ services:
       - "${DASHBOARD_BIND:-127.0.0.1}:${DASHBOARD_PORT:-7080}:8080"
     networks: [investwatch]
 
-  # --- ollama (opcjonalnie, CPU): profil `ollama`, port nieopublikowany --------
+  # --- autoscaler: skaluje kontenery `analyzer` wg backlogu q:gpu + HTTP /scaling -------
+  # Petla co AUTOSCALER_INTERVAL_S czyta kolejke z Valkeya i dodaje/zdejmuje KLONY
+  # kontenera `analyzer` (ten sam obraz/env/siec, limity cpus/memory_mb z panelu operatora).
+  # Bazowy kontener compose nigdy nie jest zdejmowany. Do Dockera idzie WYLACZNIE przez
+  # docker-socket-proxy (nie montujemy gniazda do autoskalera), a filtr po etykiecie
+  # projektu compose pilnuje, ze ruszamy tylko wlasne kontenery.
+  # API (port 8090, tylko siec compose): GET/PUT /scaling, GET /health. Zmiany operatora
+  # zyja w Valkey (klucz ops:scaling) i nadpisuja analyzer/config/scaling.yaml.
+  # AUTOSCALER_EXECUTOR: compose (domyslnie) albo dry-run (tylko loguje decyzje).
+  autoscaler:
+    build:
+      context: ../services
+      dockerfile: analyzer/Dockerfile
+    command: ["python", "-m", "analyzer.autoscaler"]
+    cpus: ${AUTOSCALER_CPUS:-0.5}
+    mem_limit: ${AUTOSCALER_MEM:-256m}
+    depends_on:
+      valkey:
+        condition: service_healthy
+      docker-socket-proxy:
+        condition: service_started
+    environment:
+      DOCKER_HOST: tcp://docker-socket-proxy:2375
+      VALKEY_URL: redis://valkey:6379/0
+      AUTOSCALER_EXECUTOR: ${AUTOSCALER_EXECUTOR:-compose}
+      AUTOSCALER_INTERVAL_S: ${AUTOSCALER_INTERVAL_S:-5}
+      OLLAMA_NUM_PARALLEL: ${OLLAMA_NUM_PARALLEL:-4}
+      ANALYZER_MIN_REPLICAS: ${ANALYZER_MIN_REPLICAS:-1}
+      ANALYZER_MAX_REPLICAS: ${ANALYZER_MAX_REPLICAS:-4}
+      ANALYZER_SCALE_UP_BACKLOG: ${ANALYZER_SCALE_UP_BACKLOG:-3}
+      ANALYZER_SCALE_DOWN_IDLE_S: ${ANALYZER_SCALE_DOWN_IDLE_S:-60}
+      ANALYZER_EXTRA_CPUS: ${ANALYZER_EXTRA_CPUS:-2}
+      ANALYZER_EXTRA_MEM_MB: ${ANALYZER_EXTRA_MEM_MB:-3072}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8090/health', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+    restart: unless-stopped
+    # `scaler` to siec wewnetrzna tylko dla autoskalera i proxy Dockera (reszta stosu
+    # nie ma sciezki do gniazda Dockera).
+    networks: [investwatch, scaler]
+
+  # --- docker-socket-proxy (Apache-2.0): waski, filtrowany dostep do Dockera -----------
+  # Jedyny kontener z gniazdem Dockera (tylko do odczytu na poziomie montowania; zakres
+  # operacji wyznaczaja zmienne ponizej). Port 2375 tylko w sieci compose.
+  # Zestaw MINIMALNY (zweryfikowany e2e): CONTAINERS (lista/inspect/create/stop) + POST
+  # (w tym haproxy przepuszcza wtedy tez DELETE = usuniecie kontenera). IMAGES/NETWORKS niepotrzebne,
+  # bo klon tworzymy z nazwy obrazu i nazwy sieci wzietych z inspect kontenera bazowego.
+  docker-socket-proxy:
+    image: tecnativa/docker-socket-proxy:0.3.0
+    environment:
+      CONTAINERS: 1
+      POST: 1
+      SERVICES: 0
+      IMAGES: 0
+      NETWORKS: 0
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    cpus: 0.25
+    mem_limit: 64m
+    restart: unless-stopped
+    networks: [scaler]
+
+  # --- ollama: LLM + embeddingi w kontenerze z GPU NVIDIA (domyslnie) ----------
+  # Wymaga Docker Desktop (WSL2) lub nvidia-container-toolkit. Bez GPU: docker-compose.cpu.yml.
+  # Port nieopublikowany (analyzer laczy sie przez siec compose); natywna Ollama hosta
+  # zostaje na :11434 bez kolizji.
   ollama:
-    image: ollama/ollama:0.5.4
-    profiles: ["ollama"]
+    image: ollama/ollama:0.40.17
+    environment:
+      OLLAMA_NUM_PARALLEL: ${OLLAMA_NUM_PARALLEL:-4}
+      OLLAMA_FLASH_ATTENTION: ${OLLAMA_FLASH_ATTENTION:-1}
+      OLLAMA_KV_CACHE_TYPE: ${OLLAMA_KV_CACHE_TYPE:-q8_0}
+      OLLAMA_KEEP_ALIVE: ${OLLAMA_KEEP_ALIVE:--1}
+      OLLAMA_CONTEXT_LENGTH: ${OLLAMA_CONTEXT_LENGTH:-4096}
+      OLLAMA_MAX_LOADED_MODELS: ${OLLAMA_MAX_LOADED_MODELS:-2}
+    # Bez portu na hoscie: Windows rezerwuje zakresy portow (11435 padl przy starcie stosu).
+    # Dostep reczny: `docker compose exec ollama ollama list`.
     volumes:
       - ollamadata:/root/.ollama
+    cpus: ${OLLAMA_CPUS:-8}
+    mem_limit: ${OLLAMA_MEM:-12g}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
     restart: unless-stopped
+    networks: [investwatch]
+
+  # --- ollama-pull: jednorazowe pobranie modeli (idempotentne, konczy z kodem 0) -
+  # Lista w OLLAMA_MODELS_PULL (rozdzielona spacjami). Model juz obecny (`ollama show`) jest
+  # pomijany, a nieudany pull (np. offline) tylko ostrzega - kontener zawsze konczy exit 0,
+  # zeby analyzer nie byl blokowany przy modelach z cache.
+  ollama-pull:
+    image: ollama/ollama:0.40.17
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      OLLAMA_HOST: ollama:11434
+      OLLAMA_MODELS_PULL: ${OLLAMA_MODELS_PULL:-SpeakLeash/bielik-4.5b-v3.0-instruct:Q8_0 bge-m3 SpeakLeash/bielik-1.5b-v3.0-instruct:Q8_0}
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        for m in $${OLLAMA_MODELS_PULL}; do
+          if ollama show "$${m}" >/dev/null 2>&1; then
+            echo "jest: $${m}"
+          else
+            echo "pull: $${m}"
+            ollama pull "$${m}" || echo "WARN: pull $${m} nieudany"
+          fi
+        done
+        echo "koniec (zawsze exit 0)"
+        exit 0
+    restart: "no"
     networks: [investwatch]
 
 networks:
   investwatch: {}
+  scaler:
+    internal: true
 
 volumes:
   pgdata:

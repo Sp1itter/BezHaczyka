@@ -1,0 +1,9 @@
+# Nakladka: Ollama BEZ GPU (CPU, wolno). Wlacz w infra/.env:
+#   COMPOSE_FILE=docker-compose.yml:docker-compose.cpu.yml
+# albo jednorazowo: docker compose -f docker-compose.yml -f docker-compose.cpu.yml up -d --build
+services:
+  ollama:
+    deploy:
+      resources:
+        reservations:
+          devices: !reset []

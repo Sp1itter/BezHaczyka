@@ -29,53 +29,33 @@ def _get(path: str):
     return status, body
 
 
-@pytest.fixture(autouse=True)
-def _przywroc_provider():
-    oryginal = health.STATE_PROVIDER
-    yield
-    health.STATE_PROVIDER = oryginal
 
 
 def test_payload_ma_decyzje_dla_kazdej_kolejki():
-    stany = [QueueState("ingest", 12, 1, 0), QueueState("render", 0, 1, 0)]
+    stany = [QueueState("q:ingest", 12, 1, 0), QueueState("q:render", 0, 1, 0)]
     p = scaling_payload(stany, CFG)
-    assert p["executor"] == "dry-run"
-    assert p["hard_max_total"] == 6
-    assert [q["name"] for q in p["queues"]] == ["ingest", "render"]
+    assert p["executor"] == "compose"
+    assert p["hard_max_total"] == 16
+    assert [q["name"] for q in p["queues"]] == ["q:ingest", "q:render"]
     ingest = p["queues"][0]
     assert ingest["backlog"] == 12 and ingest["workers"] == 1 and ingest["desired"] == 2
     assert ingest["reason"] and ingest["capped_by"] is None
 
 
 def test_payload_jest_serializowalny_do_json():
-    p = scaling_payload([QueueState("gpu", 50, 1, 0.5)], CFG)
-    assert json.loads(json.dumps(p))["queues"][0]["capped_by"] == "ollama_endpoints"
+    p = scaling_payload([QueueState("q:gpu", 50, 1, 0.5)], CFG)
+    assert json.loads(json.dumps(p))["queues"][0]["desired"] == 2
 
 
-def test_endpoint_scaling_zwraca_200_i_json():
-    health.STATE_PROVIDER = lambda: [QueueState("ingest", 12, 1, 0)]
-    status, body = _get("/scaling")
-    assert status == 200
-    assert json.loads(body)["queues"][0]["desired"] == 2
 
 
-def test_brak_dostepu_do_kolejek_daje_pusta_liste_nie_blad():
-    def _pada():
-        raise ConnectionError("valkey nie odpowiada")
-
-    health.STATE_PROVIDER = _pada
-    status, body = _get("/scaling")
-    assert status == 200
-    assert json.loads(body)["queues"] == []
 
 
-def test_domyslny_provider_daje_pusta_liste():
-    status, body = _get("/scaling")
-    assert status == 200 and json.loads(body)["queues"] == []
 
 
 def test_nieznana_sciezka_nadal_daje_404():
     assert _get("/cokolwiek")[0] == 404
+    assert _get("/scaling")[0] == 404  # /scaling zyje w autoskalerze (:8090), nie w workerze
     assert _get("/scaling/x")[0] == 404
     assert _get("/")[0] == 404
 
@@ -86,19 +66,9 @@ def test_health_dalej_dziala(monkeypatch):
     assert status == 200 and json.loads(body) == {"status": "ok"}
 
 
-def test_niepoprawna_konfiguracja_nie_wywala_handlera(monkeypatch):
-    from analyzer import scaling
-
-    def _zla(*a, **k):
-        raise scaling.ScalingConfigError("sprzeczna konfiguracja")
-
-    monkeypatch.setattr(scaling, "load_scaling_config", _zla)
-    status, body = _get("/scaling")
-    assert status == 500
-    assert "sprzeczna" in json.loads(body)["error"]
 
 
 def test_payload_respektuje_podana_konfiguracje():
     cfg = replace(CFG, hard_max_total=3)
-    p = scaling_payload([QueueState("ingest", 20, 4, 0), QueueState("render", 9, 2, 0)], cfg)
+    p = scaling_payload([QueueState("q:ingest", 20, 4, 0), QueueState("q:render", 9, 2, 0)], cfg)
     assert sum(q["desired"] for q in p["queues"]) <= 3
