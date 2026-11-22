@@ -3,7 +3,8 @@
 `SCRAPER_QUEUES` (po przecinku) mowi, CO kontener obsluguje; `process_plan` zamienia to na pule
 procesow wewnatrz kontenera (bez zmian w compose):
 
-  q:ingest  -> SCRAPER_INGEST_PROCS procesow (domyslnie 3) — discover rownolegle dla wielu fraz
+  q:ingest  -> SCRAPER_INGEST_PROCS procesow (domyslnie 3) — discover rownolegle dla wielu fraz;
+               discover FB ma osobna q:ingest:fb (pierwszy proces bierze ja najpierw)
   q:render  -> osobne procesy per zrodlo, kazdy z kolejka zrodla na czele i wspolna q:render na koncu:
                q:render:fb  SCRAPER_POOL_FB  (1)   Chromium, limiter Meta
                q:render:yt  SCRAPER_POOL_YT  (1)   yt-dlp, limiter YouTube (spi tylko ten proces)
@@ -27,13 +28,14 @@ import time
 from collections.abc import Mapping
 
 QUEUES = ("q:ingest", "q:render")
+INGEST_FB = "q:ingest:fb"
 SOURCE_POOLS = (  # (kolejka, zmienna env, domyslna liczba procesow)
     ("q:render:fb", "SCRAPER_POOL_FB", 1),
     ("q:render:yt", "SCRAPER_POOL_YT", 1),
     ("q:fetch:www", "SCRAPER_POOL_WWW", 2),
     ("q:render:tt", "SCRAPER_POOL_TT", 1),
 )
-ALL_QUEUES = (*QUEUES, *(q for q, _, _ in SOURCE_POOLS))
+ALL_QUEUES = (*QUEUES, INGEST_FB, *(q for q, _, _ in SOURCE_POOLS))
 
 
 def queues_from_env(value: str | None) -> tuple[str, ...]:
@@ -50,7 +52,9 @@ def process_plan(value: str | None, env: Mapping[str, str]) -> list[list[str]]:
     plan: list[list[str]] = []
     for name in queues_from_env(value):
         if name == "q:ingest":
-            plan += [["q:ingest"] for _ in range(int(env.get("SCRAPER_INGEST_PROCS", 3)))]
+            # pierwszy proces: discover FB (wolny limiter Meta) przed reszta; pozostale odwrotnie
+            n = int(env.get("SCRAPER_INGEST_PROCS", 3))
+            plan += [[INGEST_FB, "q:ingest"] if i == 0 else ["q:ingest", INGEST_FB] for i in range(n)]
         elif name == "q:render":
             for queue, var, default in SOURCE_POOLS:
                 plan += [[queue, "q:render"] for _ in range(int(env.get(var, default)))]

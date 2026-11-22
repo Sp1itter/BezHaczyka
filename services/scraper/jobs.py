@@ -124,9 +124,18 @@ def render_queue_for(source: str) -> str:
     return SOURCE_QUEUES.get(source, RENDER_QUEUE)
 
 
+INGEST_FB_QUEUE = "q:ingest:fb"
+
+
 def discover_queue_for(source: str) -> str:
-    """YouTube: discover w kolejce YT (wspolny limiter z pobraniami, nie zajmuje procesow q:ingest)."""
-    return SOURCE_QUEUES["youtube"] if source == "youtube" else INGEST_QUEUE
+    """Discover zrodel z wolnym limiterem nie blokuje szybkich (WWW, TikTok) w q:ingest.
+
+    YouTube: kolejka YT (wspolny limiter z pobraniami). Facebook: q:ingest:fb — pierwszy proces
+    q:ingest bierze ja przed q:ingest, pozostale dopiero gdy q:ingest jest pusta.
+    """
+    if source == "youtube":
+        return SOURCE_QUEUES["youtube"]
+    return INGEST_FB_QUEUE if source == "facebook" else INGEST_QUEUE
 
 
 def _pending_key(source: str, key: str) -> str:

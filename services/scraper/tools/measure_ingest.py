@@ -18,7 +18,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-SCRAPER_QUEUES = ("q:ingest", "q:render", "q:render:fb", "q:render:yt", "q:fetch:www", "q:render:tt")
+SCRAPER_QUEUES = ("q:ingest", "q:ingest:fb", "q:render", "q:render:fb", "q:render:yt", "q:fetch:www", "q:render:tt")
 
 
 def rate_table(counts: dict[str, int], minutes: float) -> dict[str, float]:

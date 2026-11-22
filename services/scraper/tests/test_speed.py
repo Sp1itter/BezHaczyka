@@ -171,7 +171,7 @@ def test_pool_size_from_env():
     plan = worker.process_plan("q:ingest,q:render", {"SCRAPER_INGEST_PROCS": "3", "SCRAPER_POOL_FB": "2",
                                                      "SCRAPER_POOL_WWW": "0"})
     flat = [tuple(p) for p in plan]
-    assert flat.count(("q:ingest",)) == 3
+    assert flat.count(("q:ingest:fb", "q:ingest")) == 1 and flat.count(("q:ingest", "q:ingest:fb")) == 2
     assert flat.count(("q:render:fb", "q:render")) == 2
     assert not any(p[0] == "q:fetch:www" for p in flat)
 
@@ -192,3 +192,9 @@ def test_seen_cleanup_finds_members_without_case():
     known = {case_id_for(canonical_ad_url("111111111111"))}
     assert seen_cleanup.stale_members("facebook", ["111111111111", "222222222222"], known) == ["222222222222"]
     assert seen_cleanup.stale_members("www", ["https://a.pl/1"], {case_id_for("https://a.pl/1")}) == []
+
+
+def test_discover_queues_keep_slow_sources_apart():
+    assert jobs.discover_queue_for("facebook") == "q:ingest:fb"
+    assert jobs.discover_queue_for("youtube") == "q:render:yt"
+    assert jobs.discover_queue_for("www_live") == jobs.discover_queue_for("tiktok") == "q:ingest"
