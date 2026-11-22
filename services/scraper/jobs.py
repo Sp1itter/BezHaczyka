@@ -262,8 +262,11 @@ def recheck_job(limit: int = 20, older_than_minutes: int = 60) -> int:
     redis = _redis()
     with db.connect() as conn:
         cases = store.cases_for_recheck(conn, limit, older_than_minutes=older_than_minutes)
+    # Recheck do wspolnej q:render: kazdy proces bierze ja dopiero, gdy jego kolejka zrodla jest pusta,
+    # wiec odswiezanie starych przypadkow nie blokuje pobierania nowych materialow.
+    render = Queue(RENDER_QUEUE, connection=redis)
     for c in cases:
-        Queue(render_queue_for(c["source"]), connection=redis).enqueue(fetch_job, c["source"], c["url"], True,
+        render.enqueue(fetch_job, c["source"], c["url"], True,
                        job_id=_job_id(c["source"], "recheck", c["url"]), job_timeout=FETCH_TIMEOUT_S)
     log.info("recheck: %d przypadkow", len(cases))
     return len(cases)

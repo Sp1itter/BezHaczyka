@@ -198,3 +198,10 @@ def test_discover_queues_keep_slow_sources_apart():
     assert jobs.discover_queue_for("facebook") == "q:ingest:fb"
     assert jobs.discover_queue_for("youtube") == "q:render:yt"
     assert jobs.discover_queue_for("www_live") == jobs.discover_queue_for("tiktok") == "q:ingest"
+
+
+def test_recheck_goes_to_low_priority_shared_queue(monkeypatch, redis):
+    monkeypatch.setattr(jobs.store, "cases_for_recheck", lambda conn, limit, older_than_minutes: [
+        {"source": "youtube", "url": "https://www.youtube.com/watch?v=aaaaaaaaaaa"}])
+    assert jobs.recheck_job(5, 0) == 1
+    assert [q for q, _, _ in FakeQueue.enqueued] == ["q:render"]
