@@ -1,7 +1,7 @@
-# scraper: Moduł 1 (facebook, youtube, www)
+# scraper: Moduł 1 (facebook, youtube, www_live, tiktok)
 
-Serwis zbiera reklamy firm inwestycyjnych z trzech źródeł (`sources/facebook.py`, `sources/youtube.py`,
-`sources/www.py`), rozpoznaje podmioty względem rejestru KNF (`resolver.py`), zapisuje dokumenty
+Serwis zbiera reklamy i materiały firm inwestycyjnych z czterech źródeł na żywo (`sources/facebook.py`,
+`sources/youtube.py`, `sources/www_live.py`, `sources/tiktok.py`; `sources/www.py` = korpus offline), rozpoznaje podmioty względem rejestru KNF (`resolver.py`), zapisuje dokumenty
 w bazie (pakiet `casedb`) i zleca analizę kolejką `q:gpu`. Przepływ i kontrakty: `docs/MODUL1-ARCHITEKTURA.md`.
 
 | Plik | Rola |
@@ -9,7 +9,21 @@ w bazie (pakiet `casedb`) i zleca analizę kolejką `q:gpu`. Przepływ i kontrak
 | `jobs.py` | `discover_job(source, query)` (`q:ingest`), `fetch_job(source, url)`, `recheck_job(limit, older_than_minutes)` (`q:render`/`q:ingest`), fabryka `build_source` |
 | `resolver.py` | `Registry` (z `casedb.store.registry_entries`, cache 10 min) i `resolve(doc, registry)` -> pola `EntityResolution` |
 | `scheduler.py`, `schedule.yaml` | harmonogram (rq-scheduler): `python -m scheduler`, `--once` = jednorazowy przebieg |
-| `worker.py` | worker RQ na `q:ingest` + `q:render` (obraz: `Dockerfile`, kontekst budowania `services/`) |
+| `worker.py` | pula procesów `SimpleWorker`: `q:ingest`(+`q:ingest:fb`) i kolejki per źródło `q:render:fb/yt/tt`, `q:fetch:www` (szczegóły: `SOURCES.md`) |
+| `tools/measure_ingest.py` | pomiar: nowe materiały/min per źródło po `--once` |
+
+## Wydajność (pomiar 22.11.2026, żywy stos, `tools/measure_ingest.py`, 12 min)
+
+| źródło | nowe | /min | uwagi |
+|---|---|---|---|
+| www_live | 192 | 16,0 | ddgs → curl_cffi → trafilatura; oferty z RenderProbe ×3 |
+| youtube | 58 | 4,8 | limiter `YT_MIN_INTERVAL_S=8`; napisy blokowane (429) → audio dla Whispera |
+| tiktok | 48 | 4,0 | ddgs `site:tiktok.com` + yt-dlp; wideo tylko dla filmów o finansach |
+| facebook | 45 | 3,7 | limiter `FB_MIN_INTERVAL_S=5` (≤ 12/min); w szczycie 9,1/min |
+| **razem** | **343** | **28,5** | przed sprintem: ~2/min |
+
+Błędy pobrań: FB 0/57, WWW ~12% (403/timeout serwisów). Reklamy TikTok Ad Library nie są
+pobierane (API odpowiada 421 również przeglądarce — ochrona przed automatami, nie obchodzimy).
 
 Resolver: wzmianka firmy to domena z URL-a > dokładna nazwa/alias > fuzzy (rapidfuzz, próg 90, nazwy
 od 8 znaków); aliasy krótsze niż 3 znaki są ignorowane. Relacja: `official` (domena/handle/nazwa
@@ -52,7 +66,12 @@ Decyzje dla reguł DET (konsumuje `rules_det`):
 |---|---|---|
 | `FB_MODE` | `auto` | `live` / `replay` / `auto` (gdy sieć zawiedzie albo breaker jest otwarty, przełącza się na korpus offline) |
 | `FB_COUNTRY` | `PL` | kraj wyświetlania reklam |
-| `FB_MAX_ADS_PER_RUN` / `FB_MAX_SCROLLS` | `25` / `3` | twardy limit ruchu na jeden przebieg |
+| `FB_MAX_ADS_PER_RUN` / `FB_MAX_SCROLLS` | `25` / `3` | twardy limit ruchu na jeden przebieg (każda fraza zwraca ≤ 25 reklam) |
+| `SCRAPER_INGEST_PROCS`, `SCRAPER_POOL_FB/YT/WWW/TT` | `3`, `1/1/2/1` | procesy w kontenerze (worker.py) |
+| `TIKTOK_MODE` | `live` | `live` / `replay` (fixture'y) |
+| `WWW_RENDER`, `WWW_QUERY_SUFFIXES`, `WWW_DOMAIN_INTERVAL_S` | `1`, warianty, `1` | www_live: RenderProbe ofert, warianty frazy, limiter per domena |
+| `YT_AUDIO_MAX_S`, `YT_RESULTS_PER_QUERY` | `1200`, `20` | audio dla Whispera do 20 min; wyniki wyszukiwania YT |
+| `ANALYSIS_JOB_TIMEOUT_S` | `900` | `job_timeout` zadań `q:gpu` |
 | `FB_MIN_INTERVAL_S` | `5` | globalny odstęp między zapytaniami do Meta (Valkey, wspólny dla wszystkich workerów) |
 | `FB_BREAKER_THRESHOLD` / `FB_BREAKER_COOLDOWN_S` | `2` / `1800` | po 2 blokadach źródło pauzuje 30 min |
 | `FB_FIXTURES_DIR` | `fixtures/demo-ads/facebook` | korpus offline |
