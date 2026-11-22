@@ -1,31 +1,28 @@
 # web (osoba C)
 
-Dashboard nadzorcy: React + Vite + Recharts.
+Jedyny panel analityka UKNF: React 18 + Vite + Recharts, ciemny motyw „BezHaczyka”.
+Wszystkie dane z `services/api` (filtrowanie, stronicowanie i agregaty liczy serwer).
 
-- **Ustalenia** — tabela z filtrami (ryzyko, moduł 1–3, status, źródło, score, szukanie),
-  szczegóły: `routing.reason`, dowody reguł (cytat / pomiar / brak), pokrycie,
-  podmioty i rejestr KNF (Moduły 1 i 3), decyzja nadzorcy (`PATCH status`).
-  Suwak progu pewności przelicza `fail` → „do weryfikacji” lokalnie, bez requestu.
-- **Przegląd** — kafelki, rozkład poziomów ryzyka, najczęściej naruszane reguły.
-- **Kalibracja** — próg score na zbiorze złotym: macierz pomyłek, P/R/F1,
-  wykres metryk w funkcji progu, tabela pozycji. Liczone w przeglądarce (`src/lib/metrics.js`).
-- **Alerty** — WebSocket `/ws/alerts`, powiadomienie i odświeżenie tabeli przy nowym `high`.
+| Strona | Co robi | API |
+|---|---|---|
+| Przegląd | liczniki, kolejka weryfikacji (zrzut, decyzja), najczęściej łamane reguły, źródła, trend | `/stats`, `/stats/trend`, `/findings?fields=list` |
+| Alerty | na żywo przez WebSocket + otwarte sprawy wysokiego ryzyka | `/ws/alerts`, `/findings` |
+| Wyniki | filtry: daty, źródło, ryzyko, moduł, status, szukaj; 50 na stronę; trend | `/findings?fields=list&limit=50&offset=`, `/stats/trend` |
+| Szczegóły | podsumowanie, naruszenia (cytat, art. 44), podmiot vs rejestr KNF, zrzut, decyzja, przypisanie, status, historia | `/findings/{id}`, `/findings/{id}/events`, `PATCH /findings/{id}` |
+| Raport Modułu 1 / 3 | tabele z eksportem CSV | `/reports/module1(.csv)`, `/reports/module3(.csv)` |
+| Kalibracja | suwak progu, macierz TP/FP/FN/TN, P/R/F1, wykres FP/FN, zapis progu | `/calibration`, `/settings/threshold` |
+| Operator | kolejki, limity kontenerów analizy, workery (co 10 s) | `/ops/scaling` |
+
+Bez odpytywania częściej niż co 10 s; alerty tylko przez WebSocket (ponowne łączenie co 3 s).
 
 ## Uruchomienie (dev)
-
-Najpierw API na `:8000` (patrz `services/api/README.md`), potem:
 
 ```
 cd services/web
 npm install
-npm run dev        # http://127.0.0.1:5173, /api i /ws przez proxy do :8000
-npm test           # testy logiki kalibracji (node --test)
+npm run dev        # http://127.0.0.1:5173, /api i /ws przez proxy do API_URL (domyślnie :8000)
+npm test           # testy logiki (node --test)
 npm run build      # dist/ dla obrazu nginx
 ```
 
-Inny adres API: `API_URL=http://127.0.0.1:9000 npm run dev`.
-
-W compose obraz `web` serwuje build przez nginx (nie-root, port 8080 w kontenerze,
-`WEB_PORT` na hoście) i proxuje `/api` oraz `/ws` do serwisu `api`.
-
-Bez zewnętrznych zasobów (fonty, CDN) — wymóg on-premise.
+W compose obraz `web` serwuje build przez nginx (nie-root, port 8080) i proxuje `/api` oraz `/ws` do `api`.

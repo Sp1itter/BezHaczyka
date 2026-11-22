@@ -628,11 +628,16 @@ def create_app(store: SqlStore | None = None, gold_path: Path | None = None,
         flt: FindingFilter = Depends(finding_filter),
         limit: int = Query(100, ge=1, le=500),
         offset: int = Query(0, ge=0),
+        fields: Literal["full", "list"] = Query("full", description="list: bez pelnych rule_results (tabela panelu)"),
     ) -> dict[str, Any]:
         flt.limit, flt.offset = limit, offset
         items, total = await run_in_threadpool(st().list_findings, flt)
         for it in items:
             it["coverage"] = coverage(it["rule_results"])
+            if fields == "list":
+                # ~80% wagi listy to dowody regul; tabela potrzebuje tylko nazw zlamanych regul
+                it["violations"] = [{"rule_id": r["rule_id"], "rule_name": r["rule_name"]}
+                                    for r in it.pop("rule_results") if r["verdict"] == "fail"]
         return {"items": items, "total": total, "limit": limit, "offset": offset}
 
     @app.get("/findings/{finding_id}")
