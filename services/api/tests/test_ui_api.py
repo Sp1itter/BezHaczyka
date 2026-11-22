@@ -188,3 +188,50 @@ def test_local_blob_reader_for_dev(tmp_path) -> None:
         read("s3://shots/../../etc/passwd")
     with pytest.raises(FileNotFoundError):
         read("s3://shots/brak.png")
+
+
+# --- media do panelu weryfikacji: zrzut kreacji, film z magazynu, bezpieczne proxy starych adresow ----------
+
+
+def test_creative_screenshot_viewport(store) -> None:  # noqa: F811
+    seen: list[str] = []
+    c = TestClient(create_app(store=store, gold_path=GOLD, blob_reader=lambda u: (seen.append(u), (b"img", "image/png"))[1]))
+    doc = load("ad_document.json")
+    doc["screenshots"] = {**doc["screenshots"], "creative": "s3://shots/11111111-creative.png"}
+    c.post("/documents", json=doc)
+    assert c.get(f"/documents/{doc['id']}/screenshot", params={"viewport": "creative"}).status_code == 200
+    assert seen[-1] == "s3://shots/11111111-creative.png"
+
+
+def test_document_media_from_store_and_errors(store) -> None:  # noqa: F811
+    c = TestClient(create_app(store=store, gold_path=GOLD, blob_reader=lambda u: (b"mp4-bytes", "application/octet-stream")))
+    doc = load("ad_document.json")
+    doc["media"] = [{"kind": "video", "path": "s3://media/11111111.mp4", "duration_s": 12.0}]
+    c.post("/documents", json=doc)
+    r = c.get(f"/documents/{doc['id']}/media/0")
+    assert r.status_code == 200 and r.content == b"mp4-bytes" and r.headers["content-type"] == "video/mp4"
+    assert c.get(f"/documents/{doc['id']}/media/5").status_code == 404
+
+
+def test_media_proxy_only_allowlisted_https(store, monkeypatch) -> None:  # noqa: F811
+    import api.main as m
+
+    calls: list[str] = []
+    monkeypatch.setattr(m, "_fetch_external_media", lambda url: (calls.append(url), (b"jpg", "image/jpeg"))[1])
+    # Atrapy adresow tylko w domenie example.invalid; pobieranie zamockowane.
+    c = TestClient(create_app(store=store, gold_path=GOLD, blob_reader=None))
+    doc = load("ad_document.json")
+    doc["media"] = [
+        {"kind": "image", "path": "https://example.invalid/obraz.jpg", "duration_s": None},
+        {"kind": "image", "path": "http://example.invalid/plain-http.jpg", "duration_s": None},
+    ]
+    c.post("/documents", json=doc)
+    monkeypatch.setenv("MEDIA_PROXY_HOSTS", "nginx")  # host dokumentu spoza listy
+    assert c.get(f"/documents/{doc['id']}/media/0").status_code == 403
+    monkeypatch.delenv("MEDIA_PROXY_HOSTS")  # domyslnie proxy wylaczone
+    assert c.get(f"/documents/{doc['id']}/media/0").status_code == 403
+    monkeypatch.setenv("MEDIA_PROXY_HOSTS", "example.invalid")
+    ok = c.get(f"/documents/{doc['id']}/media/0")
+    assert ok.status_code == 200 and ok.content == b"jpg" and len(calls) == 1
+    assert c.get(f"/documents/{doc['id']}/media/1").status_code == 403  # tylko https
+    assert len(calls) == 1
