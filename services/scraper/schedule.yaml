@@ -5,7 +5,13 @@ jobs:
   - name: fb-inwestycje
     kind: discover            # discover: wyszukanie URL-i i zlecenie pobrania nowych
     source: facebook
-    queries: ["XTB", "kod polecający broker", "konto maklerskie bonus"]
+    # frazy szerokie (keyword_unordered): waskie typu "kod polecający broker" daja 0 reklam
+    queries: ["XTB", "inwestycje", "inwestuj", "broker", "konto maklerskie", "akcje", "ETF", "forex",
+              "kryptowaluty", "trading", "zarabiaj", "giełda", "obligacje", "fundusz inwestycyjny",
+              "kod polecający broker", "konto maklerskie bonus",
+              "bitcoin", "CFD", "dywidenda", "IKE", "IKZE", "złoto inwestycja", "portfel inwestycyjny",
+              "eToro", "Trading 212", "Revolut inwestycje", "Plus500", "Capital.com", "Saxo",
+              "nieruchomości inwestycja", "pasywny dochód", "sygnały tradingowe"]
     interval_minutes: 60
     enabled: true
 
@@ -24,8 +30,30 @@ jobs:
   - name: www-demo
     kind: discover
     source: www
-    seeds: ["http://nginx/www/index.html"]   # korpus demo serwowany przez nginx z compose
+    seeds: ["http://nginx/www/index.html"]   # korpus demo serwowany przez nginx z compose (tryb offline)
     interval_minutes: 30
+    enabled: false            # prawdziwe WWW: www-live; wlacz przy demo bez internetu
+
+  - name: www-live
+    kind: discover
+    source: www_live          # prawdziwy internet: ddgs (pl-pl) -> curl_cffi -> trafilatura (+ RenderProbe)
+    queries:
+      - "doradztwo inwestycyjne"
+      - "family office"
+      - "zarządzanie majątkiem"
+      - "sygnały giełdowe"
+      - "portfel modelowy"
+      - "konsultacje inwestycyjne"
+      - "wealth management Polska"
+      - "kurs inwestowania na giełdzie"
+      - "grupa inwestycyjna telegram"
+      - "sygnały forex"
+      - "doradca inwestycyjny prywatny"
+      - "inwestycje w złoto doradztwo"
+      - "jak inwestować 100 tys zł"
+      - "mentoring inwestycyjny"
+      - "analiza spółek subskrypcja"
+    interval_minutes: 60
     enabled: true
 
   - name: recheck
@@ -37,7 +65,16 @@ jobs:
 
   - name: tiktok-demo
     kind: discover
-    source: tiktok            # szkielet: tylko fixture'y (fixtures/demo-ads/tiktok), patrz SOURCES.md
+    source: tiktok            # TIKTOK_MODE=replay: fixture'y (fixtures/demo-ads/tiktok), demo offline
     queries: ["inwestycje"]
     interval_minutes: 60
     enabled: false
+
+  - name: tiktok-live
+    kind: discover
+    source: tiktok            # TIKTOK_MODE=live (domyslnie): ddgs site:tiktok.com + yt-dlp, patrz SOURCES.md
+    queries: ["kod polecający XTB", "inwestowanie giełda", "jak inwestować", "konto maklerskie",
+              "ETF inwestowanie", "kryptowaluty inwestycje", "forex trading", "pasywny dochód inwestycje",
+              "Revolut akcje", "Trading 212", "eToro", "obligacje skarbowe", "dywidendy", "finanse osobiste"]
+    interval_minutes: 60
+    enabled: true

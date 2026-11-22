@@ -257,3 +257,53 @@ def test_firm_mention_without_signal_needs_missing_captions(monkeypatch):
     """Z napisami zostaje dotychczasowa, scisla kwalifikacja (cel + sygnal w jednym zdaniu)."""
     src = patched(monkeypatch, make(), info(PL * 2 + " Dzisiaj o tym, co robi Firma Przykład."), segs(PL, PL))
     assert not src.fetch_with_evidence(f"{yt.WATCH}{VID}")[1]["qualified"]
+
+
+# --- A3: napisy z yt-dlp, fallback audio -------------------------------------
+
+JSON3 = {"events": [
+    {"tStartMs": 0, "dDurationMs": 4000, "segs": [{"utf8": "Załóż konto w "}, {"utf8": "XTB"}]},
+    {"tStartMs": 4000, "dDurationMs": 3000, "segs": [{"utf8": "\n"}]},
+    {"tStartMs": 7000, "dDurationMs": 2500, "segs": [{"utf8": "link partnerski w opisie"}]},
+]}
+
+
+def test_captions_from_json3():
+    out = yt.captions_from_json3(JSON3)
+    assert [s["text"] for s in out] == ["Załóż konto w XTB", "link partnerski w opisie"]
+    assert out[1]["start"] == 7.0 and out[1]["duration"] == 2.5
+
+
+def test_caption_track_prefers_manual_then_auto_json3():
+    info_ = {"subtitles": {"en": [{"ext": "json3", "url": "en"}]},
+             "automatic_captions": {"pl": [{"ext": "vtt", "url": "v"}, {"ext": "json3", "url": "auto-pl"}]}}
+    assert yt.caption_url(info_, "pl") == "auto-pl"
+    info_["subtitles"]["pl"] = [{"ext": "json3", "url": "manual-pl"}]
+    assert yt.caption_url(info_, "pl") == "manual-pl"
+    assert yt.caption_url({}, "pl") is None
+
+
+class MemStore:
+    def __init__(self):
+        self.items = {}
+
+    def put(self, bucket, key, data, content_type):
+        self.items[(bucket, key)] = data
+        return f"s3://{bucket}/{key}"
+
+
+def test_qualified_video_without_captions_gets_audio_for_whisper(monkeypatch):
+    store = MemStore()
+    src = patched(monkeypatch, make(dictionary=XTB, store=store), info("Załóż konto w XTB, link partnerski xtb.com " + PL, duration=300))
+    monkeypatch.setattr(src, "_audio", lambda vid: b"m4a-bytes")
+    doc, meta = src.fetch_with_evidence(f"https://www.youtube.com/watch?v={VID}")
+    assert meta["qualified"] and doc.transcript is None
+    assert [(m.kind, m.path) for m in doc.media] == [("audio", f"s3://media/{doc.id}.m4a")]
+    assert meta["transcript_source"] == "audio-for-whisper"
+
+
+def test_unqualified_video_does_not_download_audio(monkeypatch):
+    src = patched(monkeypatch, make(dictionary=XTB, store=MemStore()), info("Przepis na sernik " + PL))
+    monkeypatch.setattr(src, "_audio", lambda vid: pytest.fail("audio dla niezakwalifikowanego filmu"))
+    doc, meta = src.fetch_with_evidence(f"https://www.youtube.com/watch?v={VID}")
+    assert not meta["qualified"] and doc.media == []

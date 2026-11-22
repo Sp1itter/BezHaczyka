@@ -14,5 +14,7 @@ scraper/tools/*
 !scraper/tools/reresolve.py
 !scraper/tools/bench_render.py
 !scraper/tools/requalify.py
+!scraper/tools/seen_cleanup.py
+!scraper/tools/measure_ingest.py
 scraper/record_fb_fixtures.py
 casedb/tests

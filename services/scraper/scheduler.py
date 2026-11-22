@@ -125,7 +125,8 @@ def expand(specs: list[JobSpec], *, once: bool = False) -> list[Task]:
             except Exception:
                 log.exception("zadanie %s: nie udalo sie zbudowac fraz z rejestru - pomijam", spec.name)
         tasks.extend(
-            Task(f"{ID_PREFIX}{spec.name}-{i}", jobs.discover_job, [spec.source, q], interval, spec.name)
+            Task(f"{ID_PREFIX}{spec.name}-{i}", jobs.discover_job, [spec.source, q], interval, spec.name,
+                 queue=jobs.discover_queue_for(spec.source))
             for i, q in enumerate(dict.fromkeys(queries), 1)
         )
     return tasks

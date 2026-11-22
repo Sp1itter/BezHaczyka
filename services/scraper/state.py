@@ -169,3 +169,8 @@ class SeenSet:
             self._mem.add(item)
             return True
         return bool(self.redis.sadd(self.key, item))
+
+    def contains(self, item: str) -> bool:
+        if self.redis is None:
+            return item in self._mem
+        return bool(self.redis.sismember(self.key, item))

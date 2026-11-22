@@ -36,11 +36,25 @@ from storage import blob_store_from_env
 log = logging.getLogger("scraper.jobs")
 
 INGEST_QUEUE = "q:ingest"
-RENDER_QUEUE = "q:render"
+RENDER_QUEUE = "q:render"  # stara wspolna kolejka; workery render nadal ja obsluguja (na koncu listy)
+# Osobna kolejka pobierania na zrodlo: wolny limiter YouTube nie blokuje Facebooka i odwrotnie,
+# a lekkie WWW (httpx) nie czeka za Chromium. Pule procesow: worker.process_plan.
+SOURCE_QUEUES = {
+    "facebook": "q:render:fb",
+    "youtube": "q:render:yt",
+    "www": "q:fetch:www",
+    "www_live": "q:fetch:www",
+    "tiktok": "q:render:tt",
+    "tiktok_ads": "q:render:tt",
+}
 DEFAULT_OUTPUT_QUEUE = "q:gpu"
 DEFAULT_OUTPUT_FUNC = "analyzer.worker.analyze_document"
-SOURCES = ("facebook", "youtube", "www", "tiktok")
+SOURCES = ("facebook", "youtube", "www", "tiktok", "www_live")
 FETCH_TIMEOUT_S = 600
+ANALYSIS_TIMEOUT_S = int(os.getenv("ANALYSIS_JOB_TIMEOUT_S", "900"))  # do 5 wywolan LLM na dokument
+ANALYSIS_RETRIES = 2
+# Znacznik "URL juz czeka w kolejce" (zamiast seen.add w discover): wygasa sam, gdyby worker padl.
+PENDING_TTL_S = 2 * FETCH_TIMEOUT_S
 _EVIDENCE_KEYS = ("field", "type", "target", "signals", "comment_id")
 
 
@@ -81,11 +95,19 @@ def build_source(name: str, redis: Any = None, registry: Registry | list[dict] |
 
         limiter = RateLimiter(float(os.getenv("YT_MIN_INTERVAL_S", "8")), redis=redis, key="yt:ratelimit")
         curated = [r for r in _rows(registry) if r.get("source", "curated") == "curated"]
-        return YouTubeSource(dictionary_from_registry(curated), limiter=limiter)
+        return YouTubeSource(dictionary_from_registry(curated), limiter=limiter, store=blob_store_from_env(),
+                             results_per_query=int(os.getenv("YT_RESULTS_PER_QUERY", "20")),
+                             audio_max_s=int(os.getenv("YT_AUDIO_MAX_S", "1200")))
     if name == "www":
         from sources.www import WebPageSource
 
         return WebPageSource(store=blob_store_from_env())
+    if name == "www_live":
+        from resolver import host_of
+        from sources.www_live import LiveWebSource
+
+        domains = {d for r in _rows(registry) for d in (host_of(x) for x in r.get("domains") or []) if d}
+        return LiveWebSource(store=blob_store_from_env(), registry_domains=domains, redis=redis)
     if name == "tiktok":
         from sources.tiktok import TikTokSource
 
@@ -95,6 +117,47 @@ def build_source(name: str, redis: Any = None, registry: Registry | list[dict] |
 
 def _seen_key(source: str, url: str) -> str:
     return ad_id_from_url(url) if source == "facebook" else url
+
+
+def render_queue_for(source: str) -> str:
+    """Kolejka pobierania dla zrodla (nieznane -> wspolna q:render)."""
+    return SOURCE_QUEUES.get(source, RENDER_QUEUE)
+
+
+INGEST_FB_QUEUE = "q:ingest:fb"
+
+
+def discover_queue_for(source: str) -> str:
+    """Discover zrodel z wolnym limiterem nie blokuje szybkich (WWW, TikTok) w q:ingest.
+
+    YouTube: q:render (wspolny limiter z pobraniami, nizszy priorytet niz q:render:yt). Facebook: q:ingest:fb — pierwszy proces
+    q:ingest bierze ja przed q:ingest, pozostale dopiero gdy q:ingest jest pusta.
+    """
+    if source == "youtube":
+        # q:render = niski priorytet: proces YT najpierw pobiera znalezione filmy, potem szuka nowych
+        return RENDER_QUEUE
+    return INGEST_FB_QUEUE if source == "facebook" else INGEST_QUEUE
+
+
+def _pending_key(source: str, key: str) -> str:
+    return f"{source}:pending:{key}"
+
+
+def _mark_done(redis: Any, source: str, url: str) -> None:
+    """Sukces albo trwale zniknięcie: URL do `seen`, zdjecie znacznika pending."""
+    key = _seen_key(source, url)
+    try:
+        SeenSet(redis=redis, key=f"{source}:seen").add(key)
+        redis.delete(_pending_key(source, key))
+    except AttributeError:  # atrapa bez Valkey (testy jednostkowe)
+        pass
+
+
+def _clear_pending(redis: Any, source: str, url: str) -> None:
+    try:
+        redis.delete(_pending_key(source, _seen_key(source, url)))
+    except AttributeError:
+        pass
 
 
 def _job_id(source: str, kind: str, url: str) -> str:
@@ -107,13 +170,16 @@ def discover_job(source: str, query: str) -> int:
 
     redis = _redis()
     seen = SeenSet(redis=redis, key=f"{source}:seen")
-    render = Queue(RENDER_QUEUE, connection=redis)
+    render = Queue(render_queue_for(source), connection=redis)
     new = 0
     for url in build_source(source, redis).discover(query):
-        if seen.add(_seen_key(source, url)):
-            render.enqueue(fetch_job, source, url, job_id=_job_id(source, "fetch", url),
-                           job_timeout=FETCH_TIMEOUT_S)
-            new += 1
+        key = _seen_key(source, url)
+        # `seen` zapisuje dopiero udany fetch_job (wczesniej nieudane pobrania wypadaly na zawsze).
+        if seen.contains(key) or not redis.set(_pending_key(source, key), "1", nx=True, ex=PENDING_TTL_S):
+            continue
+        render.enqueue(fetch_job, source, url, job_id=_job_id(source, "fetch", url),
+                       job_timeout=FETCH_TIMEOUT_S)
+        new += 1
     log.info("discover %s %r: %d nowych", source, query, new)
     return new
 
@@ -132,7 +198,9 @@ def _fetch(source: Any, name: str, url: str) -> tuple[Any, bool, list[store.Cont
     if name == "youtube":
         doc, meta = source.fetch_with_evidence(url)
         return doc, bool(meta.get("qualified")), _youtube_content(meta)
-    return source.fetch(url), True, []
+    doc = source.fetch(url)
+    # Zrodla z wlasnym filtrem tematycznym (TikTok) zglaszaja `qualified` w last_meta.
+    return doc, bool((getattr(source, "last_meta", None) or {}).get("qualified", True)), []
 
 
 def fetch_job(source: str, url: str, recheck: bool = False) -> dict:
@@ -147,8 +215,12 @@ def fetch_job(source: str, url: str, recheck: bool = False) -> dict:
             case_id = store.case_id_for(url)
             store.mark_gone(conn, case_id)
             conn.commit()
+            _mark_done(redis, source, url)
             log.info("%s zniknal: %s", source, url)
             return {"case_id": case_id, "outcome": "gone"}
+        except Exception:
+            _clear_pending(redis, source, url)  # nastepny discover sprobuje ponownie
+            raise
         resolution = resolve(doc, registry)
         doc = with_official_flag(doc, resolution)
         case_id, outcome = store.record_document(
@@ -157,6 +229,7 @@ def fetch_job(source: str, url: str, recheck: bool = False) -> dict:
             meta=getattr(src, "last_meta", None) or None,
         )
         conn.commit()
+    _mark_done(redis, source, url)
     log.info("%s %s -> %s%s", source, url, outcome, " (recheck)" if recheck else "")
     if outcome in ("new", "changed") and qualified:
         _enqueue_analysis(redis, doc, case_id, resolution)
@@ -177,7 +250,10 @@ def _enqueue_analysis(redis: Any, doc: Any, case_id: str, resolution: dict) -> N
     }
     queue = os.getenv("SCRAPER_OUTPUT_QUEUE") or DEFAULT_OUTPUT_QUEUE
     func = os.getenv("SCRAPER_OUTPUT_FUNC") or DEFAULT_OUTPUT_FUNC
-    Queue(queue, connection=redis).enqueue(func, payload)
+    from rq import Retry
+
+    Queue(queue, connection=redis).enqueue(func, payload, job_timeout=ANALYSIS_TIMEOUT_S,
+                                           retry=Retry(max=ANALYSIS_RETRIES, interval=[10, 60]))
 
 
 def recheck_job(limit: int = 20, older_than_minutes: int = 60) -> int:
@@ -185,9 +261,11 @@ def recheck_job(limit: int = 20, older_than_minutes: int = 60) -> int:
     from rq import Queue
 
     redis = _redis()
-    render = Queue(RENDER_QUEUE, connection=redis)
     with db.connect() as conn:
         cases = store.cases_for_recheck(conn, limit, older_than_minutes=older_than_minutes)
+    # Recheck do wspolnej q:render: kazdy proces bierze ja dopiero, gdy jego kolejka zrodla jest pusta,
+    # wiec odswiezanie starych przypadkow nie blokuje pobierania nowych materialow.
+    render = Queue(RENDER_QUEUE, connection=redis)
     for c in cases:
         render.enqueue(fetch_job, c["source"], c["url"], True,
                        job_id=_job_id(c["source"], "recheck", c["url"]), job_timeout=FETCH_TIMEOUT_S)
