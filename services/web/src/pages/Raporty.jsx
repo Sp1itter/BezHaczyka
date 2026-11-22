@@ -85,7 +85,8 @@ function Module3() {
   }, []);
   const columns = useMemo(() => [
     { id: "who", header: "Podmiot", size: 200, accessorFn: (r) => r.entity || r.publisher || "—" },
-    { id: "offer", header: "Treść oferty", size: 360, accessorFn: (r) => quiet(clip(r.offer_text || r.text)) },
+    { id: "offer", header: "Treść oferty", size: 320, accessorFn: (r) => quiet(clip(r.offer_text || r.text)) },
+    { id: "why", header: "Uzasadnienie", size: 280, accessorFn: (r) => r.evidence || "—" },
     { id: "url", header: "URL", size: 80, enableSorting: false, accessorFn: (r) => r.url, Cell: ({ row }) => link(row.original.url, "otwórz") },
     { id: "knf", header: "Rejestr KNF", size: 180, accessorFn: (r) => r.registry_status || "—" },
     { id: "date", header: "Wykryto", size: 130, accessorFn: (r) => r.created_at || "", Cell: ({ row }) => fmtShort(row.original.created_at) },

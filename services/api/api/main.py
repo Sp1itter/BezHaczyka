@@ -248,6 +248,85 @@ class ThresholdIn(BaseModel):
     actor: str | None = None
 
 
+# --------------------------------------------------------------------------- #
+# Modul 3: doradztwo bez zezwolenia (RuleResult M3 z analyzera)
+# --------------------------------------------------------------------------- #
+
+M3_COLUMNS = ("created_at", "entity", "registry_status", "source", "publisher", "url", "offer_text",
+              "evidence", "quote", "risk_level", "risk_score", "finding_id")
+
+
+def module3_row(f: dict[str, Any]) -> dict[str, Any] | None:
+    """Wiersz raportu M3 z findingu, w ktorym regula M3 ma werdykt fail; inaczej None."""
+    m3 = next((r for r in f.get("rule_results") or [] if r.get("rule_id") == "M3" and r.get("verdict") == "fail"), None)
+    if m3 is None:
+        return None
+    firm = (f.get("entities") or {}).get("investment_firm") or {}
+    adv = (f.get("entities") or {}).get("advertiser") or {}
+    doc = f.get("document") or {}
+    pub = doc.get("publisher") or {}
+    publisher = pub if isinstance(pub, str) else (pub.get("display_name") or pub.get("handle") or "")
+    if firm.get("is_authorized") is True:
+        registry = "zezwolenie KNF"
+    elif firm.get("is_authorized") is False:
+        registry = "brak zezwolenia KNF"
+    else:
+        registry = "brak w rejestrze KNF"
+    ev = m3.get("evidence") or {}
+    return {
+        "finding_id": f["id"], "created_at": f["created_at"],
+        "entity": firm.get("name_in_ad") or adv.get("name") or publisher or None,
+        "registry_status": registry, "source": doc.get("source"), "publisher": publisher or None,
+        "url": doc.get("url"), "offer_text": doc.get("text_excerpt"),
+        "evidence": ev.get("summary"), "quote": ev.get("quote"),
+        "risk_level": f.get("risk_level"), "risk_score": f.get("risk_score"),
+    }
+
+
+# --------------------------------------------------------------------------- #
+# Panel operatora: proxy do autoskalera osoby B (kontrakt w planie, par. 6)
+# --------------------------------------------------------------------------- #
+
+def _contract_mock() -> dict[str, Any]:
+    """Atrapa GET /scaling z kontraktu B<->C, do czasu gotowosci autoskalera (AUTOSCALER_URL=atrapa)."""
+    return {
+        "source": "atrapa", "executor": "compose", "ollama_parallel": 4,
+        "queues": [{"name": "q:gpu", "backlog": 12, "running": 2, "min": 1, "max": 4,
+                    "cpus": 2.0, "memory_mb": 3072, "scale_up_backlog": 3}],
+        "workers": [{"id": "analyzer-1", "queue": "q:gpu", "state": "busy", "job": None, "since": None},
+                    {"id": "analyzer-2", "queue": "q:gpu", "state": "idle", "job": None, "since": None}],
+        "throughput_per_min": 7.5,
+    }
+
+
+def _autoscaler_call(base: str, method: str, body: dict[str, Any] | None) -> tuple[int, Any]:
+    import urllib.error
+    import urllib.request
+
+    data = json.dumps(body).encode() if body is not None else None
+    req = urllib.request.Request(f"{base.rstrip('/')}/scaling", data=data, method=method,
+                                 headers={"Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=5) as resp:  # noqa: S310 - adres z konfiguracji compose
+            return resp.status, json.loads(resp.read() or b"{}")
+    except urllib.error.HTTPError as exc:
+        try:
+            return exc.code, json.loads(exc.read() or b"{}")
+        except ValueError:
+            return exc.code, {"detail": f"Autoskaler: HTTP {exc.code}"}
+
+
+class ScalingQueueIn(BaseModel):
+    name: str
+    max: int = Field(ge=0)
+    cpus: float = Field(gt=0)
+    memory_mb: int = Field(gt=0)
+
+
+class ScalingIn(BaseModel):
+    queues: list[ScalingQueueIn]
+
+
 def create_app(store: SqlStore | None = None, gold_path: Path | None = None,
                blob_reader: BlobReader | None = _FROM_ENV) -> FastAPI:
     @asynccontextmanager
@@ -511,6 +590,66 @@ def create_app(store: SqlStore | None = None, gold_path: Path | None = None,
             headers={"Content-Disposition": f'attachment; filename="modul1-raport-{stamp}.csv"',
                      "X-Total-Count": str(total)},
         )
+
+    # --- raport Modulu 3 ----------------------------------------------------------
+    async def _module3_rows() -> list[dict[str, Any]]:
+        items = await run_in_threadpool(st().query_findings, FindingFilter())
+        rows = [r for r in (module3_row(f) for f in items) if r]
+        return sorted(rows, key=lambda r: str(r["created_at"]), reverse=True)
+
+    @app.get("/reports/module3")
+    async def report_module3(limit: int = Query(500, ge=1, le=5000)) -> dict[str, Any]:
+        rows = await _module3_rows()
+        return {"items": rows[:limit], "total": len(rows)}
+
+    @app.get("/reports/module3.csv")
+    async def report_module3_csv() -> Response:
+        rows = (await _module3_rows())[:CSV_MAX_ROWS]
+        buf = io.StringIO()
+        w = csv.writer(buf)
+        w.writerow(M3_COLUMNS)
+        for r in rows:
+            w.writerow([_csv_cell(r.get(c)) for c in M3_COLUMNS])
+        stamp = datetime.now(timezone.utc).strftime("%Y%m%d")
+        return Response(content="\ufeff" + buf.getvalue(), media_type="text/csv; charset=utf-8",
+                        headers={"Content-Disposition": f'attachment; filename="modul3-raport-{stamp}.csv"',
+                                 "X-Total-Count": str(len(rows))})
+
+    # --- panel operatora (proxy do autoskalera) ------------------------------------
+    def _autoscaler() -> str:
+        return os.getenv("AUTOSCALER_URL", "http://autoscaler:8090")
+
+    @app.get("/ops/scaling")
+    async def ops_scaling() -> Any:
+        base = _autoscaler()
+        if base == "atrapa":
+            app.state.ops_mock = getattr(app.state, "ops_mock", None) or _contract_mock()
+            return app.state.ops_mock
+        try:
+            status, body = await run_in_threadpool(_autoscaler_call, base, "GET", None)
+        except OSError:
+            raise HTTPException(503, f"Autoskaler niedostępny ({base})") from None
+        return JSONResponse(body, status_code=status)
+
+    @app.put("/ops/scaling")
+    async def ops_scaling_put(body: ScalingIn) -> Any:
+        base = _autoscaler()
+        if base == "atrapa":
+            state = getattr(app.state, "ops_mock", None) or _contract_mock()
+            for q in body.queues:
+                if q.max > state["ollama_parallel"]:
+                    raise HTTPException(422, f"max > OLLAMA_NUM_PARALLEL ({state['ollama_parallel']})")
+            for q in body.queues:
+                for cur in state["queues"]:
+                    if cur["name"] == q.name:
+                        cur.update(max=q.max, cpus=q.cpus, memory_mb=q.memory_mb)
+            app.state.ops_mock = state
+            return state
+        try:
+            status, resp = await run_in_threadpool(_autoscaler_call, base, "PUT", body.model_dump())
+        except OSError:
+            raise HTTPException(503, f"Autoskaler niedostępny ({base})") from None
+        return JSONResponse(resp, status_code=status)
 
     # --- alerty na zywo -----------------------------------------------------------
     @app.websocket("/ws/alerts")
