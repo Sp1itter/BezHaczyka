@@ -21,6 +21,7 @@ import io
 import json
 import logging
 import os
+import re
 from collections import Counter, OrderedDict
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
@@ -33,7 +34,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
 
-from api.contracts import AdDocument, Finding
+from api.contracts import AdDocument, Finding, MediaItem
 from api.review import ReviewLabel, labels_payload, verdict_for
 from api.store import UNSET, FindingFilter, FlagsUnavailable, InvalidId, ReportUnavailable, SqlStore, open_store
 
@@ -348,6 +349,65 @@ class ScalingIn(BaseModel):
     queues: list[ScalingQueueIn]
 
 
+BlobWriter = Any  # Callable[[str, bytes, str], None]
+
+
+def local_blob_writer(root: Path) -> BlobWriter:
+    """Dev bez SeaweedFS: zapis s3://<bucket>/<klucz> do <root>/<bucket>/<klucz>."""
+    base = root.resolve()
+
+    def write(uri: str, data: bytes, ctype: str) -> None:
+        bucket, _, key = uri.removeprefix("s3://").partition("/")
+        path = (base / bucket / key).resolve()
+        if base not in path.parents:
+            raise ValueError(f"klucz poza magazynem: {uri}")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(data)
+
+    return write
+
+
+def s3_writer_from_env() -> BlobWriter | None:
+    endpoint = os.getenv("S3_ENDPOINT")
+    if not endpoint or not os.getenv("S3_ACCESS_KEY") or not os.getenv("S3_SECRET_KEY"):
+        local = os.getenv("LOCAL_BLOB_DIR")
+        return local_blob_writer(Path(local)) if local else None
+    import boto3
+
+    client = boto3.client("s3", endpoint_url=endpoint, aws_access_key_id=os.environ["S3_ACCESS_KEY"],
+                          aws_secret_access_key=os.environ["S3_SECRET_KEY"],
+                          region_name=os.getenv("S3_REGION", "us-east-1"))
+
+    def write(uri: str, data: bytes, ctype: str) -> None:
+        bucket, _, key = uri.removeprefix("s3://").partition("/")
+        client.put_object(Bucket=bucket, Key=key, Body=data, ContentType=ctype)
+
+    return write
+
+
+# --------------------------------------------------------------------------- #
+# Kadry filmow YouTube dla panelu: pobrane raz, zapisane w magazynie jako media
+# --------------------------------------------------------------------------- #
+
+YOUTUBE_ID = re.compile(r"(?:youtube\.com/(?:watch\?v=|embed/|shorts/)|youtu\.be/)([a-zA-Z0-9_-]{11})")
+
+
+def youtube_video_id(url: str | None) -> str | None:
+    m = YOUTUBE_ID.search(url or "")
+    return m.group(1) if m else None
+
+
+def frame_url_templates() -> list[str]:
+    """YOUTUBE_FRAME_URLS: szablony adresu miniatury z {id}, po przecinku (np. hq, potem mq).
+    Host kazdego szablonu musi byc na MEDIA_PROXY_HOSTS. Domyslnie pusto: uzupelnianie wylaczone."""
+    return [s.strip() for s in os.getenv("YOUTUBE_FRAME_URLS", "").split(",") if "{id}" in s]
+
+
+def _has_image(doc: AdDocument) -> bool:
+    return any(m.kind == "image" for m in (doc.media or [])) or bool((doc.screenshots or {}).get("creative"))
+
+
+
 # --------------------------------------------------------------------------- #
 # Media dokumentu: z magazynu (s3://) albo proxy starszych adresow CDN platform
 # --------------------------------------------------------------------------- #
@@ -386,7 +446,8 @@ def _fetch_external_media(url: str) -> tuple[bytes, str]:
 
 
 def create_app(store: SqlStore | None = None, gold_path: Path | None = None,
-               blob_reader: BlobReader | None = _FROM_ENV) -> FastAPI:
+               blob_reader: BlobReader | None = _FROM_ENV,
+               blob_writer: BlobWriter | None = _FROM_ENV) -> FastAPI:
     @asynccontextmanager
     async def lifespan(a: FastAPI):
         task = None
@@ -409,6 +470,7 @@ def create_app(store: SqlStore | None = None, gold_path: Path | None = None,
     app.state.alert_lookback_s = _env_float("ALERT_LOOKBACK_S", 3600)
     app.state.gold_path = gold_path or Path(os.getenv("GOLD_LABELS_PATH", str(DEFAULT_GOLD)))
     app.state.blob_reader = s3_reader_from_env() if blob_reader is _FROM_ENV else blob_reader
+    app.state.blob_writer = s3_writer_from_env() if blob_writer is _FROM_ENV else blob_writer
 
     # Front w trybie dev (vite, :5173) wola API z innego originu. W compose idzie przez nginx.
     origins = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",")
@@ -464,6 +526,46 @@ def create_app(store: SqlStore | None = None, gold_path: Path | None = None,
             log.exception("Nie udalo sie pobrac zrzutu %s", uri)
             raise HTTPException(502, "Magazyn zrzutow nie odpowiada") from None
         return Response(content=data, media_type=content_type, headers={"Cache-Control": "private, max-age=3600"})
+
+    def _backfill_frames() -> dict[str, Any]:
+        from urllib.parse import urlsplit
+
+        templates = frame_url_templates()
+        writer = app.state.blob_writer
+        if not templates or writer is None:
+            return {"enabled": False, "checked": 0, "added": 0, "failed": 0,
+                    "reason": "ustaw YOUTUBE_FRAME_URLS i magazyn (S3 albo LOCAL_BLOB_DIR)"}
+        allowed = media_proxy_hosts()
+        templates = [s for s in templates if urlsplit(s).scheme == "https" and _host_allowed(urlsplit(s).hostname or "", allowed)]
+        out = {"enabled": bool(templates), "checked": 0, "added": 0, "failed": 0}
+        for doc_id in st().document_ids(source="youtube"):
+            doc = st().get_document(doc_id)
+            vid = youtube_video_id(doc.url if doc else None)
+            if doc is None or vid is None or _has_image(doc):
+                continue
+            out["checked"] += 1
+            for tpl in templates:
+                try:
+                    data, ctype = _fetch_external_media(tpl.replace("{id}", vid))
+                except Exception:  # noqa: BLE001 - brak miniatury: probujemy nastepny szablon
+                    continue
+                if not ctype.startswith("image/"):
+                    continue
+                uri = f"s3://media/{doc.id}-frame.jpg"
+                writer(uri, data, ctype)
+                doc.media = [*(doc.media or []), MediaItem(kind="image", path=uri)]
+                st().upsert_document(doc)
+                out["added"] += 1
+                break
+            else:
+                out["failed"] += 1
+        return out
+
+    @app.post("/documents/frames/backfill")
+    async def backfill_frames() -> dict[str, Any]:
+        """Uzupelnia kadry filmow YouTube bez obrazu: id z adresu, miniatura pobrana raz do magazynu
+        (s3://media/<doc>-frame.jpg) i dopisana do media dokumentu. Idempotentne (pomija rekordy z obrazem)."""
+        return await run_in_threadpool(_backfill_frames)
 
     @app.get("/documents/{document_id}/media/{index}")
     async def document_media(document_id: str, index: int) -> Response:
