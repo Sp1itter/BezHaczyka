@@ -15,6 +15,7 @@ cd infra && cp .env.example .env && docker compose up -d --build
 
 Pierwszy start pobiera modele i buduje obrazy (10–15 min). Panel: http://localhost:7090,
 API: http://localhost:8000/docs. Zbieranie na żądanie: `docker compose exec scheduler python -m scheduler --once`.
+Gotowe dane z 20-minutowego testu do wgrania: [demo/README.md](demo/README.md).
 
 ## Wymagania sprzętowe
 
