@@ -43,7 +43,7 @@ Przykładowe dane dla dashboardu (z `fixtures/contract-examples`):
 ### Ollama (LLM analyzera)
 
 Domyślnie Ollama startuje w kontenerze z GPU NVIDIA, a `ollama-pull` sam pobiera modele
-(`SpeakLeash/bielik-4.5b-v3.0-instruct:Q8_0`, `bge-m3`, `bielik-1.5b`; pierwszy start ok. 6 GB).
+(`SpeakLeash/bielik-4.5b-v3.0-instruct:Q8_0`, `bge-m3`, `SpeakLeash/bielik-1.5b-v3.0-instruct:Q8_0`; pierwszy start ok. 6 GB).
 Żadnych ręcznych kroków. Alternatywy (w `infra/.env`):
 - bez GPU (CPU, wolno): `COMPOSE_FILE=docker-compose.yml:docker-compose.cpu.yml`,
 - Ollama natywna na hoście: `COMPOSE_FILE=docker-compose.yml:docker-compose.native.yml` i
@@ -59,7 +59,7 @@ Komendy z katalogu `infra/`.
 |---|---|
 | `services/<x>/**` | `docker compose up -d --build <x>` (scraper = `scraper-worker scheduler`) |
 | `infra/docker-compose.yml` | `docker compose up -d --build --remove-orphans` |
-| `infra/.env.example` | porównaj ze swoim `.env`, dopisz nowe zmienne, potem `docker compose up -d` |
+| `infra/.env.example` | porównaj ze swoim `.env`, dopisz nowe zmienne, potem `docker compose up -d`. Ollama: w `.env` ustaw `OLLAMA_BASE_URL=http://ollama:11434` albo dopisz `COMPOSE_FILE=docker-compose.yml:docker-compose.native.yml` (Ollama natywna) / `COMPOSE_FILE=docker-compose.yml:docker-compose.cpu.yml` (bez NVIDIA). Maszyna bez GPU bez nakładki cpu nie uruchomi `ollama` |
 | `services/casedb/casedb/migrations/**` | `docker compose up -d --build casedb` (migracje przyrostowe, dane zostają) |
 | `infra/init.sql` | dotyczy tylko pustego wolumenu; schemat zmieniają migracje casedb, `down -v` niepotrzebne |
 | nie wiesz | `docker compose up -d --build --remove-orphans` (przebuduje tylko zmienione) |
