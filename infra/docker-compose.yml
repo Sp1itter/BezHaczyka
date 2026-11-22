@@ -389,9 +389,8 @@ services:
       OLLAMA_KEEP_ALIVE: ${OLLAMA_KEEP_ALIVE:--1}
       OLLAMA_CONTEXT_LENGTH: ${OLLAMA_CONTEXT_LENGTH:-4096}
       OLLAMA_MAX_LOADED_MODELS: ${OLLAMA_MAX_LOADED_MODELS:-2}
-    ports:
-      # Opcjonalnie tylko localhost; 11435, zeby nie kolidowac z natywna Ollama (11434).
-      - "127.0.0.1:${OLLAMA_PORT:-11435}:11434"
+    # Bez portu na hoscie: Windows rezerwuje zakresy portow (11435 padl przy starcie stosu).
+    # Dostep reczny: `docker compose exec ollama ollama list`.
     volumes:
       - ollamadata:/root/.ollama
     cpus: ${OLLAMA_CPUS:-8}
