@@ -66,6 +66,8 @@ ALLOWED_HOSTS = {
     "scraper",
     "dashboard",
     "dashboard-mock",
+    "autoscaler",
+    "docker-socket-proxy",
     # atrapy w testach i przykladach
     "fake",
     "example.invalid",
@@ -207,6 +209,10 @@ def check_external_hosts(files: list[Path]) -> list[str]:
     url_re = re.compile(r"https?://([A-Za-z0-9_.\-]+)")
     for f in _scannable(files):
         if f.name in HOST_CHECK_SKIP_NAMES:
+            continue
+        # Testy to dane wejsciowe parserow (adresy w tresci stron/reklam), nie wywolania
+        # sieci - testy uzywaja atrap. Sekrety, licencje i wersje sa sprawdzane takze w testach.
+        if "tests" in f.parts:
             continue
         for lineno, line in _lines(f):
             for host in url_re.findall(line):

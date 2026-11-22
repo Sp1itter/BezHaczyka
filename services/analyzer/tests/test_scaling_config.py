@@ -17,9 +17,9 @@ def _zapisz(tmp_path, tresc):
 
 def test_domyslny_plik_sie_wczytuje():
     cfg = load_scaling_config()
-    assert cfg.executor == "dry-run"
-    assert cfg.hard_max_total == 6
-    assert cfg.queues["gpu"].max_workers == 1
+    assert cfg.executor == "compose"
+    assert cfg.hard_max_total == 16
+    assert cfg.queues["q:gpu"].max_workers == 4
 
 
 def test_plik_yaml_zgodny_z_domyslna_konfiguracja():
@@ -44,10 +44,10 @@ def test_wiecej_workerow_gpu_niz_endpointow_jest_odrzucane(tmp_path):
         "  executor: dry-run\n"
         "  hard_max_total: 6\n"
         "  queues:\n"
-        "    gpu: {min: 1, max: 4, scale_up_backlog: 3, scale_down_idle_s: 600}\n"
+        "    'q:gpu': {min: 1, max: 8, scale_up_backlog: 3, scale_down_idle_s: 600}\n"
         "  ollama_endpoints: ['http://127.0.0.1:11434']\n",
     )
-    with pytest.raises(ScalingConfigError, match="endpoint"):
+    with pytest.raises(ScalingConfigError, match="OLLAMA_NUM_PARALLEL"):
         load_scaling_config(p)
 
 
@@ -56,7 +56,7 @@ def test_min_wieksze_od_max_jest_odrzucane(tmp_path):
         tmp_path,
         "scaling:\n"
         "  queues:\n"
-        "    ingest: {min: 3, max: 2, scale_up_backlog: 10, scale_down_idle_s: 300}\n",
+        "    'q:ingest': {min: 3, max: 2, scale_up_backlog: 10, scale_down_idle_s: 300}\n",
     )
     with pytest.raises(ScalingConfigError, match="min"):
         load_scaling_config(p)
@@ -68,9 +68,9 @@ def test_hard_max_total_mniejszy_od_sumy_min_jest_odrzucany(tmp_path):
         "scaling:\n"
         "  hard_max_total: 2\n"
         "  queues:\n"
-        "    ingest: {min: 1, max: 4, scale_up_backlog: 10, scale_down_idle_s: 300}\n"
-        "    render: {min: 1, max: 2, scale_up_backlog: 5, scale_down_idle_s: 300}\n"
-        "    gpu: {min: 1, max: 1, scale_up_backlog: 3, scale_down_idle_s: 600}\n",
+        "    'q:ingest': {min: 1, max: 4, scale_up_backlog: 10, scale_down_idle_s: 300}\n"
+        "    'q:render': {min: 1, max: 2, scale_up_backlog: 5, scale_down_idle_s: 300}\n"
+        "    'q:gpu': {min: 1, max: 1, scale_up_backlog: 3, scale_down_idle_s: 600}\n",
     )
     with pytest.raises(ScalingConfigError, match="hard_max_total"):
         load_scaling_config(p)

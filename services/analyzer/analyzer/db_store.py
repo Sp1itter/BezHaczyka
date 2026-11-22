@@ -116,6 +116,23 @@ class DbStore:
     ) -> None:
         snapshot = document.model_dump(mode="json") if document is not None else None
 
+        # Ponowna analiza tego samego dokumentu AKTUALIZUJE istniejacy finding
+        # (to samo id), zamiast dokladac duplikat. save_finding robi upsert po id
+        # i nie dotyka kolumn pracy analityka (assignee, review_*, finding_events);
+        # status zachowujemy, bo to tez praca analityka (np. triage).
+        try:
+            existing = self._run(
+                f"Nie sprawdzono istniejacego findingu {finding.document_id}",
+                lambda store, conn: store.latest_finding(conn, finding.document_id),
+            )
+        except StoreError as exc:
+            log.warning("%s - zapis jako nowy finding", exc)
+            existing = None
+        if existing:
+            finding.id = str(existing["id"])
+            if existing.get("status"):
+                finding.status = existing["status"]
+
         self._run(
             f"Nie zapisano findingu {finding.id}",
             lambda store, conn: store.save_finding(

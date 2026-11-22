@@ -40,11 +40,16 @@ docker compose run --rm casedb report module1 --format csv -o /data/modul1.csv  
 Przykładowe dane dla dashboardu (z `fixtures/contract-examples`):
 `docker compose exec api python -m api.seed --dir /data/contract-examples`.
 
-Reguły LLM wymagają Ollamy z modelami `SpeakLeash/bielik-4.5b-v3.0-instruct:Q8_0` i `bge-m3`
-(bez niej analyzer działa dalej, a reguły LLM dostają `not_applicable`). Bez Ollamy na hoście:
-1. w `infra/.env` ustaw `OLLAMA_BASE_URL=http://ollama:11434`,
-2. `docker compose --profile ollama up -d --build`,
-3. `docker compose exec ollama ollama pull SpeakLeash/bielik-4.5b-v3.0-instruct:Q8_0` oraz `docker compose exec ollama ollama pull bge-m3`.
+### Ollama (LLM analyzera)
+
+Domyślnie Ollama startuje w kontenerze z GPU NVIDIA, a `ollama-pull` sam pobiera modele
+(`SpeakLeash/bielik-4.5b-v3.0-instruct:Q8_0`, `bge-m3`, `SpeakLeash/bielik-1.5b-v3.0-instruct:Q8_0`; pierwszy start ok. 6 GB).
+Żadnych ręcznych kroków. Alternatywy (w `infra/.env`):
+- bez GPU (CPU, wolno): `COMPOSE_FILE=docker-compose.yml:docker-compose.cpu.yml`,
+- Ollama natywna na hoście: `COMPOSE_FILE=docker-compose.yml:docker-compose.native.yml` i
+  `OLLAMA_BASE_URL=http://host.docker.internal:11434` (modele: `ollama pull` na hoście).
+
+Bez działającej Ollamy analyzer nadal pracuje, a reguły LLM dostają `not_applicable`.
 
 ## Po `git pull`
 
@@ -54,7 +59,7 @@ Komendy z katalogu `infra/`.
 |---|---|
 | `services/<x>/**` | `docker compose up -d --build <x>` (scraper = `scraper-worker scheduler`) |
 | `infra/docker-compose.yml` | `docker compose up -d --build --remove-orphans` |
-| `infra/.env.example` | porównaj ze swoim `.env`, dopisz nowe zmienne, potem `docker compose up -d` |
+| `infra/.env.example` | porównaj ze swoim `.env`, dopisz nowe zmienne, potem `docker compose up -d`. Ollama: w `.env` ustaw `OLLAMA_BASE_URL=http://ollama:11434` albo dopisz `COMPOSE_FILE=docker-compose.yml:docker-compose.native.yml` (Ollama natywna) / `COMPOSE_FILE=docker-compose.yml:docker-compose.cpu.yml` (bez NVIDIA). Maszyna bez GPU bez nakładki cpu nie uruchomi `ollama` |
 | `services/casedb/casedb/migrations/**` | `docker compose up -d --build casedb` (migracje przyrostowe, dane zostają) |
 | `infra/init.sql` | dotyczy tylko pustego wolumenu; schemat zmieniają migracje casedb, `down -v` niepotrzebne |
 | nie wiesz | `docker compose up -d --build --remove-orphans` (przebuduje tylko zmienione) |
@@ -65,24 +70,19 @@ Praca nad UI z hot reload: `cd services/web && npm ci && npm run dev` (Vite :517
 
 | Zasób | Minimum |
 |---|---|
-| GPU | min. 8 GB VRAM (zalecane, profil `gpu8`); bez GPU działa na CPU, wolno |
+| GPU | NVIDIA, min. 8 GB VRAM (profil `gpu8`), sterownik z obsługą WSL2; bez GPU: nakładka CPU (wolno) |
 | RAM | 8 GB bez Ollamy, 16 GB z Ollamą |
 | Dysk | ok. 17 GB (modele Ollamy ~6,3 GB + obrazy Dockera, w tym Chromium) |
-| Oprogramowanie | Docker Desktop z WSL2 (Compose v2); Ollama natywnie na hoście (analiza) |
+| Oprogramowanie | Docker Desktop z WSL2 i wsparciem GPU NVIDIA (Compose v2.24+); Ollama działa w kontenerze |
 
 | Narzędzie | Po co | Obowiązkowe |
 |---|---|---|
 | **Docker Desktop** (z WSL2 na Windows) | cały stos: Postgres, Valkey, SeaweedFS, casedb, scraper, scheduler, analyzer, api, web | **tak** |
 | **PostgreSQL 16 + pgvector** | baza przypadków, dokumentów i ustaleń (schemat: migracje `services/casedb`) — działa **w Dockerze**, obraz `pgvector/pgvector:pg16`, nie instaluj go osobno | **tak** (przez Docker) |
-| Ollama | modele dla analyzera (Bielik, bge-m3); natywnie na hoście albo profil `ollama` | tylko do analizy |
+| Ollama | modele dla analyzera (Bielik, bge-m3); domyślnie kontener z GPU, alternatywnie natywna | tylko do analizy |
 | Python 3.12, Node.js 20 | praca nad kodem serwisów poza kontenerami | tylko dla deweloperów |
 
-Modele (na hoście, raz):
-
-```
-ollama pull SpeakLeash/bielik-4.5b-v3.0-instruct:Q8_0
-ollama pull bge-m3
-```
+Modele pobiera kontener `ollama-pull` (ręcznie, tylko w trybie natywnym: `ollama pull SpeakLeash/bielik-4.5b-v3.0-instruct:Q8_0`, `ollama pull bge-m3`).
 
 ### Instalacja Dockera na Windows
 
@@ -133,7 +133,7 @@ Znane problemy:
 | `api` | FastAPI: dokumenty, ustalenia, alerty WebSocket | [services/api](services/api/README.md), `API_PORT` |
 | `web` | dashboard: ustalenia, przegląd, panel kalibracji | [services/web](services/web/README.md), `WEB_PORT` |
 | `nginx` | korpus demo offline | `DEMO_CORPUS_PORT` |
-| `ollama` | opcjonalnie, Ollama w kontenerze (CPU) | profil `ollama` |
+| `ollama`, `ollama-pull` | Ollama z GPU NVIDIA + jednorazowe pobranie modeli | `infra/README.md` |
 
 Wszystkie zmienne z opisami są w [infra/.env.example](infra/.env.example), a przepływ danych
 w [docs/MODUL1-ARCHITEKTURA.md](docs/MODUL1-ARCHITEKTURA.md). Szczegóły stosu: [infra/README.md](infra/README.md).

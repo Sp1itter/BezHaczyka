@@ -27,7 +27,9 @@ ruszania tego pliku.
 from __future__ import annotations
 
 import logging
+import os
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Callable, Sequence
@@ -49,7 +51,7 @@ from analyzer.completeness import is_partial
 from analyzer.det_placeholders import missing_det_placeholders
 from analyzer.rules_det_fallback import det_fallback_results
 from analyzer.router import RoutingInput, route
-from analyzer.scope_gate import classify_scope
+from analyzer.scope_gate import NO_SIGNAL_REASON, classify_scope
 from analyzer.scoring import risk_level, risk_score
 
 # Regula = cokolwiek, co ma `.rule_id` i `.evaluate(doc)`. Nie importujemy
@@ -125,6 +127,10 @@ class AnalyzerConfig:
     # None = nie transkrybujemy (transcript zostaje None, reguly degraduja sie
     # do not_applicable, nic sie nie wywraca).
     transcriber: Callable[[AdDocument], Transcript | None] | None = None
+    # Klient LLM dla Modulu 3 (shadow advisory) — ten sam, ktory obsluguje wsady
+    # Modulu 2. None = Modul 3 nie jest wolany (testy bez Ollamy); produkcyjny
+    # build_config/default_config zawsze go ustawia.
+    module3_client: object | None = None
 
 
 def analyze(
@@ -159,9 +165,19 @@ def analyze(
     scope = classify_scope(doc.analyzable_text)
     if config.scope_override is not None:
         scope.status = config.scope_override
+    # Wideo/audio bez transkryptu (awaria STT): brak sygnalu w samym tytule nie
+    # dowodzi braku sygnalu w narracji, wiec nie wykluczamy - zostaje do oceny.
+    if (
+        scope.status is ScopeStatus.OUT_OF_SCOPE
+        and scope.reason == NO_SIGNAL_REASON
+        and doc.transcript is None
+        and any(m.kind in AUDIO_KINDS for m in doc.media)
+    ):
+        scope.status = ScopeStatus.UNCERTAIN
+        scope.reason = "brak transkryptu wideo - nie mozna wykluczyc sygnalu w narracji"
     doc.scope = scope
 
-    # --- ③ router ------------------------------------------------------- #
+    # ---③ router ------------------------------------------------------- #
     decision = route(
         RoutingInput(
             scope_status=scope.status,
@@ -174,9 +190,17 @@ def analyze(
         )
     )
 
+    if scope.status is ScopeStatus.OUT_OF_SCOPE and scope.reason:
+        # powod wykluczenia widoczny w routing (UI/API czyta routing, nie doc.scope)
+        decision.routing.reason = f"{decision.routing.reason} Powod: {scope.reason}."
+
     # --- ④ ewaluacja regul --------------------------------------------- #
     results: list[RuleResult] = []
-    if 2 in decision.modules:
+    # Modul 2 (art. 44) to ocena bazowa KAZDEGO materialu w zakresie, niezaleznie
+    # od trasy R1-R4: trasa rozstrzyga o przypisaniu do Modulu 1/3, nie o tym,
+    # czy ostrzezenie o ryzyku ma byc czytelne. Poza zakresem nie oceniamy.
+    in_scope = scope.status is not ScopeStatus.OUT_OF_SCOPE
+    if in_scope:
         # Reguly DET (4, 5, 6, 7, 8) liczy SCRAPER z geometrii renderu i oddaje
         # je gotowe w zadaniu kolejki — analyzer nie ma RenderProbe w swojej
         # domenie i nie powtarza tych pomiarow. Doklejamy je do wynikow regul
@@ -188,13 +212,11 @@ def analyze(
         fallback = det_fallback_results(doc, det_results)
         results.extend(fallback)
         results.extend(missing_det_placeholders(doc, [*(det_results or []), *fallback]))
-        for runner in config.module2_runners:
-            try:
-                results.extend(runner(doc))
-            except Exception as exc:  # noqa: BLE001
-                # Padnieta regula nie moze wywrocic calego potoku w trakcie
-                # demo. Logujemy przez evidence innych regul i idziemy dalej.
-                results.append(_crashed_rule_result(runner, exc))
+        # Modul 3 biegnie w tej samej puli watkow co runnery Modulu 2.
+        extra: list[RuleRunner] = []
+        if 3 in decision.modules and config.module3_client is not None:
+            extra.append(_module3_runner(entities, config.module3_client))
+        results.extend(_run_module2(doc, config, extra))
 
     # --- straz niekompletnego materialu -------------------------------- #
     if is_partial(doc):
@@ -203,10 +225,14 @@ def analyze(
     # --- ⑤ scoring ------------------------------------------------------ #
     score = risk_score(results)
 
+    primary_module = decision.primary_module
+    if any(r.rule_id == "M3" and r.verdict is Verdict.FAIL for r in results):
+        primary_module = 3
+
     return Finding(
         id=str(uuid.uuid4()),
         document_id=doc.id,
-        primary_module=decision.primary_module,
+        primary_module=primary_module,
         modules=decision.modules,
         routing=decision.routing,
         risk_score=score,
@@ -220,6 +246,53 @@ def analyze(
         status="triage" if decision.routing.rule == "R4" else "new",
         created_at=datetime.now(timezone.utc),
     )
+
+
+def _run_one(runner: RuleRunner, doc: AdDocument) -> list[RuleResult]:
+    try:
+        return list(runner(doc))
+    except Exception as exc:  # noqa: BLE001
+        # Padnieta regula nie moze wywrocic calego potoku w trakcie
+        # demo. Logujemy przez evidence innych regul i idziemy dalej.
+        return [_crashed_rule_result(runner, exc)]
+
+
+def _module3_runner(entities: EntityResolution, client: object) -> RuleRunner:
+    """Runner Modulu 3 w ksztalcie RuleRunner (doc -> [RuleResult])."""
+    from analyzer.module3 import assess_shadow_advisory
+
+    def run_module3(doc: AdDocument) -> list[RuleResult]:
+        return [
+            assess_shadow_advisory(
+                doc,
+                publisher_is_authorized=entities.publisher_is_authorized,
+                client=client,  # type: ignore[arg-type]
+            )
+        ]
+
+    return run_module3
+
+
+def _run_module2(
+    doc: AdDocument, config: AnalyzerConfig, extra: Sequence[RuleRunner] = ()
+) -> list[RuleResult]:
+    """Uruchom runnery Modulu 2 rownolegle; wyniki w kolejnosci runnerow.
+
+    Wspolbieznosc: env LLM_BATCH_CONCURRENCY (domyslnie 4; 1 = sekwencyjnie).
+    Kolejnosc wyniku jest identyczna jak w wersji sekwencyjnej, bo zbieramy
+    po indeksie runnera, nie po czasie zakonczenia.
+    """
+    runners = [*config.module2_runners, *extra]
+    try:
+        conc = int(os.getenv("LLM_BATCH_CONCURRENCY", "4"))
+    except ValueError:
+        conc = 4
+    workers = min(conc, len(runners))
+    if workers <= 1:
+        return [r for runner in runners for r in _run_one(runner, doc)]
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        futures = [pool.submit(_run_one, runner, doc) for runner in runners]
+        return [r for f in futures for r in f.result()]
 
 
 AUDIO_KINDS = ("video", "audio")

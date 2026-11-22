@@ -1,0 +1,45 @@
+{
+  "profit_claim": {
+    "nie": [
+      "76% rachunkow inwestorow detalicznych traci pieniadze",
+      "Kody promocyjne Revolut - znizki do 90%",
+      "mBank przegral 99% spraw",
+      "Program Partnerski mBank: jak zaczac zarabiac"
+    ],
+    "tak": [
+      "zysk 12% rocznie",
+      "stopa zwrotu 8%",
+      "zarobilem 30% w miesiac",
+      "oprocentowanie 7%",
+      "nawet 15% zysku"
+    ]
+  },
+  "rekomendacja": {
+    "nie": [
+      "nie stanowi porady inwestycyjnej ani rekomendacji",
+      "nasze wpisy nie sa rekomendacjami",
+      "materialy nie sa rekomendacja w rozumieniu przepisow"
+    ],
+    "tak": [
+      "rekomendujemy zakup akcji CD Projekt",
+      "nasza rekomendacja: kupuj",
+      "przygotujemy dla Ciebie indywidualna rekomendacje portfela",
+      "doradzimy, w co zainwestowac"
+    ]
+  },
+  "zakres": {
+    "poza_zakresem": [
+      "Votum frankowicze: kredyt we frankach, uniewaznienie umowy kredytowej",
+      "Kod promocyjny i kupon rabatowy - znizka 20% na zakupy",
+      "KARTA WALUTOWA na wakacje - bez prowizji za przewalutowanie",
+      "Karta kredytowa bonus 200 zl za pierwsza transakcje",
+      "Telefon od osoby podajacej sie za przedstawiciela XTB - uwazaj na oszustow"
+    ],
+    "w_zakresie_lub_niepewne": [
+      "Kredyt we frankach a CFD na EUR/CHF",
+      "Karta walutowa i konto maklerskie: kup akcje i ETF",
+      "Oszustwo: ktos podaje sie za XTB i oferuje handel CFD z dzwignia",
+      "Kod promocyjny do rachunku maklerskiego, bonus za obligacje"
+    ]
+  }
+}

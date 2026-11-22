@@ -1,46 +1,51 @@
-# Konfiguracja autoskalera puli workerow analyzera.
+# Konfiguracja autoskalera analyzerow (python -m analyzer.autoscaler).
 #
-# Podstawa pomiaru: caly czas analizy dokumentu (18,4 s) to warstwa modelu,
-# etapy CPU zajmuja 3,7 ms. Dlatego liczba workerow kolejki `gpu` nie moze
-# przekraczac liczby endpointow Ollamy - worker bez modelu nie daje przepustowosci.
+# Nazwy kolejek to nazwy RQ (q:gpu, q:ingest, q:render). Autoskaler SKALUJE tylko
+# q:gpu (kontenery serwisu `analyzer`); q:ingest i q:render sa tu dla porzadku
+# i pokazywane w /scaling tylko do odczytu.
 #
-# Niezmienniki sprawdzane przy starcie (naruszenie = ScalingConfigError):
+# Operator zmienia wartosci q:gpu w locie (PUT /scaling) - trafiaja do klucza
+# Valkey `ops:scaling` i nadpisuja ten plik. Zmienne ANALYZER_* z compose
+# (ANALYZER_MAX_REPLICAS itd.) nadpisuja go przy starcie.
+#
+# Niezmienniki (naruszenie = ScalingConfigError, w API HTTP 422):
 #   - min <= max w kazdej kolejce
-#   - gpu.max <= liczba ollama_endpoints
+#   - q:gpu.max <= OLLAMA_NUM_PARALLEL * liczba ollama_endpoints
+#     (jedna Ollama z OLLAMA_NUM_PARALLEL=N obsluguje N workerow rownolegle)
 #   - hard_max_total >= suma min ze wszystkich kolejek
 #   - executor nalezy do {dry-run, pool, compose}
 scaling:
 
-  # Sposob wykonywania decyzji: dry-run (tylko loguje), pool (procesy lokalne),
-  # compose (docker compose - jeszcze niezaimplementowany).
-  executor: dry-run
+  # dry-run (tylko loguje), pool (procesy lokalne), compose (kontenery Dockera
+  # przez docker-socket-proxy). Nadpisywane przez env AUTOSCALER_EXECUTOR.
+  executor: compose
 
   # Twardy limit sumy workerow ze wszystkich kolejek razem.
-  hard_max_total: 6
+  hard_max_total: 16
 
   queues:
 
-    # Pobieranie i wstepna obrobka materialu (CPU, tanie).
-    ingest:
-      min: 1                  # nigdy mniej workerow niz tyle
-      max: 4                  # nigdy wiecej workerow niz tyle
-      scale_up_backlog: 10    # backlog >= tyle zadan => dodaj jednego workera
-      scale_down_idle_s: 300  # pusta kolejka przez tyle sekund => zdejmij jednego
+    q:ingest:
+      min: 1
+      max: 4
+      scale_up_backlog: 10
+      scale_down_idle_s: 300
 
-    # Renderowanie strony (przegladarka, srednio kosztowne).
-    render:
+    q:render:
       min: 1
       max: 2
       scale_up_backlog: 5
       scale_down_idle_s: 300
 
-    # Analiza modelem - waskie gardlo; max ograniczony liczba endpointow Ollamy.
-    gpu:
-      min: 1
-      max: 1
-      scale_up_backlog: 3
-      scale_down_idle_s: 600
+    # Analiza modelem - waskie gardlo; max ogranicza OLLAMA_NUM_PARALLEL.
+    q:gpu:
+      min: 1                  # lacznie z bazowym kontenerem compose (ten nigdy nie jest zdejmowany)
+      max: 4
+      scale_up_backlog: 3     # backlog >= tyle zadan => dodaj jednego workera
+      scale_down_idle_s: 60   # pusta kolejka przez tyle sekund => zdejmij jednego
+      cpus: 2.0               # limity KLONOW (bazowy ma limity z compose)
+      memory_mb: 3072
 
-  # Endpointy Ollamy dostepne dla workerow kolejki gpu.
+  # Endpointy Ollamy dostepne dla workerow kolejki q:gpu.
   ollama_endpoints:
     - http://host.docker.internal:11434
