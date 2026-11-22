@@ -1,107 +1,68 @@
-# Proces budowy z asystentami AI
+# Jak pracowaliśmy z asystentami AI
 
-Dokument opisuje, jak zespół (3 osoby, każda z agentami Claude Code) zbudował InvestWatch.
-Każde twierdzenie wskazuje plik lub commit w repozytorium. Tam, gdzie repozytorium czegoś
-nie dokumentuje, napisano to wprost (sekcja 6).
+Byliśmy trzyosobowym zespołem i mieliśmy niecałe dwie doby. Asystentów AI używaliśmy do pisania
+kodu, testów i dokumentacji, ale zakres, architekturę, podział pracy i ocenę wyników zostawiliśmy
+sobie. Niżej opisujemy, jak to wyglądało w praktyce i gdzie w repozytorium są tego ślady.
 
-## 1. Narzędzia
+## Narzędzia
 
-| Narzędzie | Rola | Ślad w repo |
-|---|---|---|
-| Claude Code | asystent kodujący, jeden na osobę zespołu | `.claude/CLAUDE.md`, `.claude/settings.json` |
-| Plugin superpowers | proces: brainstorming, spec, plan, TDD, przegląd | struktura `docs/superpowers/{specs,plans}/` |
-| graphify | graf wiedzy o kodzie; agent pyta graf przed czytaniem źródeł | `graphify-out/` (`graph.json`, `GRAPH_REPORT.md`), `.claude/skills/graphify/` |
-| Ollama + Bielik 4.5B v3.0 (Q8_0), bge-m3 | model produktu, uruchamiany lokalnie na GPU 8 GB | `docs/STAN-PROJEKTU.md` §2, `services/analyzer/analyzer/llm.py` |
+- **Claude Code** – asystent kodowania, każdy z nas pracował na własnej instancji.
+- **Plugin superpowers** – narzucał stały rytm pracy: najpierw rozmowa o wymaganiach, potem
+  specyfikacja, plan z etapami, implementacja z testami i przegląd. Artefakty są w `docs/superpowers/`.
+- **graphify** – graf zależności w kodzie (`graphify-out/`). Asystent korzystał z niego, zanim zaczął
+  czytać pliki, dzięki czemu mniej zgadywał.
+- W samym produkcie nie ma żadnego zewnętrznego API. Analizę robi lokalny Bielik 4.5B i bge-m3
+  przez Ollamę, a `tools/check_compliance.py` pilnuje, żeby tak zostało.
 
-Hooki w `.claude/settings.json` (`graphify hook-guard`, PreToolUse na Bash/Grep/Read/Glob)
-wymuszają na agencie zapytanie do grafu, zanim przeszuka kod. Graf odświeżano po etapach
-(m.in. commity `e37a40f`, `5324276`).
+## Przebieg pracy
 
-W produkcie nie ma płatnych ani zewnętrznych API modeli. Pilnuje tego automat
-`tools/check_compliance.py` (sekcja 5). Narzędzia AI służyły do budowy kodu; model w produkcie
-to wyłącznie Bielik i bge-m3 na maszynie lokalnej.
+1. **Wymagania i zakres.** Opis wyzwania i załączniki przeczytaliśmy sami i sami zdecydowaliśmy,
+   co jest w zakresie. Najważniejsza decyzja: o zakresie decyduje opakowanie instrumentu, a nie aktywo,
+   więc CFD i ETP na kryptowaluty zostają, a zakup krypto spot odpada (MiCA). Zapisaliśmy to
+   w `docs/superpowers/specs/2026-11-21-investwatch-design.md`.
+2. **Specyfikacja i plan.** Asystent pomagał rozpisać design, ale wersję drugą przyjęliśmy dopiero
+   po wspólnym przeglądzie (commit `80031fb`). Plany etapów są w `docs/superpowers/plans/`.
+3. **Podział pracy.** Każdy miał swój obszar: zbieranie danych, analiza, panel i API. Każdy pracował
+   na osobnej gałęzi i w osobnym katalogu roboczym, a wspólne pliki miały jednego właściciela.
+   Zmiany wchodziły przez pull requesty po każdym etapie.
+4. **Kontrakty danych.** Formaty `AdDocument`, `Finding` i `RuleResult` ustaliliśmy na początku
+   i zapisaliśmy przykłady w `fixtures/contract-examples/`. Test `test_spojnosc.py` łapie każdą
+   rozbieżność kopii kontraktu między serwisami.
+5. **Implementacja i przegląd.** Asystent pisał kod razem z testami (w analyzerze ponad 900 testów).
+   Każdą większą zmianę przeglądaliśmy przed scaleniem: osobno zgodność z wymaganiami, osobno jakość.
+6. **Weryfikacja na żywym systemie.** Testy nie wystarczały, więc każdą wersję puszczaliśmy na
+   prawdziwych danych z internetu i czytaliśmy wyniki. Tak wyszły błędy, których żaden test nie
+   przewidział: zwiastun „Toy Story: Buzz Lightyear” oceniony jako reklama brokera Lightyear,
+   gra z „+50% szybkości” potraktowana jak obietnica zysku, zastrzeżenie „nie stanowi rekomendacji”
+   uznane za rekomendację. Każdy taki przypadek trafił do testów regresji
+   (`services/analyzer/tests/test_live_regressions*.py`).
 
-## 2. Proces: standard i pliki
+## Jak sprawdzaliśmy, czy model ocenia dobrze
 
-Standard pochodzi z pluginu superpowers. Kolejne kroki mają odpowiedniki w repozytorium:
+- **Zbiory kontrolne zamrożone przed strojeniem.** Etykiety commitowaliśmy, zanim uruchomiliśmy
+  model, więc historia gita pokazuje, że nie dopasowaliśmy ich do wyników (`229f259`, `cbe1c6c`).
+  Na zbiorze, którego nie używaliśmy do strojenia (`fixtures/module2-holdout-2/`, 99 etykiet),
+  trafność wynosi 81–82%. To uważamy za uczciwą miarę. Wyższe wyniki na zbiorze strojenia
+  traktujemy jako optymistyczne.
+- **Kod tam, gdzie model zawodził.** Bielik 4.5B potrafił zignorować polecenie albo „zobaczyć”
+  ostrzeżenie, którego w tekście nie było. Elementy, które da się zmierzyć, rozstrzyga więc kod
+  (`rules_llm/guards.py`, `scope_gate.py`), a model ocenia tylko to, co wymaga rozumienia języka.
+- **Powtarzalność.** Po tym, jak ta sama reklama dostała dwa różne werdykty, ustawiliśmy
+  `temperature 0` i stały `seed`. Nadzorca nie może dostać innej oceny przy każdym odświeżeniu.
+- **Człowiek ma ostatnie słowo.** W panelu każdy wynik ma decyzję analityka (potwierdzenie albo
+  odrzucenie z uzasadnieniem), a próg alertów ustawia się w kalibracji na podstawie ocen ludzi.
 
-| Krok | Artefakt |
-|---|---|
-| Brainstorming i decyzje zakresu | `docs/superpowers/specs/2026-11-21-investwatch-design.md` (m.in. nie-cele i §6.6 brama zakresu) |
-| Spec (design doc) | te same specyfikacje oraz `docs/superpowers/specs/2026-11-22-harmonogram-design.md`; wersja 2 po review zespołu: commit `80031fb` |
-| Plan z etapami | `docs/superpowers/plans/` (5 planów: harmonogram, infra docker, domknięcie Modułu 1, finalizacja panelu, sprint finałowy z etapami A/B/C) |
-| Implementacja z testami | testy obok kodu: `services/analyzer/tests/` (41 plików), `services/api/tests/`, testy scrapera i dashboardu; plany podają polecenia testowe i osobne bazy testowe (`2026-11-22-panel-finalizacja.md`) |
-| Przegląd | przegląd zespołu (`80031fb`); przegląd czterech równoległych strumieni, z którego powstał `services/analyzer/tests/test_spojnosc.py` (docstring); przegląd kodu i UI w `docs/superpowers/plans/2026-11-22-sprint-final-3-osoby.md` §1 |
-| Weryfikacja na żywym stosie | `docs/STAN-PROJEKTU.md` §2-3 (pomiary na żywym Bieliku), §7 (czego nie uruchomiono) |
+## Bezpieczeństwo łańcucha dostaw
 
-Stan testów analizatora na początku sprintu finałowego: 729 przeszło, 6 pominiętych
-(wartość z briefu sprintu; odtwarza ją `python -m pytest -q` w `services/analyzer`).
+Wersje zależności są przypięte. `tools/audit.sh` skanuje pakiety Pythona (pip-audit), panel
+sprawdzamy `npm audit`, a wyniki są w `docs/SECURITY-AUDIT.md`. Licencje zebraliśmy
+w `docs/LICENSES.md`. Sekrety są tylko w `infra/.env`, poza repozytorium.
 
-## 3. Praca równoległa zespołu
+## Czego nie oddaliśmy asystentowi
 
-- **Gałąź i worktree na osobę lub zadanie.** Gałęzie `feat/*` i `worktree-*` w repozytorium
-  (np. `feat/dashboard`, `feat/scraper-finalizacja`, `worktree-modul1-domkniecie`).
-  Zmiany wchodzą przez pull requesty (w historii `main` 10 commitów merge PR, m.in. #15, #16, #19, #20, #21).
-- **Właściciele plików.** Plany i design doc wskazują właściciela (np. nagłówek
-  `2026-11-22-harmonogram-design.md`: „Właściciel: Osoba B"); sprint finałowy dzieli pliki
-  między osoby A, B, C.
-- **Kontrakty danych.** `AdDocument`, `Finding`, `RuleResult`, `RenderProbe`, `Scope` mają
-  przykłady w `fixtures/contract-examples/`. Testy `services/analyzer/tests/test_spojnosc.py`
-  i `services/api/tests/test_contracts_copy.py` wykrywają rozjazd kopii kontraktu między serwisami.
-- **Bazy testowe oddzielone od bazy zespołu** (`iw_test*`), co opisują plany.
+- interpretacji przepisów i decyzji, co jest w zakresie nadzoru,
+- etykiet zbioru złotego do kalibracji (`fixtures/gold/`),
+- decyzji o scaleniu zmian i oceny, czy wynik na żywych danych ma sens.
 
-## 4. Kontrola jakości wyników AI
-
-Model 4.5B ocenia reklamy, więc jego wyniki mierzymy, a nie zakładamy.
-
-**Zbiory kontrolne zamrożone przed strojeniem** (historia gita to dokumentuje):
-
-| Zbiór | Etykiety w commicie | Wynik przed poprawkami | Wynik końcowy |
-|---|---|---|---|
-| `fixtures/module2-holdout/` (83 etykiety) | `229f259` (21.11 18:29), przed uruchomieniem modelu | `17c1821` (18:56): 75% (62/83) | 89%, ale po poprawkach na nim zbiór „nie jest już czysty" |
-| `fixtures/module2-holdout-2/` (99 etykiet) | `cbe1c6c` (21.11 18:59), przed poprawkami uogólnienia | - | **82%**, zbiór nieużyty do strojenia |
-| `fixtures/module1-labels/` (40 etykiet Modułu 1) | `ec2949e` (21.11 21:57), przed zmianami resolvera | `baseline.json` | `after.json` |
-
-Zbiór strojenia (`fixtures/module2-cases/`, 73 etykiety) daje 96%, ale `docs/STAN-PROJEKTU.md` §3
-opisuje go jako optymistyczny. Za uczciwą miarę uznajemy 82% z drugiego zbioru kontrolnego.
-Zbiór złoty (`fixtures/gold/`, 8 prawdziwych reklam FB): F1 maks. 0,571; niska wartość
-wynika z pokrycia, nie z klasyfikatora (§3 tamże). Narzędzie: `services/analyzer/tools/eval_rules.py`
-(wskazane w §3 `STAN-PROJEKTU.md`), wyniki w `eval_results*.json` przy zbiorach.
-
-**Strażnicy w kodzie.** Bielik 4.5B ignoruje część poleceń promptu i „widzi" w tekście
-zastrzeżenia, których tam nie ma. Elementy obiektywne rozstrzyga kod
-(`services/analyzer/analyzer/rules_llm/guards.py`, `preconditions.py`; commity `fb4f2ea`, `13144a6`),
-model ocenia tylko to, co wymaga rozumienia języka. Reguła 10 jest hybrydowa z tego samego powodu.
-
-**Powtarzalność.** `temperature 0` + stały `seed` (`analyzer/llm.py`); powód: przy 0,1 ta sama reklama
-dawała różne werdykty. Pomiar: 3 identyczne przebiegi i 0 rozbieżności w smoke teście
-4 wsadów x 5 materiałów (`docs/STAN-PROJEKTU.md` §2, §4).
-
-Regresje złapane pomiarem są opisane w `docs/STAN-PROJEKTU.md` §3 (np. dwa fałszywe naruszenia
-reguły 18 na korpusie złotym).
-
-## 5. Bezpieczeństwo łańcucha dostaw
-
-- `tools/audit.sh`: `pip-audit 2.10.1` (baza PyPA/OSV) dla każdego `services/*/requirements.txt`
-  w czystym kontenerze; wyniki i daty w `docs/SECURITY-AUDIT.md`.
-- Wersje zależności przypięte `==` (sprawdza `tools/check_compliance.py`).
-- Sekrety tylko w `infra/.env` (w `.gitignore`); w repo jest wyłącznie `infra/.env.example`.
-- `tools/check_compliance.py` (commit `5bbe9cb`): brak zewnętrznych adresów, brak zewnętrznych API
-  modeli, brak licencji AGPL/SSPL/gemma, brak sekretów, przypięte wersje.
-- `npm audit` dla panelu: zaplanowany w sprincie finałowym (plan, sekcja o `npm audit`). W chwili
-  pisania nie ma go w `docs/SECURITY-AUDIT.md`; wynik zostanie tam dopisany po wykonaniu.
-
-## 6. Czego AI nie robiło i gdzie decydował człowiek
-
-- **Zakres prawny.** Decyzja, że kryptoaktywa spot są poza zakresem, a CFD/ETP na krypto zostają
-  w zakresie, jest zapisana w specyfikacji (nie-cele, §6.6) i w `docs/STAN-PROJEKTU.md` §1.
-  Zakres wynika z opisu wyzwania i ustawy, nie z wyboru modelu.
-- **Zbiór złoty.** `fixtures/gold/labels.json` jest oznaczany ręcznie (README zbioru); w sprincie
-  finałowym analityk ma oceniać żywe findingi w UI (plan, B5).
-- **Weryfikacja przez człowieka w produkcie.** Powyżej progu finding wymaga potwierdzenia człowieka,
-  a panel zapisuje przypisanie AI vs człowiek (commity `ab7b825`, `7d24c87`).
-- **Ograniczenia.** Etykiety Modułu 1 (`fixtures/module1-labels/README.md`) nadał subagent AI
-  według rubryki, nie człowiek; autor zbioru kontrolnego nie widział kodu reguł. Nie twierdzimy,
-  że to ocena ekspercka.
-- **Nieudokumentowane w repo.** Briefy i raporty zadań sprintu leżą w `.superpowers/`
-  (niezacommitowane), więc nie podajemy z nich liczby przeglądów kodu ani czasu pracy agentów.
+Etykiety zbioru kontrolnego Modułu 1 (`fixtures/module1-labels/`) przygotowaliśmy z pomocą asystenta
+według ustalonej rubryki, więc nie przedstawiamy ich jako oceny eksperckiej.
