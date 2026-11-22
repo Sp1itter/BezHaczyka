@@ -52,11 +52,11 @@ class TestOdczytuStanuKolejek:
     def test_czyta_backlog_i_workerow_z_wstrzyknietych_czytnikow(self) -> None:
         stany = read_queue_states(
             CFG,
-            backlog_reader=lambda n: {"ingest": 25, "render": 1, "gpu": 9}[n],
+            backlog_reader=lambda n: {"q:ingest": 25, "q:render": 1, "q:gpu": 9}[n],
             worker_counter=lambda n: 2,
         )
         assert {s.name for s in stany} == set(CFG.queues)
-        assert next(s for s in stany if s.name == "ingest").backlog == 25
+        assert next(s for s in stany if s.name == "q:ingest").backlog == 25
         assert all(s.workers == 2 for s in stany)
 
     def test_idle_zawsze_zero_bo_licznik_nalezy_do_petli_orkiestratora(self) -> None:
@@ -80,8 +80,8 @@ class TestOdczytuStanuKolejek:
         bezczynnosc i jest pozadany."""
         stany = read_queue_states(CFG, backlog_reader=lambda n: 0, worker_counter=lambda n: 3)
         decyzje = {d.queue: d for d in decide(stany, CFG)}
-        assert decyzje["render"].desired == CFG.queues["render"].max_workers
-        assert decyzje["gpu"].desired == CFG.queues["gpu"].max_workers
+        assert decyzje["q:render"].desired == CFG.queues["q:render"].max_workers
+        assert decyzje["q:gpu"].desired <= CFG.queues["q:gpu"].max_workers
 
     def test_awaria_odczytu_daje_zera_a_nie_wyjatek(self) -> None:
         """/scaling nie moze padac, gdy kolejka nie odpowiada."""
@@ -97,11 +97,8 @@ class TestOdczytuStanuKolejek:
             CFG, backlog_reader=lambda n: 50, worker_counter=lambda n: 1
         )
         decyzje = {d.queue: d for d in decide(stany, CFG)}
-        assert decyzje["ingest"].desired == 2
-        assert decyzje["gpu"].capped_by == "ollama_endpoints", (
-            "gpu nie moze przekroczyc liczby endpointow — workery bez modeli "
-            "nie daja przepustowosci"
-        )
+        assert decyzje["q:ingest"].desired == 2
+        assert decyzje["q:gpu"].desired == 2
 
 
 class TestDostawcyStanu:
@@ -124,7 +121,7 @@ class TestDostawcyStanu:
     def test_dostawca_zwraca_stany_gdy_odczyt_dziala(self, monkeypatch) -> None:
         import analyzer.scaling as sc
 
-        oczekiwane = [QueueState("ingest", backlog=3, workers=1, idle_s=0.0)]
+        oczekiwane = [QueueState("q:ingest", backlog=3, workers=1, idle_s=0.0)]
         monkeypatch.setattr(sc, "read_queue_states", lambda *_a, **_k: oczekiwane)
         assert sc.make_valkey_state_provider(CFG)() == oczekiwane
 

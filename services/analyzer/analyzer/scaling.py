@@ -1,8 +1,10 @@
 """Autoskaler puli workerow: konfiguracja, funkcja decyzyjna, payload /scaling.
 
 Zmierzono, ze CALY czas analizy dokumentu (18,4 s) to warstwa modelu, a etapy
-CPU zajmuja 3,7 ms. Dlatego liczba workerow `q:gpu` nie moze przekraczac liczby
-endpointow Ollamy: workery bez modeli to puste krzesla i nie daja przepustowosci.
+CPU zajmuja 3,7 ms. Jedna Ollama z OLLAMA_NUM_PARALLEL=N obsluguje N rownoleglych
+zadan, wiec liczba workerow `q:gpu` nie moze przekraczac N * liczba endpointow:
+worker ponad te pojemnosc to puste krzesla i nie daje przepustowosci.
+Nazwy kolejek sa nazwami RQ (`q:gpu`, `q:ingest`, `q:render`).
 
 Roznica celowa: BRAK konfiguracji degraduje do domyslnej (z ostrzezeniem),
 ale konfiguracja wewnetrznie SPRZECZNA to blad operatora - ScalingConfigError.
@@ -11,6 +13,7 @@ ale konfiguracja wewnetrznie SPRZECZNA to blad operatora - ScalingConfigError.
 from __future__ import annotations
 
 import logging
+import os
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -23,6 +26,9 @@ log = logging.getLogger(__name__)
 logger = logging.getLogger(__name__)
 
 DEFAULT_SCALING_PATH = Path(__file__).resolve().parent / "config" / "scaling.yaml"
+
+GPU_QUEUE = "q:gpu"
+DEFAULT_OLLAMA_PARALLEL = 4
 
 VALID_EXECUTORS = frozenset({"dry-run", "pool", "compose"})
 
@@ -42,6 +48,9 @@ class QueuePolicy:
     max_workers: int
     scale_up_backlog: int
     scale_down_idle_s: int
+    # Limity zasobow KLONOW (dodatkowych kontenerow); 0 = bez limitu.
+    cpus: float = 0.0
+    memory_mb: int = 0
 
 
 @dataclass(frozen=True)
@@ -50,18 +59,26 @@ class ScalingConfig:
     hard_max_total: int
     queues: dict[str, QueuePolicy]
     ollama_endpoints: tuple[str, ...]
+    # Ile rownoleglych zadan obsluguje jedna Ollama (OLLAMA_NUM_PARALLEL).
+    ollama_parallel: int = DEFAULT_OLLAMA_PARALLEL
+
+    @property
+    def gpu_capacity(self) -> int:
+        """Maksymalna sensowna liczba workerow q:gpu."""
+        return self.ollama_parallel * max(1, len(self.ollama_endpoints))
 
 
 # Kopia wartosci z scaling.yaml - fallback, gdy plik nie istnieje.
 DEFAULT_SCALING_CONFIG = ScalingConfig(
-    executor="dry-run",
-    hard_max_total=6,
+    executor="compose",
+    hard_max_total=16,
     queues={
-        "ingest": QueuePolicy("ingest", 1, 4, 10, 300),
-        "render": QueuePolicy("render", 1, 2, 5, 300),
-        "gpu": QueuePolicy("gpu", 1, 1, 3, 600),
+        "q:ingest": QueuePolicy("q:ingest", 1, 4, 10, 300),
+        "q:render": QueuePolicy("q:render", 1, 2, 5, 300),
+        "q:gpu": QueuePolicy("q:gpu", 1, 4, 3, 60, cpus=2.0, memory_mb=3072),
     },
     ollama_endpoints=("http://host.docker.internal:11434",),
+    ollama_parallel=DEFAULT_OLLAMA_PARALLEL,
 )
 
 
@@ -69,6 +86,20 @@ def _int(value: Any, what: str) -> int:
     if isinstance(value, bool) or not isinstance(value, int):
         raise ScalingConfigError(f"Pole {what} musi byc liczba calkowita, a jest: {value!r}.")
     return value
+
+
+def _num(value: Any, what: str) -> float:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ScalingConfigError(f"Pole {what} musi byc liczba, a jest: {value!r}.")
+    return float(value)
+
+
+def env_ollama_parallel() -> int:
+    """OLLAMA_NUM_PARALLEL ze srodowiska (domyslnie 4); smieci => domyslna."""
+    try:
+        return int(os.getenv("OLLAMA_NUM_PARALLEL", str(DEFAULT_OLLAMA_PARALLEL)))
+    except ValueError:
+        return DEFAULT_OLLAMA_PARALLEL
 
 
 def validate_scaling_config(config: ScalingConfig) -> None:
@@ -82,13 +113,20 @@ def validate_scaling_config(config: ScalingConfig) -> None:
             raise ScalingConfigError(
                 f"Kolejka '{p.name}': min ({p.min_workers}) jest wieksze od max ({p.max_workers})."
             )
-    gpu = config.queues.get("gpu")
-    if gpu is not None and gpu.max_workers > len(config.ollama_endpoints):
-        raise ScalingConfigError(
-            f"Kolejka gpu pozwala na {gpu.max_workers} workerow, ale jest tylko "
-            f"{len(config.ollama_endpoints)} endpointow Ollamy; worker bez modelu nie daje "
-            "przepustowosci (caly czas analizy to model)."
+    for p in config.queues.values():
+        if p.cpus < 0 or p.memory_mb < 0:
+            raise ScalingConfigError(f"Kolejka '{p.name}': cpus i memory_mb nie moga byc ujemne.")
+    if config.ollama_parallel < 1:
+        raise ScalingConfigError("ollama_parallel musi byc >= 1.")
+    gpu = config.queues.get(GPU_QUEUE)
+    if gpu is not None and gpu.max_workers > config.gpu_capacity:
+        n_end = len(config.ollama_endpoints)
+        limit = (
+            f"OLLAMA_NUM_PARALLEL ({config.ollama_parallel})"
+            if n_end <= 1
+            else f"OLLAMA_NUM_PARALLEL ({config.ollama_parallel}) * endpointy ({n_end})"
         )
+        raise ScalingConfigError(f"max > {limit}")
     suma_min = sum(p.min_workers for p in config.queues.values())
     if config.hard_max_total < suma_min:
         raise ScalingConfigError(
@@ -123,6 +161,10 @@ def _parse(loaded: dict) -> ScalingConfig:
                     body.get("scale_down_idle_s", base.scale_down_idle_s if base else 300),
                     f"{name}.scale_down_idle_s",
                 ),
+                cpus=_num(body.get("cpus", base.cpus if base else 0.0), f"{name}.cpus"),
+                memory_mb=_int(
+                    body.get("memory_mb", base.memory_mb if base else 0), f"{name}.memory_mb"
+                ),
             )
     endpoints = raw.get("ollama_endpoints", d.ollama_endpoints)
     if not isinstance(endpoints, (list, tuple)):
@@ -132,7 +174,74 @@ def _parse(loaded: dict) -> ScalingConfig:
         hard_max_total=_int(raw.get("hard_max_total", d.hard_max_total), "hard_max_total"),
         queues=queues,
         ollama_endpoints=tuple(str(e) for e in endpoints),
+        ollama_parallel=_int(
+            raw.get("ollama_parallel", env_ollama_parallel()), "ollama_parallel"
+        ),
     )
+
+
+# Pola kolejki, ktore operator moze zmieniac (PUT /scaling, klucz Valkey ops:scaling).
+OVERRIDABLE_FIELDS = {
+    "min": ("min_workers", _int),
+    "max": ("max_workers", _int),
+    "scale_up_backlog": ("scale_up_backlog", _int),
+    "scale_down_idle_s": ("scale_down_idle_s", _int),
+    "cpus": ("cpus", _num),
+    "memory_mb": ("memory_mb", _int),
+}
+
+
+def apply_overrides(config: ScalingConfig, overrides: dict[str, dict[str, Any]]) -> ScalingConfig:
+    """Nalozenie nadpisan operatora na konfiguracje i WALIDACJA wyniku.
+
+    `overrides`: {"q:gpu": {"max": 2, "cpus": 1.5, ...}}. Skaluje sie tylko `q:gpu`;
+    pozostale kolejki sa tylko do odczytu. Rzuca ScalingConfigError (=> HTTP 422).
+    """
+    from dataclasses import replace
+
+    queues = dict(config.queues)
+    for name, fields in overrides.items():
+        if name not in queues:
+            raise ScalingConfigError(f"Nieznana kolejka '{name}'.")
+        if name != GPU_QUEUE:
+            raise ScalingConfigError(f"Kolejka '{name}' jest tylko do odczytu; skalowac mozna {GPU_QUEUE}.")
+        if not isinstance(fields, dict):
+            raise ScalingConfigError(f"Nadpisania kolejki '{name}' musza byc slownikiem.")
+        changes: dict[str, Any] = {}
+        for key, value in fields.items():
+            if key == "name":
+                continue
+            if key not in OVERRIDABLE_FIELDS:
+                raise ScalingConfigError(f"Nieznane pole '{key}' kolejki '{name}'.")
+            attr, parser = OVERRIDABLE_FIELDS[key]
+            changes[attr] = parser(value, f"{name}.{key}")
+        queues[name] = replace(queues[name], **changes)
+    result = replace(config, queues=queues)
+    validate_scaling_config(result)
+    return result
+
+
+def env_overrides(environ: "os._Environ[str] | dict[str, str] | None" = None) -> dict[str, dict[str, Any]]:
+    """Nadpisania q:gpu ze zmiennych ANALYZER_* (compose / .env). Puste = nieustawione."""
+    env = os.environ if environ is None else environ
+    mapping = {
+        "ANALYZER_MIN_REPLICAS": ("min", int),
+        "ANALYZER_MAX_REPLICAS": ("max", int),
+        "ANALYZER_SCALE_UP_BACKLOG": ("scale_up_backlog", int),
+        "ANALYZER_SCALE_DOWN_IDLE_S": ("scale_down_idle_s", int),
+        "ANALYZER_EXTRA_CPUS": ("cpus", float),
+        "ANALYZER_EXTRA_MEM_MB": ("memory_mb", int),
+    }
+    fields: dict[str, Any] = {}
+    for var, (key, cast) in mapping.items():
+        raw = str(env.get(var, "")).strip()
+        if not raw:
+            continue
+        try:
+            fields[key] = cast(raw)
+        except ValueError:
+            raise ScalingConfigError(f"Zmienna {var}={raw!r} nie jest liczba.") from None
+    return {GPU_QUEUE: fields} if fields else {}
 
 
 def load_scaling_config(path: str | Path | None = None) -> ScalingConfig:
@@ -223,10 +332,10 @@ def decide(states: list[QueueState], config: ScalingConfig) -> list[ScalingDecis
         capped_by: str | None = None
         if raw > policy.max_workers:
             capped_by = "max_workers"
-        if s.name == "gpu" and raw > len(config.ollama_endpoints):
-            # Limit endpointow ma pierwszenstwo w opisie: to on jest przyczyna biznesowa.
-            desired = min(desired, len(config.ollama_endpoints))
-            capped_by = "ollama_endpoints"
+        if s.name == GPU_QUEUE and raw > config.gpu_capacity:
+            # Pojemnosc Ollamy ma pierwszenstwo w opisie: to ona jest przyczyna biznesowa.
+            desired = min(desired, config.gpu_capacity)
+            capped_by = "ollama_parallel"
         if raw < policy.min_workers:
             reason = (
                 f"kolejka pusta od {int(s.idle_s)} s, ale limit min_workers="
@@ -237,10 +346,10 @@ def decide(states: list[QueueState], config: ScalingConfig) -> list[ScalingDecis
                 f"backlog {s.backlog} wymaga wiecej workerow, ale limit "
                 f"max_workers={policy.max_workers}, zostaje {desired}"
             )
-        elif capped_by == "ollama_endpoints":
+        elif capped_by == "ollama_parallel":
             reason = (
-                f"backlog {s.backlog} wymaga wiecej workerow, ale endpointow Ollamy jest "
-                f"{len(config.ollama_endpoints)}, zostaje {desired}"
+                f"backlog {s.backlog} wymaga wiecej workerow, ale Ollama obsluguje rownolegle "
+                f"{config.gpu_capacity} zadan (OLLAMA_NUM_PARALLEL), zostaje {desired}"
             )
         rows.append(
             {"state": s, "policy": policy, "desired": desired, "reason": reason, "capped_by": capped_by}
@@ -299,18 +408,15 @@ def read_queue_states(
     *,
     backlog_reader: "Callable[[str], int] | None" = None,
     worker_counter: "Callable[[str], int] | None" = None,
+    idle_reader: "Callable[[str], float] | None" = None,
 ) -> list[QueueState]:
     """Stan kolejek do podania w `decide` i w /scaling.
 
     `backlog` i `workers` czytamy z RQ, czyli sa PRAWDZIWE.
 
-    `idle_s` zostaje 0.0 i jest to swiadome: czas bezczynnosci kolejki wymaga
-    trwalego licznika, ktory utrzymuje PETLA ORKIESTRATORA — a ta jest poza
-    zakresem (wymaga dzialajacego Valkeya, czego nie da sie tu zweryfikowac,
-    patrz plan, sekcja "Poza zakresem"). Konsekwencja jest bezpieczna:
-    przy idle_s = 0 warunek skalowania W DOL nigdy nie jest spelniony, wiec
-    /scaling nie zaproponuje wygaszenia workera na podstawie danych,
-    ktorych nie ma. Skalowanie W GORE dziala w pelni, bo opiera sie na backlogu.
+    `idle_s` pochodzi z `idle_reader` (autoskaler trzyma znacznik ostatniej
+    niepustej chwili w Valkey, klucz `ops:idle:<kolejka>`). Bez czytnika zostaje
+    0.0, czyli skalowanie W DOL z powodu bezczynnosci sie nie odpali.
 
     Czytniki sa wstrzykiwane, zeby testy nie potrzebowaly Valkeya.
     Awaria odczytu pojedynczej kolejki daje dla niej zera, nie wyjatek —
@@ -331,7 +437,13 @@ def read_queue_states(
         except Exception as exc:  # noqa: BLE001
             log.warning("Nie udalo sie policzyc workerow kolejki %s: %s", name, exc)
             workers = 0
-        states.append(QueueState(name=name, backlog=backlog, workers=workers, idle_s=0.0))
+        idle_s = 0.0
+        if idle_reader is not None:
+            try:
+                idle_s = float(idle_reader(name))
+            except Exception as exc:  # noqa: BLE001
+                log.warning("Nie udalo sie odczytac bezczynnosci kolejki %s: %s", name, exc)
+        states.append(QueueState(name=name, backlog=backlog, workers=workers, idle_s=idle_s))
     return states
 
 
