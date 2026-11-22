@@ -52,6 +52,7 @@ def _www(monkeypatch, request):
 
 
 def _tiktok(monkeypatch, request):
+    monkeypatch.setenv("TIKTOK_MODE", "replay")
     return jobs.build_source("tiktok"), "inwestycje"
 
 

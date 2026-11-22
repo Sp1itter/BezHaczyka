@@ -62,7 +62,16 @@ jobs:
 
   - name: tiktok-demo
     kind: discover
-    source: tiktok            # szkielet: tylko fixture'y (fixtures/demo-ads/tiktok), patrz SOURCES.md
+    source: tiktok            # TIKTOK_MODE=replay: fixture'y (fixtures/demo-ads/tiktok), demo offline
     queries: ["inwestycje"]
     interval_minutes: 60
     enabled: false
+
+  - name: tiktok-live
+    kind: discover
+    source: tiktok            # TIKTOK_MODE=live (domyslnie): ddgs site:tiktok.com + yt-dlp, patrz SOURCES.md
+    queries: ["kod polecający XTB", "inwestowanie giełda", "jak inwestować", "konto maklerskie",
+              "ETF inwestowanie", "kryptowaluty inwestycje", "forex trading", "pasywny dochód inwestycje",
+              "Revolut akcje", "Trading 212", "eToro", "obligacje skarbowe", "dywidendy", "finanse osobiste"]
+    interval_minutes: 60
+    enabled: true

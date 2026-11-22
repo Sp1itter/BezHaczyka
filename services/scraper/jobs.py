@@ -95,7 +95,8 @@ def build_source(name: str, redis: Any = None, registry: Registry | list[dict] |
 
         limiter = RateLimiter(float(os.getenv("YT_MIN_INTERVAL_S", "8")), redis=redis, key="yt:ratelimit")
         curated = [r for r in _rows(registry) if r.get("source", "curated") == "curated"]
-        return YouTubeSource(dictionary_from_registry(curated), limiter=limiter)
+        return YouTubeSource(dictionary_from_registry(curated), limiter=limiter, store=blob_store_from_env(),
+                             audio_max_s=int(os.getenv("YT_AUDIO_MAX_S", "1200")))
     if name == "www":
         from sources.www import WebPageSource
 
@@ -186,7 +187,9 @@ def _fetch(source: Any, name: str, url: str) -> tuple[Any, bool, list[store.Cont
     if name == "youtube":
         doc, meta = source.fetch_with_evidence(url)
         return doc, bool(meta.get("qualified")), _youtube_content(meta)
-    return source.fetch(url), True, []
+    doc = source.fetch(url)
+    # Zrodla z wlasnym filtrem tematycznym (TikTok) zglaszaja `qualified` w last_meta.
+    return doc, bool((getattr(source, "last_meta", None) or {}).get("qualified", True)), []
 
 
 def fetch_job(source: str, url: str, recheck: bool = False) -> dict:

@@ -34,7 +34,8 @@ class FakeQueue:
 
 def test_default_schedule_loads():
     specs = {s.name: s for s in load_schedule(env={})}
-    assert set(specs) == {"fb-inwestycje", "yt-finfluencerzy", "www-demo", "www-live", "recheck", "tiktok-demo"}
+    assert set(specs) == {"fb-inwestycje", "yt-finfluencerzy", "www-demo", "www-live", "recheck", "tiktok-demo",
+                          "tiktok-live"}
     assert not specs["tiktok-demo"].enabled  # szkielet, domyslnie wylaczony
     assert not specs["www-demo"].enabled and specs["www-live"].enabled  # fikcyjny korpus tylko offline
     assert specs["fb-inwestycje"].queries[0] == "XTB" and specs["fb-inwestycje"].interval_minutes == 60
