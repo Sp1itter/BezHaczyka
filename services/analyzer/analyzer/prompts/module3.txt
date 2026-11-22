@@ -33,10 +33,19 @@ CZEGO NIE UZNAJESZ ZA DORADZTWO:
   kurs"),
 - akcji marketingowych ("akcja promocyjna") — to nie są akcje spółek.
 
+DORADZTWEM JEST TEŻ (nawet bez nazwy konkretnego waloru): zapowiedź ułożenia,
+dobrania lub zbudowania portfela albo doboru funduszy/ETF/akcji/obligacji dla
+klienta, wskazanie "w co zainwestować", przygotowanie rekomendacji, porada "co
+kupić / co sprzedać", a także wskazanie alokacji środków między instrumenty.
+Jeśli podmiot oferuje wykonanie takiej usługi odbiorcy, wybierz "fail".
+
 verdict "fail": materiał zawiera rekomendację nabycia, zbycia albo trzymania
 konkretnych instrumentów finansowych (lub ich rodzaju) kierowaną do odbiorców.
 verdict "pass": materiał dotyczy inwestowania, ale nie zawiera takiej rekomendacji.
-verdict "not_applicable": brak podstaw do oceny.
+verdict "not_applicable": tylko gdy materiał w ogóle nie dotyczy inwestowania
+lub jest zwykłą ofertą usług bez wzmianki o instrumentach. Gdy w materiale
+występują instrumenty, wybierz "fail" albo "pass" — "pass" tylko przy treści
+edukacyjnej lub informacyjnej bez porady.
 
 PRZYKŁAD POZYTYWNY (fail):
 Materiał: "Rekomendujemy kupno akcji spółki Alfa. Nasze sygnały kupna wskazują
@@ -45,19 +54,30 @@ Odpowiedź: {"verdict": "fail", "confidence": 0.95, "summary": "Materiał zawier
 rekomendację nabycia akcji konkretnej spółki.", "quote": "Rekomendujemy kupno
 akcji spółki Alfa."}
 
-PRZYKŁAD POZYTYWNY 2 (fail) — oferta usługi, której treścią jest rekomendowanie:
-Materiał: "Family office Nowak: przygotujemy dla Ciebie indywidualną rekomendację
-portfela akcji i obligacji, doradzimy co kupić i kiedy sprzedać. Konsultacja 300 zł."
-Odpowiedź: {"verdict": "fail", "confidence": 0.85, "summary": "Podmiot oferuje
-indywidualną rekomendację nabycia i zbycia akcji i obligacji, czyli doradztwo
-inwestycyjne.", "quote": "doradzimy co kupić i kiedy sprzedać"}
-Uwaga: zapowiedź, że podmiot PRZYGOTUJE REKOMENDACJĘ instrumentów lub DORADZI
-co kupić i kiedy sprzedać, jest doradztwem nawet bez nazwy konkretnej spółki.
+PRZYKŁAD POZYTYWNY 2 (fail) — płatna, spersonalizowana selekcja funduszy:
+Materiał: "Po wypełnieniu ankiety wskażemy Ci 3 fundusze akcyjne, w które warto
+wpłacić środki. Opłata jednorazowa 490 zł."
+Odpowiedź: {"verdict": "fail", "confidence": 0.85, "summary": "Podmiot za opłatą
+wskazuje konkretne fundusze do nabycia, czyli rekomenduje instrumenty.",
+"quote": "wskażemy Ci 3 fundusze akcyjne, w które warto wpłacić środki"}
 
-PRZYKŁAD NEGATYWNY (not_applicable):
-Materiał: "Jesteśmy butikiem family office. Polecamy nasz newsletter o rynkach."
+PRZYKŁAD POZYTYWNY 3 (fail) — kanał subskrypcyjny z konkretnymi walorami:
+Materiał: "Kanał VIP: codziennie podajemy, które spółki z GPW kupić (dziś: PKN i
+KGHM) oraz kiedy je sprzedać. Dostęp 99 zł miesięcznie."
+Odpowiedź: {"verdict": "fail", "confidence": 0.9, "summary": "Płatny kanał wskazuje
+konkretne spółki do kupna i sprzedaży.", "quote": "które spółki z GPW kupić"}
+
+PRZYKŁAD NEGATYWNY 1 (not_applicable) — sama oferta usług:
+Materiał: "Oferujemy doradztwo majątkowe dla firm i rodzin. Umów bezpłatną
+konsultację, opowiemy o naszym zespole."
 Odpowiedź: {"verdict": "not_applicable", "confidence": 0.9, "summary": "Ogólna
-oferta usług bez rekomendacji żadnego instrumentu finansowego.", "quote": null}
+oferta usług, bez rekomendacji jakiegokolwiek instrumentu.", "quote": null}
+
+PRZYKŁAD NEGATYWNY 2 (pass) — edukacja:
+Materiał: "Jak działa fundusz indeksowy? Replikuje indeks giełdowy, a jego koszty
+są zwykle niższe niż funduszy aktywnych. To materiał edukacyjny."
+Odpowiedź: {"verdict": "pass", "confidence": 0.9, "summary": "Treść edukacyjna o
+działaniu instrumentu, bez rekomendacji nabycia.", "quote": null}
 
 FORMAT ODPOWIEDZI (dokładnie ta struktura, jeden obiekt):
 {

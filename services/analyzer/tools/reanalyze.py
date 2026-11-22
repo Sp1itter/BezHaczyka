@@ -9,6 +9,10 @@ UWAGA: `det_results` (reguly 4-8 z RenderProbe) nie sa przechowywane w tabeli
 cases, wiec ponowna analiza wysyla je puste; analyzer policzy 4-8 z fallbacku
 render_probe albo zostawi wypelniacze not_applicable.
 
+`--apply` NIE jest idempotentne: kazde wywolanie kolejkuje zadania od nowa
+(przypadki w statusie processing/queued sa pomijane). job_timeout=900 s.
+Kolejka/funkcja z SCRAPER_OUTPUT_QUEUE / SCRAPER_OUTPUT_FUNC (jak scraper).
+
 Domyslnie DRY-RUN (tylko wypisuje, ile i co by zakolejkowal). `--apply` kolejkuje.
 
 Uzycie (z services/analyzer, DATABASE_URL i VALKEY_URL w srodowisku):
@@ -26,9 +30,13 @@ import os
 import sys
 from datetime import datetime, timezone
 
-QUEUE_NAME = "q:gpu"
-FUNC_NAME = "analyzer.worker.analyze_document"
-SOURCES = ("facebook", "youtube", "www", "tiktok")
+DEFAULT_QUEUE = "q:gpu"
+DEFAULT_FUNC = "analyzer.worker.analyze_document"
+QUEUE_NAME = os.getenv("SCRAPER_OUTPUT_QUEUE") or DEFAULT_QUEUE
+FUNC_NAME = os.getenv("SCRAPER_OUTPUT_FUNC") or DEFAULT_FUNC
+SOURCES = ("facebook", "youtube", "www")
+JOB_TIMEOUT_S = 900
+SKIP_STATUSES = ("processing", "queued")
 
 
 def build_payload(row: dict) -> dict:
@@ -50,7 +58,9 @@ def select_cases(conn, source: str | None, since: str | None, limit: int | None)
     if since:
         where.append("fetched_at >= %s")
         params.append(since)
-    sql = "SELECT case_id, source, entity_resolution FROM cases"
+    where.append("status <> ALL(%s)")  # nie dubluj przypadkow w toku
+    params.append(list(SKIP_STATUSES))
+    sql = "SELECT case_id, source, status, entity_resolution FROM cases"
     if where:
         sql += " WHERE " + " AND ".join(where)
     sql += " ORDER BY fetched_at DESC"
@@ -88,7 +98,7 @@ def main(argv: list[str] | None = None) -> int:
     queue = Queue(QUEUE_NAME, connection=Redis.from_url(
         os.getenv("VALKEY_URL", "redis://valkey:6379/0")))
     for r in rows:
-        queue.enqueue(FUNC_NAME, build_payload(r))
+        queue.enqueue(FUNC_NAME, build_payload(r), job_timeout=JOB_TIMEOUT_S)
     print(f"Zakolejkowano: {len(rows)} -> {QUEUE_NAME}")
     return 0
 
