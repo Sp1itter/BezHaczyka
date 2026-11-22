@@ -354,15 +354,17 @@ services:
   # --- docker-socket-proxy (Apache-2.0): waski, filtrowany dostep do Dockera -----------
   # Jedyny kontener z gniazdem Dockera (tylko do odczytu na poziomie montowania; zakres
   # operacji wyznaczaja zmienne ponizej). Port 2375 tylko w sieci compose.
+  # Zestaw MINIMALNY (zweryfikowany e2e): CONTAINERS (lista/inspect/create/stop) + POST
+  # (w tym haproxy przepuszcza wtedy tez DELETE = usuniecie kontenera). IMAGES/NETWORKS niepotrzebne,
+  # bo klon tworzymy z nazwy obrazu i nazwy sieci wzietych z inspect kontenera bazowego.
   docker-socket-proxy:
     image: tecnativa/docker-socket-proxy:0.3.0
     environment:
       CONTAINERS: 1
       POST: 1
-      DELETE: 1
       SERVICES: 0
-      IMAGES: 1
-      NETWORKS: 1
+      IMAGES: 0
+      NETWORKS: 0
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     cpus: 0.25
