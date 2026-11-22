@@ -75,7 +75,7 @@ def test_expand(monkeypatch):
     assert ids.count("sched-recheck") == 1 and len(ids) == len(set(ids))
     for i in ids:
         validate_job_id(i)  # RQ dopuszcza tylko litery, cyfry, '_' i '-'
-    assert sum(t.job == "fb-inwestycje" for t in tasks) == 16
+    assert sum(t.job == "fb-inwestycje" for t in tasks) == 32
     assert sum(t.job == "yt-finfluencerzy" for t in tasks) == 2
     assert [t.args for t in tasks if t.id == "sched-recheck"] == [[20, 60]]
     assert [t.args for t in _tasks(monkeypatch, once=True) if t.id == "sched-recheck"] == [[20, 0]]

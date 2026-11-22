@@ -8,7 +8,10 @@ jobs:
     # frazy szerokie (keyword_unordered): waskie typu "kod polecający broker" daja 0 reklam
     queries: ["XTB", "inwestycje", "inwestuj", "broker", "konto maklerskie", "akcje", "ETF", "forex",
               "kryptowaluty", "trading", "zarabiaj", "giełda", "obligacje", "fundusz inwestycyjny",
-              "kod polecający broker", "konto maklerskie bonus"]
+              "kod polecający broker", "konto maklerskie bonus",
+              "bitcoin", "CFD", "dywidenda", "IKE", "IKZE", "złoto inwestycja", "portfel inwestycyjny",
+              "eToro", "Trading 212", "Revolut inwestycje", "Plus500", "Capital.com", "Saxo",
+              "nieruchomości inwestycja", "pasywny dochód", "sygnały tradingowe"]
     interval_minutes: 60
     enabled: true
 
