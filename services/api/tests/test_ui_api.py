@@ -290,3 +290,15 @@ def test_backfill_frames_rejects_host_off_allowlist(store, monkeypatch, tmp_path
     monkeypatch.setenv("MEDIA_PROXY_HOSTS", "nginx")
     c = TestClient(create_app(store=store, gold_path=GOLD, blob_reader=None, blob_writer=local_blob_writer(tmp_path)))
     assert c.post("/documents/frames/backfill").json()["enabled"] is False
+
+
+def test_findings_list_mode_is_light(seeded: TestClient) -> None:  # noqa: F811
+    full = seeded.get("/findings").json()["items"]
+    light = seeded.get("/findings", params={"fields": "list"}).json()["items"]
+    assert [f["id"] for f in light] == [f["id"] for f in full]
+    for f_full, f_light in zip(full, light):
+        assert "rule_results" not in f_light and f_light["document"] == f_full["document"]
+        assert f_light["coverage"] == f_full["coverage"]
+        assert [v["rule_id"] for v in f_light["violations"]] == [
+            r["rule_id"] for r in f_full["rule_results"] if r["verdict"] == "fail"]
+    assert seeded.get("/findings", params={"fields": "inne"}).status_code == 422

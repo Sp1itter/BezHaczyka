@@ -1,11 +1,12 @@
-// Routing na hashu (#/strona?param=...). Adres jest zrodlem prawdy dla strony i filtrow,
-// wiec widok z filtrami mozna skopiowac i wyslac.
+// Routing na hashu (#/sciezka?param=...). Odpowiednik miekkiej nawigacji wzorca:
+// adres jest zrodlem prawdy dla widoku i filtrow (link do widoku z filtrami da sie skopiowac).
 import { useEffect, useState } from "react";
 
 export function parseHash(hash = window.location.hash) {
   const raw = hash.replace(/^#/, "") || "/";
   const [path, qs = ""] = raw.split("?");
-  return { path: path || "/", query: Object.fromEntries(new URLSearchParams(qs)) };
+  const query = Object.fromEntries(new URLSearchParams(qs));
+  return { path: path || "/", query };
 }
 
 export function href(path, query = {}) {
@@ -13,30 +14,29 @@ export function href(path, query = {}) {
   return `#${path}${qs ? `?${qs}` : ""}`;
 }
 
-export function navigate(path, query = {}, { replace = false } = {}) {
+export function navigate(path, query = {}) {
   const next = href(path, query);
-  if (window.location.hash === next) return;
-  if (replace) {
-    window.history.replaceState(null, "", next);
-    window.dispatchEvent(new HashChangeEvent("hashchange"));
-  } else {
-    window.location.hash = next;
-  }
+  if (window.location.hash !== next) window.location.hash = next;
 }
 
 export function useRoute() {
   const [route, setRoute] = useState(() => parseHash());
   useEffect(() => {
-    const onChange = () => setRoute(parseHash());
+    const onChange = () => {
+      setRoute(parseHash());
+      window.scrollTo(0, 0);
+    };
     window.addEventListener("hashchange", onChange);
     return () => window.removeEventListener("hashchange", onChange);
   }, []);
   return route;
 }
 
-export const PAGES = ["wyniki", "alerty", "kalibracja", "raporty", "operator"];
-
-export function pageOf(path) {
-  const name = path.replace(/^\//, "").split("/")[0] || "wyniki";
-  return PAGES.includes(name) ? name : "notfound";
+// "/findings/abc" -> { name: "finding", id: "abc" }
+export function matchRoute(path) {
+  const m = path.match(/^\/findings\/([^/]+)$/);
+  if (m) return { name: "finding", id: decodeURIComponent(m[1]) };
+  const name = { "/": "overview", "/alerts": "alerts", "/findings": "findings", "/module1": "module1",
+    "/module3": "module3", "/calibration": "calibration", "/operator": "operator" }[path];
+  return { name: name || "notfound" };
 }
