@@ -47,8 +47,11 @@ RUN pip install --no-cache-dir /tmp/casedb && rm -rf /tmp/casedb
 
 # Kod aplikacji dopiero teraz - czesto sie zmienia, wiec jest na koncu.
 # Kopiujemy tylko pakiet `analyzer`, a nie caly katalog: bez tego do obrazu
-# trafilyby .venv, tests/ i tools/ (duzo balastu i potencjalnie wrazliwe pliki).
+# trafilyby .venv i tests/ (duzo balastu i potencjalnie wrazliwe pliki).
 COPY analyzer/analyzer/ ./analyzer/
+# Narzedzia operacyjne (reanalyze.py, dedupe_findings.py, bench) - male skrypty,
+# uruchamiane przez `docker compose exec analyzer python tools/<skrypt>.py`.
+COPY analyzer/tools/ ./tools/
 
 # Od tego miejsca wszystko wykonuje sie jako uzytkownik analyzer.
 USER analyzer
