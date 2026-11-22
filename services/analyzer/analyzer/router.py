@@ -102,7 +102,8 @@ _PERCENT = re.compile(r"\d+[.,]?\d*\s*%")
 _RETURN_WORD = re.compile(
     r"\b(?:zysk\w*|zwrot\w*|stop\w*\s+zwrotu|rentown\w*|oprocentowan\w*|odsetk\w*"
     r"|zarob\w*|zarabia\w*|dochod\w*|wzros\w*|zwyz\w*|na\s+plusie|przyrost\w*|podwoj\w*|pomnoz\w*"
-    r"|rocznie|miesiecznie|kwartalnie|w\s+skali\s+(?:roku|miesiaca)|p\.a\.)"
+    r"|rocznie|miesiecznie|kwartalnie|w\s+skali\s+(?:roku|miesiaca)|p\.a\."
+    r"|w\s+(?:rok|roku|miesiac|miesiacu|tydzien|dni)\b)"
 )
 # Kontekst straty, znizki, sprawy sadowej, kodu promocyjnego: procent obok nich
 # to NIE stopa zwrotu.
@@ -167,7 +168,8 @@ def _percent_is_return(sentence: str, pm: re.Match[str]) -> bool:
         return min(ds) if ds else None
 
     # Procent ze znakiem ("+21%", "-11,8%") to zmiana wyniku, a nie znizka/kara.
-    if re.search(r"[+" + chr(8722) + r"-]\s*$", sentence[: pm.start()]):
+    # Znak musi przylegac do cyfry; "Revolut - 90%" (myslnik slowny) nie liczy sie.
+    if re.search(r"(?:^|[^a-z0-9])[+" + chr(8722) + r"-]$", sentence[: pm.start()]):
         return True
     ret, non = nearest(_RETURN_WORD), nearest(_NON_RETURN_WORD)
     if ret is None:
