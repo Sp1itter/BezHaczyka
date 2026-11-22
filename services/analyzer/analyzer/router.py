@@ -117,6 +117,13 @@ _REFERRAL = re.compile(
     r"|\bpolec\w*\s+znajomym|\bbonus\w*\s+za\s+polecen\w*"
 )
 _WINDOW = 50
+# Kontekst finansowy dla procentu ze znakiem (zmiana kursu/wyniku, nie statystyka gry).
+_FINANCE_NEAR = re.compile(
+    r"\w*inwest\w*|\bakcj\w*|\bspolk\w*|\betf\w*|\bfundusz\w*|\bportfel\w*|\bkurs\w*"
+    r"|\bnotowan\w*|\bindeks\w*|\bwig\w*|\bs&p|\bnasdaq|\bobligacj\w*|\bwynik\w*"
+    r"|\bgield\w*|\bwalor\w*|\bkrypto\w*|\bbitcoin\w*|\bzloto\b|\bsurowc\w*|\bdywidend\w*"
+    r"|\bytd\b|\bszczyt\w*|\bspad\w*|\bodbic\w*|" + _RETURN_WORD.pattern
+)
 # Granica zdania; kropka po skrocie ("min. 3 zl") i przed cyfra nie konczy zdania.
 _SENTENCE_BREAK = re.compile(
     r"(?<!\bmin)(?<!\bmln)(?<!\bmld)(?<!\btys)(?<!\bnp)(?<!\btj)(?<!\bok)"
@@ -169,8 +176,9 @@ def _percent_is_return(sentence: str, pm: re.Match[str]) -> bool:
 
     # Procent ze znakiem ("+21%", "-11,8%") to zmiana wyniku, a nie znizka/kara.
     # Znak musi przylegac do cyfry; "Revolut - 90%" (myslnik slowny) nie liczy sie.
+    # Wymagamy kontekstu finansowego w oknie: "+50% ALLY SPEED" (gra) to nie wynik.
     if re.search(r"(?:^|[^a-z0-9])[+" + chr(8722) + r"-]$", sentence[: pm.start()]):
-        return True
+        return bool(_FINANCE_NEAR.search(window))
     ret, non = nearest(_RETURN_WORD), nearest(_NON_RETURN_WORD)
     if ret is None:
         return False

@@ -44,3 +44,30 @@ def test_przegral_w_rok_nadal_nie_obietnica():
 def test_myslnik_slowny_nie_jest_znakiem_procentu():
     assert has_profit_claims("Revolut - 90% klientow zadowolonych") is False
     assert has_profit_claims("wynik -11,8% w 2022") is True
+
+
+# --- zywy stos 22.11 02:25: gra "Hero Wars" dostala HIGH przez "+50% ALLY SPEED" ---
+HERO_WARS = (
+    "Hero Wars - 43 BILLION Archdemon Damage! Wodryn Event. Boss, we choose:\n\n"
+    "HASTE EMBLEM\n\nIts effect gives:\n\n+50% ALLY SPEED\n\nbut also:\n\n+20% ENEMY SPEED"
+)
+
+
+def test_procent_ze_znakiem_w_grze_to_nie_zysk():
+    assert not has_profit_claims(HERO_WARS)
+
+
+def test_gra_bez_sygnalu_finansowego_poza_zakresem():
+    assert classify_scope(HERO_WARS).status is ScopeStatus.OUT_OF_SCOPE
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Mój portfel +21% w tym roku",
+        "Akcje CD Projekt -11,8% od szczytu, ale ja dokupuję",
+        "ETF na S&P 500: +25% YTD",
+    ],
+)
+def test_procent_ze_znakiem_z_kontekstem_finansowym_to_zysk(text):
+    assert has_profit_claims(text)
