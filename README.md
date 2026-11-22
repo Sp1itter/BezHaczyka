@@ -1,6 +1,6 @@
 <p align="center"><img src="docs/brand/4_mono.png" alt="BezHaczyka" width="320"></p>
 
-# InvestWatch
+# InvestWatch - BezHaczyka
 
 System monitoringu reklam usług inwestycyjnych w internecie, przygotowany na wyzwanie UKNF
 (HackNation 2026). Zbiera materiały z Facebooka i Instagrama (Meta Ad Library), TikToka,
