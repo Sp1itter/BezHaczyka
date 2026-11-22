@@ -1,6 +1,0 @@
-node_modules
-dist
-Dockerfile
-Dockerfile.mock
-.dockerignore
-README.md
