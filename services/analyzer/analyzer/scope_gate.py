@@ -110,6 +110,44 @@ NON_FINANCIAL_ASSETS = {
 LEVERAGE_SIGNALS = {"dzwignia", "leverage", "1:30", "1:100", "1:500", "margin"}
 
 
+# --------------------------------------------------------------------------- #
+# Deterministyczne sygnaly POZA zakresem (zywe dane 21.11: kancelarie
+# frankowe, kupony, karty bankowe, ostrzezenia o oszustwach). Obowiazuja
+# WYLACZNIE, gdy nie ma zadnego sygnalu instrumentu finansowego.
+# --------------------------------------------------------------------------- #
+
+# (wzorzec, powod). Wzorce na tekscie po normalizacji.
+OUT_OF_SCOPE_SIGNALS: list[tuple[str, str]] = [
+    (r"\bfrankowicz\w*|\bkredyt\w*\s+(?:we?\s+)?frank\w*|\bfrank\w*\s+szwajcarsk\w*"
+     r"|uniewazni\w*\s+umow\w*|\bsankcj\w*\s+kredyt\w*\s+darmow\w*",
+     "kredyt_frankowy_usluga_prawna"),
+    (r"\bkod\w*\s+(?:promocyjn|rabatow)\w*|\bkupon\w*|\bkody\s+promocyjn\w*"
+     r"|\bznizk\w*|\brabat\w*|\bvoucher\w*",
+     "kupony_i_znizki"),
+    (r"\bkart\w*\s+(?:walutow|kredytow|debetow|platnicz|przedplacon)\w*",
+     "produkt_bankowy_karta"),
+    (r"\bpodaj\w*\s+sie\s+za\b|\bpodszywa\w*|\boszust\w*|\boszukan\w*"
+     r"|\bphishing\w*|\bwyludz\w*",
+     "ostrzezenie_o_oszustwie"),
+]
+
+# Jakikolwiek sygnal instrumentu / uslugi inwestycyjnej wylacza wykluczenie.
+INSTRUMENT_HINT = re.compile(
+    r"\bakcj(?:a|e|i|ami|ach|om)\b|\betf\w*|\bcfd\w*|\bobligacj\w*|\bfundusz\w*"
+    r"|\bkontrakt\w*|\bforex\b|\bfx\b|\bdzwigni\w*|\bleverage\b"
+    r"|(?:rachun\w*|kont\w*|dom\w*)\s+maklersk\w*|\bmaklersk\w*"
+    r"|portfel\w*\s+inwestycyjn\w*|\bgield\w*|\bpapier\w*\s+wartosciow\w*"
+    r"|\w*inwest\w*|\bopcj(?:a|e|i|ami|ach|om)\b|\bfutures\b|\bswap\w*|\bwarrant\w*"
+)
+
+
+# Nazwy brokerow tez wylaczaja wykluczenie, ale NIE dla ostrzezen o oszustwie
+# ("podaje sie za przedstawiciela XTB" to ostrzezenie, nie oferta brokera).
+BROKER_HINT = re.compile(
+    r"\b(?:xtb|degiro|trading\s?212|saxo|ibkr|bossa|revolut\s+trading)\b"
+)
+
+
 def _normalize(text: str) -> str:
     """Male litery, bez ogonkow, znormalizowane biale znaki.
 
@@ -182,6 +220,24 @@ def classify_scope(text: str) -> Scope:
             reason="not_financial_instrument",
             legal_basis="nie jest instrumentem finansowym wg art. 2 ustawy o obrocie",
         )
+
+    # --- 2b. sygnaly poza zakresem, o ile brak sygnalu instrumentu -------- #
+    if not INSTRUMENT_HINT.search(norm):
+        for pattern, reason in OUT_OF_SCOPE_SIGNALS:
+            hits = list(re.finditer(pattern, norm))
+            if reason != "ostrzezenie_o_oszustwie" and BROKER_HINT.search(norm):
+                continue
+            if reason == "kupony_i_znizki" and not (
+                len(hits) >= 2 or (hits and hits[0].start() < 200)
+            ):
+                continue  # pojedyncza, pozna wzmianka o znizce to za malo
+            if hits:
+                return Scope(
+                    status=ScopeStatus.OUT_OF_SCOPE,
+                    underlying=underlying,
+                    reason=reason,
+                    legal_basis="brak opakowania bedacego instrumentem finansowym",
+                )
 
     # --- 3. nie wiemy -> triage, nie kosz ---------------------------------- #
     return Scope(
