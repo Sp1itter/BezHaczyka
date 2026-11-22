@@ -235,3 +235,58 @@ def test_media_proxy_only_allowlisted_https(store, monkeypatch) -> None:  # noqa
     assert ok.status_code == 200 and ok.content == b"jpg" and len(calls) == 1
     assert c.get(f"/documents/{doc['id']}/media/1").status_code == 403  # tylko https
     assert len(calls) == 1
+
+
+# --- kadry YouTube: id z adresu, pobranie raz do magazynu, dopisanie do media ------------------------------
+
+
+def test_youtube_video_id_forms() -> None:
+    from api.main import youtube_video_id
+
+    assert youtube_video_id("https://www.youtube.com/watch?v=uoqQDGYnVI8") == "uoqQDGYnVI8"
+    assert youtube_video_id("https://youtu.be/uoqQDGYnVI8?t=3") == "uoqQDGYnVI8"
+    assert youtube_video_id("https://www.youtube.com/shorts/uoqQDGYnVI8") == "uoqQDGYnVI8"
+    assert youtube_video_id("https://www.youtube.com/@kanal") is None
+
+
+def test_backfill_frames(store, monkeypatch, tmp_path) -> None:  # noqa: F811
+    import api.main as m
+    from api.main import local_blob_reader, local_blob_writer
+
+    fetched: list[str] = []
+
+    def fake_fetch(url: str):
+        fetched.append(url)
+        if "hq" in url:
+            raise OSError("brak hq")  # pierwszy szablon zawodzi -> nastepny
+        return b"JPEG", "image/jpeg"
+
+    monkeypatch.setattr(m, "_fetch_external_media", fake_fetch)
+    c = TestClient(create_app(store=store, gold_path=GOLD, blob_reader=local_blob_reader(tmp_path),
+                              blob_writer=local_blob_writer(tmp_path)))
+    doc = load("ad_document.json")
+    doc.update(source="youtube", url="https://www.youtube.com/watch?v=uoqQDGYnVI8", media=[], screenshots={})
+    c.post("/documents", json=doc)
+
+    assert c.post("/documents/frames/backfill").json()["enabled"] is False  # domyslnie wylaczone
+    monkeypatch.setenv("YOUTUBE_FRAME_URLS", "https://example.invalid/vi/{id}/hq.jpg,https://example.invalid/vi/{id}/mq.jpg")
+    monkeypatch.setenv("MEDIA_PROXY_HOSTS", "example.invalid")
+    r = c.post("/documents/frames/backfill").json()
+    assert r == {"enabled": True, "checked": 1, "added": 1, "failed": 0}
+    assert fetched == ["https://example.invalid/vi/uoqQDGYnVI8/hq.jpg", "https://example.invalid/vi/uoqQDGYnVI8/mq.jpg"]
+    media = c.get(f"/documents/{doc['id']}").json()["media"]
+    assert media == [{"kind": "image", "path": f"s3://media/{doc['id']}-frame.jpg", "duration_s": None}]
+    img = c.get(f"/documents/{doc['id']}/media/0")
+    assert img.status_code == 200 and img.content == b"JPEG"
+    assert c.post("/documents/frames/backfill").json()["checked"] == 0  # idempotentne
+
+
+def test_backfill_frames_rejects_host_off_allowlist(store, monkeypatch, tmp_path) -> None:  # noqa: F811
+    import api.main as m
+    from api.main import local_blob_writer
+
+    monkeypatch.setattr(m, "_fetch_external_media", lambda url: (_ for _ in ()).throw(AssertionError("bez pobierania")))
+    monkeypatch.setenv("YOUTUBE_FRAME_URLS", "https://example.invalid/vi/{id}/hq.jpg")
+    monkeypatch.setenv("MEDIA_PROXY_HOSTS", "nginx")
+    c = TestClient(create_app(store=store, gold_path=GOLD, blob_reader=None, blob_writer=local_blob_writer(tmp_path)))
+    assert c.post("/documents/frames/backfill").json()["enabled"] is False

@@ -210,6 +210,14 @@ class SqlStore:
         row["id"] = str(row["id"])
         return _row_to_document(row)
 
+    def document_ids(self, source: str | None = None) -> list[str]:
+        """Identyfikatory dokumentow (opcjonalnie z jednego zrodla) - do zadan uzupelniajacych."""
+        if source:
+            rows = self._execute(f"SELECT id FROM documents WHERE source = {self.ph}", [source])
+        else:
+            rows = self._execute("SELECT id FROM documents", [])
+        return [str(r["id"]) for r in rows]
+
     def document_exists(self, document_id: str) -> bool:
         if not self.valid_id(document_id):
             return False
