@@ -137,7 +137,14 @@ INSTRUMENT_HINT = re.compile(
     r"|\bkontrakt\w*|\bforex\b|\bfx\b|\bdzwigni\w*|\bleverage\b"
     r"|(?:rachun\w*|kont\w*|dom\w*)\s+maklersk\w*|\bmaklersk\w*"
     r"|portfel\w*\s+inwestycyjn\w*|\bgield\w*|\bpapier\w*\s+wartosciow\w*"
-    r"|\binwestowa\w*|\bopcj(?:a|e|i|ami|ach|om)\b|\bfutures\b|\bswap\w*|\bwarrant\w*"
+    r"|\w*inwest\w*|\bopcj(?:a|e|i|ami|ach|om)\b|\bfutures\b|\bswap\w*|\bwarrant\w*"
+)
+
+
+# Nazwy brokerow tez wylaczaja wykluczenie, ale NIE dla ostrzezen o oszustwie
+# ("podaje sie za przedstawiciela XTB" to ostrzezenie, nie oferta brokera).
+BROKER_HINT = re.compile(
+    r"\b(?:xtb|degiro|trading\s?212|saxo|ibkr|bossa|revolut\s+trading)\b"
 )
 
 
@@ -217,7 +224,14 @@ def classify_scope(text: str) -> Scope:
     # --- 2b. sygnaly poza zakresem, o ile brak sygnalu instrumentu -------- #
     if not INSTRUMENT_HINT.search(norm):
         for pattern, reason in OUT_OF_SCOPE_SIGNALS:
-            if re.search(pattern, norm):
+            hits = list(re.finditer(pattern, norm))
+            if reason != "ostrzezenie_o_oszustwie" and BROKER_HINT.search(norm):
+                continue
+            if reason == "kupony_i_znizki" and not (
+                len(hits) >= 2 or (hits and hits[0].start() < 200)
+            ):
+                continue  # pojedyncza, pozna wzmianka o znizce to za malo
+            if hits:
                 return Scope(
                     status=ScopeStatus.OUT_OF_SCOPE,
                     underlying=underlying,
