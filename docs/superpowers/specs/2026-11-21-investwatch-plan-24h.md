@@ -2,7 +2,7 @@
 
 **Start:** 2026-11-21, 11:50 · **Hard deadline oddania:** 2026-11-22, **11:00**
 **Submit o:** 10:15 (45 min buforu — po 11:00 regulamin nie dopuszcza oceny)
-**Zespół:** 3 osoby · Design: `2026-11-21-investwatch-design.md`
+**Zespół:** 6 osób, 3 strumienie pracy (A, B, C) · Design: `2026-11-21-investwatch-design.md`
 
 ---
 

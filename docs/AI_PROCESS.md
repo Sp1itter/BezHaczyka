@@ -1,6 +1,6 @@
 # Jak pracowaliśmy z asystentami AI
 
-Byliśmy trzyosobowym zespołem i mieliśmy niecałe dwie doby. Asystentów AI używaliśmy do pisania
+Byliśmy sześcioosobowym zespołem i mieliśmy niecałe dwie doby. Pracę podzieliliśmy na trzy strumienie: zbieranie danych, analizę oraz panel z API. Asystentów AI używaliśmy do pisania
 kodu, testów i dokumentacji, ale zakres, architekturę, podział pracy i ocenę wyników zostawiliśmy
 sobie. Niżej opisujemy, jak to wyglądało w praktyce i gdzie w repozytorium są tego ślady.
 
@@ -22,8 +22,8 @@ sobie. Niżej opisujemy, jak to wyglądało w praktyce i gdzie w repozytorium s�
    w `docs/superpowers/specs/2026-11-21-investwatch-design.md`.
 2. **Specyfikacja i plan.** Asystent pomagał rozpisać design, ale wersję drugą przyjęliśmy dopiero
    po wspólnym przeglądzie (commit `80031fb`). Plany etapów są w `docs/superpowers/plans/`.
-3. **Podział pracy.** Każdy miał swój obszar: zbieranie danych, analiza, panel i API. Każdy pracował
-   na osobnej gałęzi i w osobnym katalogu roboczym, a wspólne pliki miały jednego właściciela.
+3. **Podział pracy.** Każdy strumień miał swój obszar: zbieranie danych, analiza, panel i API.
+   Każdy pracował na osobnej gałęzi i w osobnym katalogu roboczym, a wspólne pliki miały jednego właściciela.
    Zmiany wchodziły przez pull requesty po każdym etapie.
 4. **Kontrakty danych.** Formaty `AdDocument`, `Finding` i `RuleResult` ustaliliśmy na początku
    i zapisaliśmy przykłady w `fixtures/contract-examples/`. Test `test_spojnosc.py` łapie każdą
