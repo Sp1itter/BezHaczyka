@@ -1,6 +1,6 @@
 """Serwis api (osoba C): zapis dokumentow i findingow, odczyt dla dashboardu, alerty.
 
-Kontrakt przeplywu: docs/INTEGRACJA.md.
+Kontrakt przeplywu: docs/MODUL1-ARCHITEKTURA.md.
 - scraper (A)  -> POST /documents
 - analyzer (B) -> GET /documents/{id}, POST /findings
 - web (C)      -> GET /findings, GET /stats, GET /calibration, PATCH /findings/{id}, WS /ws/alerts

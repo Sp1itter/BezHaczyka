@@ -1,7 +1,7 @@
 # api (osoba C)
 
 FastAPI: zapis dokumentów i ustaleń, odczyt dla dashboardu, alerty na żywo.
-Przepływ między serwisami: [`docs/INTEGRACJA.md`](../../docs/INTEGRACJA.md).
+Przepływ między serwisami: [`docs/MODUL1-ARCHITEKTURA.md`](../../docs/MODUL1-ARCHITEKTURA.md).
 
 ## Quick start bez Dockera (SQLite)
 

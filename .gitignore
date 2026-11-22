@@ -1,9 +1,8 @@
-# --- Claude Code / narzedzia ---
-.claude/worktrees/
-.claude/settings.local.json
-.claude/jobs/
+# --- lokalne narzedzia ---
+.claude/
+CLAUDE.md
 
-# --- graphify: graf commitujemy (patrz CLAUDE.md), cache lokalny NIE ---
+# --- graphify: graf commitujemy, cache lokalny nie ---
 graphify-out/cache/
 graphify-out/.cloud-cta-shown
 graphify-out/.graphify_root
@@ -65,6 +64,3 @@ graphify-out/20*/
 # duze archiwa mediow demo trzymamy w wydaniu na GitHubie
 demo/*/media.tar
 
-# lokalne ustawienia asystenta
-.claude/
-CLAUDE.md

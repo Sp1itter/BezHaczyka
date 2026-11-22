@@ -46,6 +46,15 @@ Stan serwisów: `docker compose ps`, logi: `docker compose logs -f <serwis>`.
 | Dysk | 20 GB wolnego miejsca | – |
 | System | Docker Desktop z WSL2 (Windows) albo Docker Engine (Linux), Compose 2.24+ | – |
 
+Na Windows Docker domyślnie dostaje tylko połowę pamięci RAM, czego przy 16 GB nie wystarcza.
+Przed pierwszym startem utwórz plik `%USERPROFILE%\.wslconfig` i zrestartuj Docker Desktop:
+
+```
+[wsl2]
+memory=12GB
+swap=8GB
+```
+
 Bez karty NVIDIA dopisz w `infra/.env`:
 `COMPOSE_FILE=docker-compose.yml:docker-compose.cpu.yml`.
 Instalacja Dockera na Windows: [docs/INSTALACJA-WINDOWS.md](docs/INSTALACJA-WINDOWS.md).
@@ -63,7 +72,7 @@ Hasła i klucze trzymamy tylko tam.
 | `autoscaler` | dokłada kontenery analizy przy kolejce (limity ustawia panel operatora) | `ANALYZER_MAX_REPLICAS`, `ANALYZER_EXTRA_*` |
 | `ollama`, `ollama-pull` | model Bielik 4.5B i bge-m3, pobierane automatycznie | `OLLAMA_NUM_PARALLEL`, `OLLAMA_MODELS_PULL` |
 | `api` | REST i WebSocket dla panelu | `API_PORT`, `ALERT_*` |
-| `web` | panel nadzorcy (React, Mantine, Recharts) | `WEB_PORT` |
+| `web` | panel nadzorcy (React, Recharts) | `WEB_PORT` |
 | `postgres` | metadane, wyniki analizy (PostgreSQL 16 + pgvector) | `POSTGRES_*` |
 | `seaweedfs` | magazyn treści: HTML, zrzuty, wideo (S3) | `S3_*` |
 | `valkey` | kolejki zadań (RQ) | – |
@@ -74,6 +83,7 @@ Limity CPU i pamięci każdego serwisu ustawia się zmiennymi `*_CPUS` i `*_MEM`
 ## Dokumentacja
 
 - [Architektura i przepływ danych](docs/MODUL1-ARCHITEKTURA.md)
+- [18 reguł oceny i sposób ich sprawdzania](docs/REGULY.md)
 - [Jak pracowaliśmy z asystentami AI](docs/AI_PROCESS.md)
 - [Licencje](docs/LICENSES.md) i [audyt zależności](docs/SECURITY-AUDIT.md)
 - [Po pobraniu zmian z repozytorium](docs/PO-AKTUALIZACJI.md)

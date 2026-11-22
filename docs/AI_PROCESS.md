@@ -20,7 +20,7 @@ sobie. Niżej opisujemy, jak to wyglądało w praktyce i gdzie w repozytorium s�
    co jest w zakresie. Najważniejsza decyzja: o zakresie decyduje opakowanie instrumentu, a nie aktywo,
    więc CFD i ETP na kryptowaluty zostają, a zakup krypto spot odpada (MiCA).
 2. **Specyfikacja i plan.** Asystent pomagał rozpisać design, ale wersję drugą przyjęliśmy dopiero
-   po wspólnym przeglądzie (commit `80031fb`). Każdy etap miał plan z listą zadań i testów.
+   po wspólnym przeglądzie (commit `9920070`). Każdy etap miał plan z listą zadań i testów.
 3. **Podział pracy.** Każdy strumień miał swój obszar: zbieranie danych, analiza, panel i API.
    Każdy pracował na osobnej gałęzi i w osobnym katalogu roboczym, a wspólne pliki miały jednego właściciela.
    Zmiany wchodziły przez pull requesty po każdym etapie.
@@ -39,7 +39,7 @@ sobie. Niżej opisujemy, jak to wyglądało w praktyce i gdzie w repozytorium s�
 ## Jak sprawdzaliśmy, czy model ocenia dobrze
 
 - **Zbiory kontrolne zamrożone przed strojeniem.** Etykiety commitowaliśmy, zanim uruchomiliśmy
-  model, więc historia gita pokazuje, że nie dopasowaliśmy ich do wyników (`229f259`, `cbe1c6c`).
+  model, więc historia gita pokazuje, że nie dopasowaliśmy ich do wyników (`5370254`, `e12544d`).
   Na zbiorze, którego nie używaliśmy do strojenia (`fixtures/module2-holdout-2/`, 99 etykiet),
   trafność wynosi 81–82%. To uważamy za uczciwą miarę. Wyższe wyniki na zbiorze strojenia
   traktujemy jako optymistyczne.

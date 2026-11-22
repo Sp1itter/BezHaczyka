@@ -8,7 +8,7 @@ Dwie implementacje z jednym interfejsem:
 - SqliteStore — praca bez Dockera (na zadnej maszynie zespolu go nie bylo).
   Ten sam ksztalt kolumn, JSON trzymany jako tekst. Uzywany tez w testach.
 
-Zasada z docs/INTEGRACJA.md: `rule_results` zapisujemy W CALOSCI — panel
+Zasada z docs/MODUL1-ARCHITEKTURA.md: `rule_results` zapisujemy W CALOSCI — panel
 kalibracji przelicza flagi po stronie klienta.
 """
 

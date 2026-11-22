@@ -99,4 +99,4 @@ Docker z Compose v2. Bez GPU. Postgres ok. 100 MB RAM.
    ```
 
 W Git Bash dodaj `MSYS_NO_PATHCONV=1` przed komendami z `/data/...`, inaczej sciezka
-zostanie zamieniona na windowsowa. Notatka dla modeli/agentow: `AGENTS.md`.
+zostanie zamieniona na windowsowa.

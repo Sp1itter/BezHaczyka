@@ -18,11 +18,11 @@ Wybór: wszystkie facebook i www, youtube losowo (14 z dopasowaniem do rejestru,
 ## Uczciwość pomiaru
 
 Etykiety nadano wyłącznie z treści (pola publikującego, tytuł, tekst), **przed** jakąkolwiek zmianą resolvera
-i bez wglądu w jego logikę ani w `cases.entity_resolution`. Data: 2026-11-21, commit bazowy `22c851c`.
+i bez wglądu w jego logikę ani w `cases.entity_resolution`. Data: 2026-11-21, commit bazowy `0bf2581`.
 Nazwy firm w `firm` sprawdzono tylko względem tabeli `authorized_entities` (rejestr, nie wynik resolvera).
 Przypadki graniczne: emitent ETP Virtune (nie jest w rejestrze).
 
-Etykiety nadał subagent AI według rubryki, nie człowiek. Wzorce ujawnień EN/HU dopisano po obejrzeniu pominięć
+Etykiety przygotowaliśmy z pomocą asystenta AI według rubryki, więc nie są oceną ekspercką. Wzorce ujawnień EN/HU dopisano po obejrzeniu pominięć
 na tym samym zbiorze, więc precyzja i czułość ujawnień na nim są „in-sample” i optymistyczne. Wyrywkowa kontrola
 15 przypadków w bazie dała precyzję 14/15; jedno fałszywe trafienie to negacja „not sponsored by” (poprawione
 w kolejnej poprawce: `sponsored` / `paid promotion` po zaprzeczeniu nie liczą się jako ujawnienie).
