@@ -45,6 +45,10 @@ PROFIT = [
     "zarobilem 30% w miesiac",
     "oprocentowanie 7%",
     "nawet 15% zysku",
+    # z holdout-2: procent ze znakiem i czasownik wzrostu
+    "2023: +21%, 2024: +18% na funduszu akcji! W 2025 znow bedzie na plusie",
+    "indeks WIG wzrosnie do konca 2027 roku o okolo 25%",
+    "do 18% rocznie",
 ]
 
 
