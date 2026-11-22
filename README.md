@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/brand/4_mono.png" alt="BezHaczyka" width="320"></p>
+
 # InvestWatch
 
 System monitoringu reklam usług inwestycyjnych w internecie, przygotowany na wyzwanie UKNF
