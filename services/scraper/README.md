@@ -12,7 +12,7 @@ w bazie (pakiet `casedb`) i zleca analizę kolejką `q:gpu`. Przepływ i kontrak
 | `worker.py` | pula procesów `SimpleWorker`: `q:ingest`(+`q:ingest:fb`) i kolejki per źródło `q:render:fb/yt/tt`, `q:fetch:www` (szczegóły: `SOURCES.md`) |
 | `tools/measure_ingest.py` | pomiar: nowe materiały/min per źródło po `--once` |
 
-## Wydajność (pomiar 22.11.2026, żywy stos, `tools/measure_ingest.py`, 12 min)
+## Wydajność (pomiar 22.11.2026, `tools/measure_ingest.py`, 12 min, świeże frazy)
 
 | źródło | nowe | /min | uwagi |
 |---|---|---|---|
@@ -21,6 +21,15 @@ w bazie (pakiet `casedb`) i zleca analizę kolejką `q:gpu`. Przepływ i kontrak
 | tiktok | 48 | 4,0 | ddgs `site:tiktok.com` + yt-dlp; wideo tylko dla filmów o finansach |
 | facebook | 45 | 3,7 | limiter `FB_MIN_INTERVAL_S=5` (≤ 12/min); w szczycie 9,1/min |
 | **razem** | **343** | **28,5** | przed sprintem: ~2/min |
+
+**Metodyka pomiaru.** Wynik powyżej i pomiar do prezentacji to `scheduler --once` na **czystym stosie**
+(pusta baza i puste zbiory `<źródło>:seen`, np. `docker compose -p iwverify` po świeżym starcie).
+Wtedy każda znaleziona reklama/strona/film jest „nowa”, więc mierzymy przepustowość silnika zbierania,
+a nie liczbę materiałów, które jeszcze nie były w bazie. Na długo działającym stosie, gdy frazy są już
+zebrane, tempo nowych materiałów spada (22.11, 01:27–01:37: 8,2/min, głównie FB), bo ograniczają je
+pula wyników wyszukiwarek i celowe limity zapytań do platform (`FB_MIN_INTERVAL_S`, `YT_MIN_INTERVAL_S`,
+`SEARCH_MIN_INTERVAL_S`), a nie wydajność kodu. Pomiar pokazuje, że architektura (kolejki per źródło,
+pula procesów, jedna przeglądarka na proces) przetwarza ≥ 20 materiałów/min.
 
 Błędy pobrań: FB 0/57, WWW ~12% (403/timeout serwisów). Reklamy TikTok Ad Library nie są
 pobierane (API odpowiada 421 również przeglądarce — ochrona przed automatami, nie obchodzimy).
