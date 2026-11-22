@@ -28,10 +28,12 @@ Bez `DATABASE_URL` baza to `services/api/data/api-dev.sqlite`. W compose
 | `GET` | `/findings/{id}` | web | z podglądem dokumentu, `coverage` oraz `summary` i `summary_engine` (NULL gdy brak; też w `GET /findings`) |
 | `PATCH` | `/findings/{id}` | web | `{"status": "in_review" \| "confirmed" \| "dismissed" \| ...}` |
 | `GET` | `/stats` | web | agregaty do wykresów |
+| `GET` | `/stats/trend` | web | liczba wyników wg poziomu ryzyka w czasie; `bucket`: `day`, `hour`, `10min` albo `auto` (dobiera przedział do rozpiętości danych); te same filtry co `/findings` |
 | `GET` | `/calibration` | web | zbiór złoty (`fixtures/gold/labels.json`); progi liczy front |
 | `WS` | `/ws/alerts` | web | `{"type": "finding.high", ...}` przy nowym lub eskalowanym `high`; na Postgresie także dla findingów zapisanych prosto do bazy (odpytywanie co `ALERT_POLL_S`, domyślnie 3 s; dedup po `id`). Alerty: nowe i eskalowane findingi `high` z ostatniej godziny (`ALERT_LOOKBACK_S`, domyślnie 3600). Przy kilku workerach uvicorn każdy obsługuje własnych klientów WS |
 | `GET` | `/reports/module1` | web | raport Modułu 1 (widok `module1_report`): `source`, `relation`, `flag` (z `m1_flags`; 400 gdy brak kolumny), `since` (po `last_seen_at`), `limit` (200, max 1000), `offset`; `{items, total}`. Na SQLite 503 |
 | `GET` | `/reports/module1.csv` | web | te same filtry; CSV z BOM, tablice jako `a;b`, `modul1-raport-YYYYMMDD.csv` |
+| `GET` | `/reports/module3(.csv)` | web | raport Modułu 3: findingi z naruszeniem reguły M3 (`confirmed: true`) i kandydaci z trasy R3 (`confirmed: false`); najpierw potwierdzone, potem wg wyniku |
 | `GET` | `/health` | compose | stan bazy |
 
 Zasady z kontraktu, których API pilnuje:
