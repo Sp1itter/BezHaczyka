@@ -168,6 +168,8 @@ services:
       timeout: 5s
       start_period: 20s
       retries: 3
+    # Warm shutdown RQ: autoskaler zdejmuje klony SIGTERM-em i czeka na dokonczenie zadania.
+    stop_grace_period: 180s
     restart: unless-stopped
     networks: [investwatch]
 
@@ -309,7 +311,70 @@ services:
       - "${DASHBOARD_BIND:-127.0.0.1}:${DASHBOARD_PORT:-7080}:8080"
     networks: [investwatch]
 
-  # --- MIEJSCE NA `autoscaler` (dodaje osobne zadanie; nie wstawiaj tu nic innego) ---
+  # --- autoscaler: skaluje kontenery `analyzer` wg backlogu q:gpu + HTTP /scaling -------
+  # Petla co AUTOSCALER_INTERVAL_S czyta kolejke z Valkeya i dodaje/zdejmuje KLONY
+  # kontenera `analyzer` (ten sam obraz/env/siec, limity cpus/memory_mb z panelu operatora).
+  # Bazowy kontener compose nigdy nie jest zdejmowany. Do Dockera idzie WYLACZNIE przez
+  # docker-socket-proxy (nie montujemy gniazda do autoskalera), a filtr po etykiecie
+  # projektu compose pilnuje, ze ruszamy tylko wlasne kontenery.
+  # API (port 8090, tylko siec compose): GET/PUT /scaling, GET /health. Zmiany operatora
+  # zyja w Valkey (klucz ops:scaling) i nadpisuja analyzer/config/scaling.yaml.
+  # AUTOSCALER_EXECUTOR: compose (domyslnie) albo dry-run (tylko loguje decyzje).
+  autoscaler:
+    build:
+      context: ../services
+      dockerfile: analyzer/Dockerfile
+    command: ["python", "-m", "analyzer.autoscaler"]
+    cpus: ${AUTOSCALER_CPUS:-0.5}
+    mem_limit: ${AUTOSCALER_MEM:-256m}
+    depends_on:
+      valkey:
+        condition: service_healthy
+      docker-socket-proxy:
+        condition: service_started
+    environment:
+      DOCKER_HOST: tcp://docker-socket-proxy:2375
+      VALKEY_URL: redis://valkey:6379/0
+      AUTOSCALER_EXECUTOR: ${AUTOSCALER_EXECUTOR:-compose}
+      AUTOSCALER_INTERVAL_S: ${AUTOSCALER_INTERVAL_S:-5}
+      OLLAMA_NUM_PARALLEL: ${OLLAMA_NUM_PARALLEL:-4}
+      ANALYZER_MIN_REPLICAS: ${ANALYZER_MIN_REPLICAS:-1}
+      ANALYZER_MAX_REPLICAS: ${ANALYZER_MAX_REPLICAS:-4}
+      ANALYZER_SCALE_UP_BACKLOG: ${ANALYZER_SCALE_UP_BACKLOG:-3}
+      ANALYZER_SCALE_DOWN_IDLE_S: ${ANALYZER_SCALE_DOWN_IDLE_S:-60}
+      ANALYZER_EXTRA_CPUS: ${ANALYZER_EXTRA_CPUS:-2}
+      ANALYZER_EXTRA_MEM_MB: ${ANALYZER_EXTRA_MEM_MB:-3072}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8090/health', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+    restart: unless-stopped
+    # `scaler` to siec wewnetrzna tylko dla autoskalera i proxy Dockera (reszta stosu
+    # nie ma sciezki do gniazda Dockera).
+    networks: [investwatch, scaler]
+
+  # --- docker-socket-proxy (Apache-2.0): waski, filtrowany dostep do Dockera -----------
+  # Jedyny kontener z gniazdem Dockera (tylko do odczytu na poziomie montowania; zakres
+  # operacji wyznaczaja zmienne ponizej). Port 2375 tylko w sieci compose.
+  # Zestaw MINIMALNY (zweryfikowany e2e): CONTAINERS (lista/inspect/create/stop) + POST
+  # (w tym haproxy przepuszcza wtedy tez DELETE = usuniecie kontenera). IMAGES/NETWORKS niepotrzebne,
+  # bo klon tworzymy z nazwy obrazu i nazwy sieci wzietych z inspect kontenera bazowego.
+  docker-socket-proxy:
+    image: tecnativa/docker-socket-proxy:0.3.0
+    environment:
+      CONTAINERS: 1
+      POST: 1
+      SERVICES: 0
+      IMAGES: 0
+      NETWORKS: 0
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    cpus: 0.25
+    mem_limit: 64m
+    restart: unless-stopped
+    networks: [scaler]
 
   # --- ollama: LLM + embeddingi w kontenerze z GPU NVIDIA (domyslnie) ----------
   # Wymaga Docker Desktop (WSL2) lub nvidia-container-toolkit. Bez GPU: docker-compose.cpu.yml.
@@ -378,6 +443,8 @@ services:
 
 networks:
   investwatch: {}
+  scaler:
+    internal: true
 
 volumes:
   pgdata:
