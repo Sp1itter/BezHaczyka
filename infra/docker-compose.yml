@@ -308,6 +308,8 @@ services:
     networks: [investwatch]
 
   dashboard:
+    # Stary panel - zastapiony przez services/web; start tylko na zadanie: --profile legacy
+    profiles: [legacy]
     build:
       context: ../services/dashboard
     cpus: ${DASHBOARD_CPUS:-0.5}
