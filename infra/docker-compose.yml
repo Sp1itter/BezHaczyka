@@ -20,7 +20,7 @@ services:
   postgres:
     image: pgvector/pgvector:pg16
     cpus: ${POSTGRES_CPUS:-2}
-    mem_limit: ${POSTGRES_MEM:-1g}
+    mem_limit: ${POSTGRES_MEM:-2g}
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -249,8 +249,8 @@ services:
   api:
     build:
       context: ../services/api
-    cpus: ${API_CPUS:-1}
-    mem_limit: ${API_MEM:-512m}
+    cpus: ${API_CPUS:-2}
+    mem_limit: ${API_MEM:-1g}
     depends_on:
       postgres:
         condition: service_healthy
@@ -308,6 +308,8 @@ services:
     networks: [investwatch]
 
   dashboard:
+    # Stary panel - zastapiony przez services/web; start tylko na zadanie: --profile legacy
+    profiles: [legacy]
     build:
       context: ../services/dashboard
     cpus: ${DASHBOARD_CPUS:-0.5}
