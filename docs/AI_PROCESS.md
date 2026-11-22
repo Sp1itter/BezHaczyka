@@ -1,6 +1,6 @@
 # Jak pracowaliśmy z asystentami AI
 
-Byliśmy sześcioosobowym zespołem i mieliśmy niecałe dwie doby. Pracę podzieliliśmy na trzy
+Byliśmy sześcioosobowym zespołem i pracę podzieliliśmy na trzy
 strumienie: zbieranie danych, analizę oraz panel z API. Asystentów AI używaliśmy do pisania kodu, testów i dokumentacji, ale zakres, architekturę, podział pracy i ocenę wyników zostawiliśmy
 sobie. Niżej opisujemy, jak to wyglądało w praktyce i gdzie w repozytorium są tego ślady.
 
