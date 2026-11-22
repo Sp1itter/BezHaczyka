@@ -18,6 +18,22 @@ Komendy uruchomienia, adresy i procedura „po git pull”: `README.md` w korzen
 | scheduler | rq-scheduler: harmonogram z `services/scraper/schedule.yaml` | długotrwały |
 | ollama | LLM + embeddingi, GPU NVIDIA (port wewnętrzny 11434) | długotrwały |
 | ollama-pull | pobiera modele z `OLLAMA_MODELS_PULL` | jednorazowy (Exited 0) |
+| scraper-worker-render | pobieranie i render stron (Playwright, 3 rozdzielczości) | długotrwały |
+| autoscaler | dokłada kontenery `analyzer` przy kolejce, limity z panelu operatora | długotrwały |
+| docker-socket-proxy | ograniczony dostęp autoskalera do Dockera (osobna sieć) | długotrwały |
+
+## Najważniejsze ustawienia (`infra/.env`)
+
+| Serwis | Ustawienia |
+|---|---|
+| scheduler | `services/scraper/schedule.yaml` (frazy, konta, częstotliwość) |
+| scraper-worker, scraper-worker-render | `SCRAPER_*`, `FB_*`, `YT_*`, `TIKTOK_MODE`, `WWW_RENDER`, rotacja: `SCRAPER_USER_AGENTS`, `SCRAPER_PROXIES` |
+| analyzer | `OLLAMA_*`, `LLM_*` (kontekst, długość odpowiedzi, równoległość wsadów) |
+| autoscaler | `ANALYZER_MAX_REPLICAS`, `ANALYZER_EXTRA_CPUS`, `ANALYZER_EXTRA_MEM_MB`, `AUTOSCALER_*` |
+| ollama | `OLLAMA_NUM_PARALLEL`, `OLLAMA_MODELS_PULL`, `OLLAMA_KV_CACHE_TYPE` |
+| api, web | `API_PORT`, `WEB_PORT`, `ALERT_*`, `MEDIA_PROXY_HOSTS` |
+| postgres, seaweedfs | `POSTGRES_*`, `S3_*` |
+| każdy serwis | limity zasobów `*_CPUS`, `*_MEM` |
 
 Przepływ: `scheduler` zleca discover (FB/YT/WWW) do `q:ingest` i `recheck` znanych URL-i →
 `scraper-worker` pobiera materiał (`q:render`), rozpoznaje podmioty z rejestru KNF, zapisuje
