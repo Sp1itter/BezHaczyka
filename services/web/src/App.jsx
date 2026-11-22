@@ -7,6 +7,7 @@ import Alerts from "./views/Alerts.jsx";
 import Findings from "./views/Findings.jsx";
 import FindingPage from "./views/FindingPage.jsx";
 import Module1Report from "./views/Module1Report.jsx";
+import Module2Report from "./views/Module2Report.jsx";
 import Module3Report from "./views/Module3Report.jsx";
 import Calibration from "./views/Calibration.jsx";
 import Operator from "./views/Operator.jsx";
@@ -121,6 +122,7 @@ export default function App() {
     findings: () => <Findings {...common} />,
     finding: () => <FindingPage id={view.id} labels={labels} onReview={onReview} onAssign={onAssign} onStatus={onStatus} {...common} />,
     module1: () => <Module1Report {...common} />,
+    module2: () => <Module2Report {...common} />,
     module3: () => <Module3Report {...common} />,
     calibration: () => <Calibration {...common} />,
     operator: () => <Operator {...common} />,

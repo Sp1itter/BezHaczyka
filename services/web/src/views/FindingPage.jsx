@@ -4,14 +4,13 @@ import { Fragment, useEffect, useState } from "react";
 import { api } from "../api/client.js";
 import { useApi } from "../hooks/useApi.js";
 import { CopyButton, ErrorState, PageHeader, RiskBadge } from "../components/ui.jsx";
-import VerificationCard from "../components/VerificationCard.jsx";
+import MediaPreview from "../components/MediaPreview.jsx";
 import { formatEvidence, safeHttpUrl } from "../lib/evidence.js";
 import { GROUPS, RELATION, VERDICT, groupOf } from "../lib/detail.js";
 import { ANALYSTS, DECISION, MODULE, STATUS, fmtDate, publisherName, sourceLabel } from "../lib/labels.js";
 import { num, pct, shortId } from "../lib/ui.js";
 
 const yn = (v) => (v == null ? "—" : v ? "tak" : "nie");
-const DECISION_CLASS = { confirmed: "approve", dismissed: "reject" };
 
 // Etykiety ocen z API maja skroty (TP)/(FP)/(FN) - analitykowi wystarczy opis.
 const plainLabel = (s) => String(s || "").replace(/\s*\((TP|FP|FN|TN)\)/g, "");
@@ -26,6 +25,8 @@ function describeEvent(e, labels) {
   if (e.action === "status") return `status: ${STATUS[d.status] || d.status}`;
   return e.action;
 }
+
+const MAIN_LABELS = ["true_positive", "false_positive"];
 
 function ReviewPanel({ f, labels, analyst, onReview }) {
   const [note, setNote] = useState("");
@@ -56,12 +57,20 @@ function ReviewPanel({ f, labels, analyst, onReview }) {
       <label><span>Notatka</span>
         <textarea rows="4" maxLength="2000" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Podstawa decyzji, dodatkowe ustalenia…" />
       </label>
-      <div className="decision-grid">
-        {labels.map((l) => (
-          <button key={l.value} type="button" disabled={busy} className={`decision ${DECISION_CLASS[l.verdict] || "enrich"}`}
-            onClick={() => decide(l)}>{plainLabel(l.label)}</button>
+      <div className="decision-main">
+        {MAIN_LABELS.map((v) => labels.find((l) => l.value === v)).filter(Boolean).map((l) => (
+          <button key={l.value} type="button" disabled={busy}
+            className={`button ${l.verdict === "confirmed" ? "danger-solid" : "secondary"}`} onClick={() => decide(l)}>
+            {l.verdict === "confirmed" ? "Potwierdź naruszenie" : "Fałszywy alarm"}
+          </button>
         ))}
       </div>
+      <label><span>Inna ocena</span>
+        <select value="" disabled={busy} onChange={(e) => { const l = labels.find((x) => x.value === e.target.value); if (l) decide(l); }}>
+          <option value="">Wybierz…</option>
+          {labels.filter((l) => !MAIN_LABELS.includes(l.value)).map((l) => <option key={l.value} value={l.value}>{plainLabel(l.label)}</option>)}
+        </select>
+      </label>
       <p className="form-error">{error}</p>
     </section>
   );
@@ -122,7 +131,8 @@ export default function FindingPage({ id, labels, analyst, onReview, onAssign, o
   return (
     <>
       <PageHeader title={doc.title || "Bez tytułu"} lead={`${sourceLabel(doc.source)} · wykryto ${fmtDate(f.created_at)}`}
-        actions={<a className="button secondary" href="#/alerts">Wróć do alertów</a>} />
+        actions={<button type="button" className="button secondary"
+          onClick={() => (window.history.length > 1 ? window.history.back() : (window.location.hash = "#/findings"))}>‹ Wstecz</button>} />
 
       <section className={`report-banner ${f.risk_level}`}>
         <div>
@@ -132,17 +142,16 @@ export default function FindingPage({ id, labels, analyst, onReview, onAssign, o
         <dl>
           <div><dt>Poziom</dt><dd><RiskBadge level={f.risk_level} /></dd></div>
           <div><dt>Ocenione reguły</dt><dd>{pct(f.coverage)}</dd></div>
-          <div><dt>Moduły</dt><dd>{f.modules?.length ? f.modules.map((m) => MODULE[m] || `M${m}`).join(", ") : "Brak"}</dd></div>
+          <div><dt>Moduły</dt><dd>{f.modules?.length ? f.modules.map((m) => <span key={m} className="tag" title={MODULE[m]}>Moduł {m}</span>) : "Brak"}</dd></div>
           <div><dt>Status / przypisanie</dt><dd>{STATUS[f.status] || f.status} / {f.assignee || "nieprzypisane"}</dd></div>
         </dl>
       </section>
 
-      <VerificationCard finding={f} actionHref="#review"
-        onAction={() => document.getElementById("review")?.scrollIntoView({ behavior: "smooth", block: "start" })} />
-
       <div className="report-layout">
         <div className="report-main">
-          <section className="panel report-section">
+          <section className="panel report-section evidence-overview">
+            <div className="evidence-preview"><MediaPreview finding={f} /></div>
+            <div>
             <h2>Naruszenia ({failed.length})</h2>
             {failed.length ? (
               <div className="evidence-list">
@@ -160,9 +169,10 @@ export default function FindingPage({ id, labels, analyst, onReview, onAssign, o
                 })}
               </div>
             ) : <p className="muted-copy">Nie wykryto naruszeń reguł w tym materiale.</p>}
+            </div>
           </section>
 
-          <section className="panel report-section">
+          {f.summary_engine === "llm" && f.summary && <section className="panel report-section">
             <h2>Podsumowanie</h2>
             <p className="executive-summary">{f.summary || (failed.length
               ? `Wykryto naruszenia: ${failed.map((r) => r.rule_name).join(", ")}. Szczegóły poniżej.`
@@ -171,7 +181,7 @@ export default function FindingPage({ id, labels, analyst, onReview, onAssign, o
               <div><span>Publikujący</span><strong>{publisherName(doc) || "Brak wskazania"}</strong></div>
               <div><span>Firma w reklamie</span><strong>{firm?.name_in_ad || "Brak wskazania"}</strong></div>
             </div>
-          </section>
+          </section>}
 
           <section className="panel report-section">
             <h2>Materiał</h2>
@@ -179,7 +189,8 @@ export default function FindingPage({ id, labels, analyst, onReview, onAssign, o
             {doc.text_excerpt ? <p className="executive-summary">{doc.text_excerpt}{doc.text_excerpt.length >= 400 ? "…" : ""}</p> : <p className="muted-copy">Brak tekstu materiału.</p>}
             {doc.url && (
               <div className="ioc-list">
-                <div className="ioc-row"><span>URL</span><code>{doc.url}</code><CopyButton value={doc.url} onFail={(m) => toast(m, "error")} /></div>
+                <div className="ioc-row"><span>URL</span><code>{doc.url}</code>
+                  <span className="ioc-actions"><CopyButton value={doc.url} onFail={(m) => toast(m, "error")} />{url && <a className="copy-button" href={url} target="_blank" rel="noreferrer noopener">Otwórz w nowej karcie ↗</a>}</span></div>
               </div>
             )}
           </section>
@@ -239,7 +250,6 @@ export default function FindingPage({ id, labels, analyst, onReview, onAssign, o
               <div><dt>Wykryto</dt><dd>{fmtDate(f.created_at)}</dd></div>
             </dl>
             {doc.url && <code className="source-address">{doc.url}</code>}
-            {url && <p className="source-note"><a className="text-link" href={url} target="_blank" rel="noreferrer noopener">Otwórz źródło ↗</a></p>}
           </section>
 
           <section className="panel">

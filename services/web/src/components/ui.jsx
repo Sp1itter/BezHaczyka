@@ -134,10 +134,10 @@ export function SortableTable({ columns, rows, rowKey, collapseLimit, className 
  * kropka "aktywne", Zastosuj / Wyczysc. Stan filtrow zyje w adresie (path + query).
  * fields: [{ name, label, type: "search"|"select"|"date", options?: {value: label}, placeholder? }]
  */
-export function FilterDrawer({ title = "Filtry", path, query, fields, resultCount }) {
+export function FilterDrawer({ title = "Filtry", path, query, fields, resultCount, defaultOpen = false }) {
   const active = fields.some((f) => query[f.name]);
   return (
-    <details className="filter-drawer" open={active || undefined} key={JSON.stringify(query)}>
+    <details className="filter-drawer" open={active || defaultOpen || undefined} key={JSON.stringify(query)}>
       <summary className="filter-drawer-summary">
         <span className="filter-drawer-label">
           <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M10 18h4" /></svg>

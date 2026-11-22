@@ -24,9 +24,9 @@ export default function Findings({ query, reloadKey }) {
       <section className="panel table-panel">
         <div className="panel-head"><h2>Wyniki: {total}</h2>
           <span className="quiet">{total ? `strona ${page} z ${pages} · najnowsze pierwsze` : ""}</span></div>
-        <FilterDrawer path="/findings" query={{ ...query, page: "" }} fields={FILTER_FIELDS} resultCount={total} />
+        <FilterDrawer path="/findings" query={{ ...query, page: "" }} fields={FILTER_FIELDS} resultCount={total} defaultOpen />
         {list.error ? <EmptyState title="Nie udało się pobrać wyników">{list.error.message}</EmptyState> : (
-          <SortableTable columns={[COL.date, COL.title, COL.modules, COL.risk, COL.score, COL.status, COL.assignee]}
+          <SortableTable columns={[COL.date, COL.title, COL.modules, COL.violations, COL.risk, COL.score, COL.status]}
             rows={list.data?.items || []} rowKey={(f) => f.id}
             empty={<EmptyState>{list.loading ? "Ładowanie…" : "Brak wyników dla wybranych filtrów."}</EmptyState>} />
         )}

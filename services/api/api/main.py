@@ -269,14 +269,16 @@ class ThresholdIn(BaseModel):
 # Modul 3: doradztwo bez zezwolenia (RuleResult M3 z analyzera)
 # --------------------------------------------------------------------------- #
 
-M3_COLUMNS = ("created_at", "entity", "registry_status", "source", "publisher", "url", "offer_text",
+M3_COLUMNS = ("created_at", "confirmed", "entity", "registry_status", "source", "publisher", "url", "offer_text",
               "evidence", "quote", "risk_level", "risk_score", "finding_id")
 
 
 def module3_row(f: dict[str, Any]) -> dict[str, Any] | None:
-    """Wiersz raportu M3 z findingu, w ktorym regula M3 ma werdykt fail; inaczej None."""
+    """Wiersz raportu M3: potwierdzone naruszenie (regula M3 = fail) albo kandydat z trasy R3
+    (podmiot spoza rejestru KNF z trescia o charakterze doradztwa); inaczej None."""
     m3 = next((r for r in f.get("rule_results") or [] if r.get("rule_id") == "M3" and r.get("verdict") == "fail"), None)
-    if m3 is None:
+    routing = f.get("routing") or {}
+    if m3 is None and routing.get("rule") != "R3":
         return None
     firm = (f.get("entities") or {}).get("investment_firm") or {}
     adv = (f.get("entities") or {}).get("advertiser") or {}
@@ -289,13 +291,13 @@ def module3_row(f: dict[str, Any]) -> dict[str, Any] | None:
         registry = "brak zezwolenia KNF"
     else:
         registry = "brak w rejestrze KNF"
-    ev = m3.get("evidence") or {}
+    ev = (m3 or {}).get("evidence") or {}
     return {
-        "finding_id": f["id"], "created_at": f["created_at"],
+        "finding_id": f["id"], "created_at": f["created_at"], "confirmed": m3 is not None,
         "entity": firm.get("name_in_ad") or adv.get("name") or publisher or None,
         "registry_status": registry, "source": doc.get("source"), "publisher": publisher or None,
         "url": doc.get("url"), "offer_text": doc.get("text_excerpt"),
-        "evidence": ev.get("summary"), "quote": ev.get("quote"),
+        "evidence": ev.get("summary") or routing.get("reason"), "quote": ev.get("quote"),
         "risk_level": f.get("risk_level"), "risk_score": f.get("risk_score"),
     }
 
@@ -706,13 +708,26 @@ def create_app(store: SqlStore | None = None, gold_path: Path | None = None,
 
     @app.get("/stats/trend")
     async def stats_trend(
-        flt: FindingFilter = Depends(finding_filter), bucket: Literal["day"] = "day",
+        flt: FindingFilter = Depends(finding_filter), bucket: Literal["day", "hour", "10min", "auto"] = "day",
     ) -> dict[str, Any]:
-        """Liczba wynikow na dzien (UTC) wg poziomu ryzyka, z tymi samymi filtrami co lista."""
+        """Liczba wynikow w kubelkach czasu (UTC: dzien, godzina, 10 minut) wg poziomu ryzyka,
+        z tymi samymi filtrami co lista. `auto` dobiera kubelek do rozpietosci danych, zeby krotki
+        przebieg (np. 20-minutowy test) nie konczyl sie wykresem z jednym slupkiem."""
         items = await run_in_threadpool(st().query_findings, flt)
+        stamps = [str(f["created_at"]).replace(" ", "T") for f in items]
+        if bucket == "auto":
+            ts = sorted(datetime.fromisoformat(x) for x in stamps)
+            span_h = (ts[-1] - ts[0]).total_seconds() / 3600 if ts else 0
+            bucket = "10min" if span_h <= 6 else "hour" if span_h <= 72 else "day"
+
+        def key(stamp: str) -> str:
+            if bucket == "10min":
+                return stamp[:15] + "0"
+            return stamp[:13] if bucket == "hour" else stamp[:10]
+
         days: dict[str, dict[str, Any]] = {}
-        for f in items:
-            day = str(f["created_at"])[:10]
+        for f, stamp in zip(items, stamps):
+            day = key(stamp)
             row = days.setdefault(day, {"date": day, "high": 0, "medium": 0, "low": 0, "total": 0})
             row[f["risk_level"]] = row.get(f["risk_level"], 0) + 1
             row["total"] += 1
@@ -796,7 +811,8 @@ def create_app(store: SqlStore | None = None, gold_path: Path | None = None,
     async def _module3_rows() -> list[dict[str, Any]]:
         items = await run_in_threadpool(st().query_findings, FindingFilter())
         rows = [r for r in (module3_row(f) for f in items) if r]
-        return sorted(rows, key=lambda r: str(r["created_at"]), reverse=True)
+        # Najpierw potwierdzone naruszenia, potem kandydaci wg wyniku ryzyka.
+        return sorted(rows, key=lambda r: (r["confirmed"], r.get("risk_score") or 0, str(r["created_at"])), reverse=True)
 
     @app.get("/reports/module3")
     async def report_module3(limit: int = Query(500, ge=1, le=5000)) -> dict[str, Any]:
