@@ -175,7 +175,7 @@ class Autoscaler:
             cfg = apply_overrides(cfg, self.env_over)
         try:
             return apply_overrides(cfg, self._stored_overrides())
-        except (ScalingConfigError, ValueError) as exc:
+        except Exception as exc:  # noqa: BLE001 - zly JSON, ScalingConfigError, Valkey nie odpowiada
             log.warning("Pomijam nadpisania operatora z %s: %s", OVERRIDES_KEY, exc)
             return cfg
 
@@ -191,8 +191,10 @@ class Autoscaler:
             for item in body["queues"]:
                 if not isinstance(item, dict) or not isinstance(item.get("name"), str):
                     raise ScalingConfigError('Kazda kolejka musi miec pole "name".')
+                if item["name"] in self.base_config.queues and item["name"] != GPU_QUEUE:
+                    continue  # tylko do odczytu: ignorujemy
                 merged = dict(stored.get(item["name"], {}))
-                merged.update({k: v for k, v in item.items() if k != "name"})
+                merged.update({k: v for k, v in item.items() if k not in ("name", "backlog", "running")})
                 stored[item["name"]] = merged
             cfg = self.base_config
             if self.env_over:
@@ -219,28 +221,34 @@ class Autoscaler:
 
     # --- jeden obieg petli ---------------------------------------------
     def tick(self) -> dict[str, int]:
-        """Odczytaj stan q:gpu, zdecyduj, wykonaj. Nie rzuca (awarie logujemy)."""
-        with self._lock:
-            try:
+        """Odczytaj stan q:gpu, zdecyduj, wykonaj. Nie rzuca (awarie logujemy).
+
+        Lock tylko na odczyt/zapis konfiguracji; wolny executor.apply (docker stop do 180 s)
+        nie blokuje PUT /scaling.
+        """
+        try:
+            with self._lock:
                 cfg = self.effective_config()
-                now = self.clock()
-                backlog = self.backend.backlog(GPU_QUEUE)
-                running = self.backend.running(GPU_QUEUE)
-                idle = self._idle_seconds(GPU_QUEUE, backlog > 0 or running > 0, now)
-                count = getattr(self.executor, "count", None)
-                workers = count() if callable(count) else len(self.backend.workers(GPU_QUEUE))
-                decisions = decide([QueueState(GPU_QUEUE, backlog, workers, idle)], cfg)
-                for d in decisions:
-                    if d.desired != d.current:
-                        log.info("q:gpu %d -> %d: %s", d.current, d.desired, d.reason)
-                result = self.executor.apply(decisions)
-                if any(d.desired < d.current for d in decisions):
-                    # Histereza: kolejny worker zejdzie dopiero po kolejnym scale_down_idle_s.
-                    self.backend.set(IDLE_KEY_PREFIX + GPU_QUEUE, repr(now))
-                return result
-            except Exception as exc:  # noqa: BLE001 - petla nie moze umrzec
-                log.warning("Obieg autoskalera nieudany: %s", exc)
-                return {}
+            now = self.clock()
+            backlog = self.backend.backlog(GPU_QUEUE)
+            running = self.backend.running(GPU_QUEUE)
+            idle = self._idle_seconds(GPU_QUEUE, backlog > 0 or running > 0, now)
+            workers_info = self.backend.workers(GPU_QUEUE)
+            busy_ids = {w["id"] for w in workers_info if w.get("state") == "busy"}
+            count = getattr(self.executor, "count", None)
+            workers = count() if callable(count) else len(workers_info)
+            decisions = decide([QueueState(GPU_QUEUE, backlog, workers, idle)], cfg)
+            for d in decisions:
+                if d.desired != d.current:
+                    log.info("q:gpu %d -> %d: %s", d.current, d.desired, d.reason)
+            result = self.executor.apply(decisions, busy_ids=busy_ids)
+            if any(d.desired < d.current for d in decisions):
+                # Histereza: kolejny worker zejdzie dopiero po kolejnym scale_down_idle_s.
+                self.backend.set(IDLE_KEY_PREFIX + GPU_QUEUE, repr(now))
+            return result
+        except Exception as exc:  # noqa: BLE001 - petla nie moze umrzec
+            log.warning("Obieg autoskalera nieudany: %s", exc)
+            return {}
 
     # --- payload /scaling ----------------------------------------------
     def payload(self) -> dict[str, Any]:

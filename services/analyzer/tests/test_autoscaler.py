@@ -63,7 +63,7 @@ class FakeExecutor:
     def count(self):
         return self._count
 
-    def apply(self, decisions):
+    def apply(self, decisions, busy_ids=()):
         self.applied.append(decisions)
         for d in decisions:
             self._count = d.desired
@@ -182,7 +182,6 @@ def test_update_max_powyzej_ollama_parallel_to_blad_422_i_nic_nie_zapisuje():
         {"queues": [{"max": 2}]},
         {"queues": [{"name": "q:gpu", "max": "dwa"}]},
         {"queues": [{"name": "q:gpu", "min": 3, "max": 2}]},
-        {"queues": [{"name": "q:ingest", "max": 2}]},
         {"queues": [{"name": "q:nieznana", "max": 2}]},
         {"queues": [{"name": "q:gpu", "bogus": 1}]},
     ],

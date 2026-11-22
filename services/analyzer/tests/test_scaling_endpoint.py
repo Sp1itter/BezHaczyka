@@ -29,11 +29,6 @@ def _get(path: str):
     return status, body
 
 
-@pytest.fixture(autouse=True)
-def _przywroc_provider():
-    oryginal = health.STATE_PROVIDER
-    yield
-    health.STATE_PROVIDER = oryginal
 
 
 def test_payload_ma_decyzje_dla_kazdej_kolejki():
@@ -52,30 +47,15 @@ def test_payload_jest_serializowalny_do_json():
     assert json.loads(json.dumps(p))["queues"][0]["desired"] == 2
 
 
-def test_endpoint_scaling_zwraca_200_i_json():
-    health.STATE_PROVIDER = lambda: [QueueState("q:ingest", 12, 1, 0)]
-    status, body = _get("/scaling")
-    assert status == 200
-    assert json.loads(body)["queues"][0]["desired"] == 2
 
 
-def test_brak_dostepu_do_kolejek_daje_pusta_liste_nie_blad():
-    def _pada():
-        raise ConnectionError("valkey nie odpowiada")
-
-    health.STATE_PROVIDER = _pada
-    status, body = _get("/scaling")
-    assert status == 200
-    assert json.loads(body)["queues"] == []
 
 
-def test_domyslny_provider_daje_pusta_liste():
-    status, body = _get("/scaling")
-    assert status == 200 and json.loads(body)["queues"] == []
 
 
 def test_nieznana_sciezka_nadal_daje_404():
     assert _get("/cokolwiek")[0] == 404
+    assert _get("/scaling")[0] == 404  # /scaling zyje w autoskalerze (:8090), nie w workerze
     assert _get("/scaling/x")[0] == 404
     assert _get("/")[0] == 404
 
@@ -86,16 +66,6 @@ def test_health_dalej_dziala(monkeypatch):
     assert status == 200 and json.loads(body) == {"status": "ok"}
 
 
-def test_niepoprawna_konfiguracja_nie_wywala_handlera(monkeypatch):
-    from analyzer import scaling
-
-    def _zla(*a, **k):
-        raise scaling.ScalingConfigError("sprzeczna konfiguracja")
-
-    monkeypatch.setattr(scaling, "load_scaling_config", _zla)
-    status, body = _get("/scaling")
-    assert status == 500
-    assert "sprzeczna" in json.loads(body)["error"]
 
 
 def test_payload_respektuje_podana_konfiguracje():
