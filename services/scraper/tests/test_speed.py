@@ -196,7 +196,7 @@ def test_seen_cleanup_finds_members_without_case():
 
 def test_discover_queues_keep_slow_sources_apart():
     assert jobs.discover_queue_for("facebook") == "q:ingest:fb"
-    assert jobs.discover_queue_for("youtube") == "q:render:yt"
+    assert jobs.discover_queue_for("youtube") == "q:render"
     assert jobs.discover_queue_for("www_live") == jobs.discover_queue_for("tiktok") == "q:ingest"
 
 

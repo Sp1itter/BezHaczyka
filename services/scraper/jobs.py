@@ -130,11 +130,12 @@ INGEST_FB_QUEUE = "q:ingest:fb"
 def discover_queue_for(source: str) -> str:
     """Discover zrodel z wolnym limiterem nie blokuje szybkich (WWW, TikTok) w q:ingest.
 
-    YouTube: kolejka YT (wspolny limiter z pobraniami). Facebook: q:ingest:fb — pierwszy proces
+    YouTube: q:render (wspolny limiter z pobraniami, nizszy priorytet niz q:render:yt). Facebook: q:ingest:fb — pierwszy proces
     q:ingest bierze ja przed q:ingest, pozostale dopiero gdy q:ingest jest pusta.
     """
     if source == "youtube":
-        return SOURCE_QUEUES["youtube"]
+        # q:render = niski priorytet: proces YT najpierw pobiera znalezione filmy, potem szuka nowych
+        return RENDER_QUEUE
     return INGEST_FB_QUEUE if source == "facebook" else INGEST_QUEUE
 
 

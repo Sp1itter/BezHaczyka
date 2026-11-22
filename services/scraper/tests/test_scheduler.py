@@ -99,8 +99,8 @@ def test_run_once(monkeypatch):
     tasks = _tasks(monkeypatch, once=True)
     assert run_once(lambda name: FakeQueue(name, sink), tasks) == len(tasks)
     # discover YouTube idzie do kolejki YT: dzieli limiter z pobraniami YT i nie blokuje q:ingest
-    assert {q for q, _, _ in sink} == {"q:ingest", "q:ingest:fb", "q:render:yt"}
-    assert {t.queue for t in tasks if t.job == "yt-finfluencerzy"} == {"q:render:yt"}
+    assert {q for q, _, _ in sink} == {"q:ingest", "q:ingest:fb", "q:render"}
+    assert {t.queue for t in tasks if t.job == "yt-finfluencerzy"} == {"q:render"}
     assert {f for _, f, _ in sink} == {"discover_job", "recheck_job"}
     assert len({kw["job_id"] for _, _, kw in sink}) == len(sink)
 
