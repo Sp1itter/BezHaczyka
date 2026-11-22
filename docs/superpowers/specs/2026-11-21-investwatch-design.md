@@ -1,6 +1,6 @@
 # InvestWatch — dokument projektowy (design doc)
 
-**Data:** 2026-11-21 · **Zespół:** 3 osoby · **Deadline oddania:** 2026-11-22, 11:00
+**Data:** 2026-11-21 · **Zespół:** 6 osób, 3 strumienie pracy (A, B, C) · **Deadline oddania:** 2026-11-22, 11:00
 **Zadanie:** HackNation 2026, wyzwanie UKNF „#InvestWatch — na straży inwestorów!"
 
 ---
@@ -261,7 +261,7 @@ Efekt uboczny jest pożądany: A i B nie edytują tych samych plików przez cał
 
 ## 6. Kontrakty danych (ZAMROŻONE o 12:30)
 
-To najważniejsza sekcja dokumentu. Trzy osoby pracują równolegle na tych strukturach
+To najważniejsza sekcja dokumentu. Trzy strumienie pracują równolegle na tych strukturach
 i **nikt ich nie zmienia bez ogłoszenia całemu zespołowi**. Do czasu gotowości serwisów
 każdy pracuje na ręcznie napisanym przykładzie zgodnym z tym kontraktem.
 
@@ -489,7 +489,7 @@ przelicza flagi bez ponownej inferencji — patrz sekcja 9.
 
 W pierwotnej wersji designu brakowało jawnego mechanizmu decydującego, do którego modułu
 trafia dokument. To była realna luka: bez niej każdy moduł musiałby sam filtrować wszystko,
-a trzy osoby pisałyby trzy różne, niespójne heurystyki.
+a trzy strumienie pisałyby trzy różne, niespójne heurystyki.
 
 Kolejność etapów w `analyzer` jest sztywna:
 
