@@ -26,6 +26,10 @@ import argparse
 import sys
 from collections import defaultdict
 from datetime import datetime, timezone
+from pathlib import Path
+
+# `python tools/<skrypt>.py` ma w sys.path tylko katalog tools/, a nie /app.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 ANALYST_FIELDS = (
     "status", "assignee", "assigned_by", "assigned_at",
