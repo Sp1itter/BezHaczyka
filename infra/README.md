@@ -16,7 +16,8 @@ Komendy uruchomienia, adresy i procedura „po git pull”: `README.md` w korzen
 | analyzer | worker kolejki `q:gpu` | długotrwały |
 | scraper-worker | worker `q:ingest` (discover) + `q:render` (pobranie, Playwright) | długotrwały, repliki `SCRAPER_WORKERS` |
 | scheduler | rq-scheduler: harmonogram z `services/scraper/schedule.yaml` | długotrwały |
-| ollama | opcja bez natywnej Ollamy | tylko `--profile ollama` |
+| ollama | LLM + embeddingi, GPU NVIDIA (port wewnętrzny 11434) | długotrwały |
+| ollama-pull | pobiera modele z `OLLAMA_MODELS_PULL` | jednorazowy (Exited 0) |
 
 Przepływ: `scheduler` zleca discover (FB/YT/WWW) do `q:ingest` i `recheck` znanych URL-i →
 `scraper-worker` pobiera materiał (`q:render`), rozpoznaje podmioty z rejestru KNF, zapisuje
@@ -102,9 +103,15 @@ Uruchomienie z `services/analyzer`: `./.venv/Scripts/python.exe tools/evaluate.p
 
 ## Ollama
 
-Domyślnie Ollama działa natywnie na hoście, a kontenery łączą się przez
-`host.docker.internal:11434`. Alternatywa bez instalacji: profil `ollama` (CPU, wolno),
-opis w `README.md`. Potrzebna tylko regułom LLM analyzera.
+Domyślnie Ollama działa w kontenerze `ollama` z GPU NVIDIA (Docker Desktop WSL2), modele
+pobiera `ollama-pull`, a `analyzer` startuje dopiero po nich (pierwszy `up` pobiera ok. 6 GB).
+Parametry serwera (`OLLAMA_NUM_PARALLEL`, `OLLAMA_KEEP_ALIVE` itd.) i lista modeli są w `.env`.
+- Bez GPU (CPU, wolno): w `.env` dopisz `COMPOSE_FILE=docker-compose.yml:docker-compose.cpu.yml`.
+- Ollama natywna na hoście: `COMPOSE_FILE=docker-compose.yml:docker-compose.native.yml` oraz
+  `OLLAMA_BASE_URL=http://host.docker.internal:11434`; modele `ollama pull` na hoście.
+- Bez wystawionego portu; do ręcznych komend: `docker compose exec ollama ollama list`.
+Potrzebna tylko regułom LLM analyzera.
+Limity zasobów kontenerów (`*_CPUS`, `*_MEM`) są w `.env`.
 
 ## Uwagi eksploatacyjne
 
@@ -115,9 +122,9 @@ opis w `README.md`. Potrzebna tylko regułom LLM analyzera.
   dysku (objaw: `no free volumes left`, PutObject -> InternalError).
 - `init.sql` (tylko rozszerzenie `vector`) działa tylko na PUSTYM wolumenie Postgresa; schemat
   tworzą migracje casedb (tabela `casedb_migrations`), więc zmiana schematu = nowa migracja.
-- Ollama (natywna, `host.docker.internal:11434`) jest potrzebna tylko regułom LLM analyzera;
-  bez niej dostają `not_applicable` z powodem. Na Linuksie Ollama musi słuchać na adresie
-  dostępnym z kontenera (`OLLAMA_HOST=0.0.0.0`).
+- Ollama jest potrzebna tylko regułom LLM analyzera; bez niej dostają `not_applicable` z powodem.
+  W trybie natywnym na Linuksie Ollama musi słuchać na adresie dostępnym z kontenera
+  (`OLLAMA_HOST=0.0.0.0`).
 - Analyzer wysyła do `http://api:8000` tylko w trybie `ANALYZER_STORE=api`; compose używa `db`.
 - Wolne porty 5432, 6379, 8333, 8080, 8000, 7090 na hoście (port 3000 bywa zarezerwowany przez
   Hyper-V — `netsh interface ipv4 show excludedportrange protocol=tcp`).
