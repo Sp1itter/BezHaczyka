@@ -1,14 +1,14 @@
 # Jak pracowaliśmy z asystentami AI
 
-Byliśmy sześcioosobowym zespołem i mieliśmy niecałe dwie doby. Pracę podzieliliśmy na trzy strumienie: zbieranie danych, analizę oraz panel z API. Asystentów AI używaliśmy do pisania
-kodu, testów i dokumentacji, ale zakres, architekturę, podział pracy i ocenę wyników zostawiliśmy
+Byliśmy sześcioosobowym zespołem i mieliśmy niecałe dwie doby. Pracę podzieliliśmy na trzy
+strumienie: zbieranie danych, analizę oraz panel z API. Asystentów AI używaliśmy do pisania kodu, testów i dokumentacji, ale zakres, architekturę, podział pracy i ocenę wyników zostawiliśmy
 sobie. Niżej opisujemy, jak to wyglądało w praktyce i gdzie w repozytorium są tego ślady.
 
 ## Narzędzia
 
 - **Claude Code** – asystent kodowania, każdy z nas pracował na własnej instancji.
 - **Plugin superpowers** – narzucał stały rytm pracy: najpierw rozmowa o wymaganiach, potem
-  specyfikacja, plan z etapami, implementacja z testami i przegląd. Artefakty są w `docs/superpowers/`.
+  specyfikacja, plan z etapami, implementacja z testami i przegląd.
 - **graphify** – graf zależności w kodzie (`graphify-out/`). Asystent korzystał z niego, zanim zaczął
   czytać pliki, dzięki czemu mniej zgadywał.
 - W samym produkcie nie ma żadnego zewnętrznego API. Analizę robi lokalny Bielik 4.5B i bge-m3
@@ -18,10 +18,9 @@ sobie. Niżej opisujemy, jak to wyglądało w praktyce i gdzie w repozytorium s�
 
 1. **Wymagania i zakres.** Opis wyzwania i załączniki przeczytaliśmy sami i sami zdecydowaliśmy,
    co jest w zakresie. Najważniejsza decyzja: o zakresie decyduje opakowanie instrumentu, a nie aktywo,
-   więc CFD i ETP na kryptowaluty zostają, a zakup krypto spot odpada (MiCA). Zapisaliśmy to
-   w `docs/superpowers/specs/2026-11-21-investwatch-design.md`.
+   więc CFD i ETP na kryptowaluty zostają, a zakup krypto spot odpada (MiCA).
 2. **Specyfikacja i plan.** Asystent pomagał rozpisać design, ale wersję drugą przyjęliśmy dopiero
-   po wspólnym przeglądzie (commit `80031fb`). Plany etapów są w `docs/superpowers/plans/`.
+   po wspólnym przeglądzie (commit `80031fb`). Każdy etap miał plan z listą zadań i testów.
 3. **Podział pracy.** Każdy strumień miał swój obszar: zbieranie danych, analiza, panel i API.
    Każdy pracował na osobnej gałęzi i w osobnym katalogu roboczym, a wspólne pliki miały jednego właściciela.
    Zmiany wchodziły przez pull requesty po każdym etapie.

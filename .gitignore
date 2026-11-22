@@ -58,3 +58,6 @@ Thumbs.db
 
 # --- Pliki blokady Worda/Excela (powstaja, gdy dokument jest otwarty) ---
 ~$*
+
+# dzienne kopie grafu graphify (duplikaty graph.json)
+graphify-out/20*/

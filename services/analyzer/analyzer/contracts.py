@@ -1,6 +1,6 @@
 """Kontrakty danych InvestWatch — ZAMROZONE.
 
-Zrodlo prawdy: docs/superpowers/specs/2026-11-21-investwatch-design.md par. 6.
+Zrodlo prawdy: przyklady w fixtures/contract-examples/.
 Nikt nie zmienia tych struktur bez ogloszenia calemu zespolowi.
 
 Te modele sa wspolne dla wszystkich trzech osob, ale KAZDY SERWIS MA SWOJA KOPIE
