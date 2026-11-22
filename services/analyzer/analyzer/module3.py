@@ -26,7 +26,7 @@ from analyzer.contracts import (
     Verdict,
 )
 from analyzer.llm import LlmError, OllamaClient, load_prompt
-from analyzer.router import RECOMMENDATION_SIGNALS, _normalize
+from analyzer.router import _is_negated, find_recommendations, normalize as _normalize
 from analyzer.rules_llm.batching import VERDICT_MAP, quote_is_verifiable
 from analyzer.scope_gate import INSTRUMENT_WRAPPERS
 
@@ -62,11 +62,14 @@ def advisory_signals(text: str) -> list[str]:
     """Sygnaly doradcze wykryte w tekscie (bez duplikatow, w stalej kolejnosci)."""
     norm = _normalize(text or "")
     found: list[str] = []
-    for signal in sorted(RECOMMENDATION_SIGNALS):
-        if signal in norm and signal not in found:
-            found.append(signal)
+    # Maskowanie negacji z routera: "nie stanowi porady ani rekomendacji" != sygnal.
+    for hit in find_recommendations(norm):
+        if hit not in found:
+            found.append(hit)
     for pattern, label in _EXTRA_PATTERNS:
-        if re.search(pattern, norm) and label not in found:
+        if label in found:
+            continue
+        if any(not _is_negated(norm, m.start()) for m in re.finditer(pattern, norm)):
             found.append(label)
     return found
 

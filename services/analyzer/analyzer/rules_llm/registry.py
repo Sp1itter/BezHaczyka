@@ -101,6 +101,7 @@ def build_config(client: OllamaClient | None = None, **kwargs) -> AnalyzerConfig
 
     Dodatkowe kwargs trafiaja do AnalyzerConfig (np. scope_override).
     """
+    kwargs.setdefault("module3_client", client or OllamaClient())
     return AnalyzerConfig(module2_runners=module2_runners(client), **kwargs)
 
 
