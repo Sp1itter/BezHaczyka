@@ -67,14 +67,6 @@ Zależności produkcyjne (`dependencies`):
 
 | Pakiet | Wersja | Licencja |
 |---|---|---|
-| @mantine/core | 7.17.8 | MIT |
-| @mantine/dates | 7.17.8 | MIT |
-| @mantine/hooks | 7.17.8 | MIT |
-| @mantine/notifications | 7.17.8 | MIT |
-| @tabler/icons-react | 3.52.0 | MIT |
-| clsx | 2.1.1 | MIT |
-| dayjs | 1.11.23 | MIT |
-| mantine-react-table | 2.0.0-beta.9 | MIT |
 | react | 18.3.1 | MIT |
 | react-dom | 18.3.1 | MIT |
 | recharts | 2.13.3 | MIT |
@@ -114,7 +106,7 @@ Obrazy bazowe zawierają pakiety systemowe na licencjach GPL/LGPL (Debian, Ubunt
 
 ## Podsumowanie
 
-Zależności bezpośrednie: dominuje MIT, poza tym Apache-2.0, BSD-2/3-Clause i Unlicense (yt-dlp). W Pythonie jedyną licencją copyleft wśród zależności bezpośrednich jest LGPL-3.0 (psycopg). W web (13 pakietów) wszystkie MIT.
+Zależności bezpośrednie: dominuje MIT, poza tym Apache-2.0, BSD-2/3-Clause i Unlicense (yt-dlp). W Pythonie jedyną licencją copyleft wśród zależności bezpośrednich jest LGPL-3.0 (psycopg). W web (5 pakietów) wszystkie MIT.
 
 Copyleft i licencje słabe znalezione w pełnych środowiskach (także tranzytywnie):
 
@@ -124,6 +116,6 @@ Copyleft i licencje słabe znalezione w pełnych środowiskach (także tranzytyw
 - tqdm (MPL-2.0 AND MIT; tranzytywnie w analyzer): jak wyżej.
 - caniuse-lite (CC-BY-4.0, dane; tranzytywnie w web, narzędzia build): wymaga atrybucji, nie jest kodem.
 
-Nie znaleziono licencji AGPL, SSPL ani GPL wśród pakietów Pythona i npm. Wszystkie pakiety Pythona w środowiskach miały rozpoznawalną licencję (jeden pakiet, `langdetect`, ma sprzeczne metadane, patrz tabela). Nie znaleziono licencji nieznanych. W npm: 189 pakietów, licencje MIT 114, ISC 16, BSD-3-Clause 3, Apache-2.0 1, CC-BY-4.0 1, 0BSD 1, pozostałe złożone MIT/ISC/CC0.
+Nie znaleziono licencji AGPL, SSPL ani GPL wśród pakietów Pythona i npm. Wszystkie pakiety Pythona w środowiskach miały rozpoznawalną licencję (jeden pakiet, `langdetect`, ma sprzeczne metadane, patrz tabela). Nie znaleziono licencji nieznanych. W npm: 103 pakiety, licencje MIT 81, ISC 16, BSD-3-Clause 3, Apache-2.0 1, CC-BY-4.0 1 (dane caniuse-lite), MIT AND ISC 1.
 
 Do ręcznej weryfikacji pozostają wpisy oznaczone w tabeli obrazów jako niezweryfikowane.

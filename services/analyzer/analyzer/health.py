@@ -15,7 +15,7 @@ from analyzer.llm import OllamaClient
 
 
 def health_payload(llm_client: OllamaClient | None = None, api=None) -> dict:
-    """Zwroc stan serwisu w ksztalcie z docs/INTEGRACJA.md. Nie rzuca wyjatkow."""
+    """Zwroc stan serwisu w ksztalcie z docs/MODUL1-ARCHITEKTURA.md. Nie rzuca wyjatkow."""
     client = llm_client or OllamaClient()
     try:
         ollama = bool(client.health())
