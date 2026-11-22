@@ -38,7 +38,7 @@ DEFAULT_TIMEOUT = float(os.getenv("OLLAMA_TIMEOUT_S", "120"))
 # SZYBKOSC. Ollama 0.5.x domyslnie uzywa num_ctx 2048 i po cichu obcina POCZATEK
 # zbyt dlugiego promptu, czyli instrukcje. Dlatego jawnie ustawiamy okno,
 # limit generowania i keep_alive (model zostaje w VRAM miedzy dokumentami).
-CHARS_PER_TOKEN = 3.5  # szacunek dla polskiego tekstu
+CHARS_PER_TOKEN = 2.8  # ostrozny szacunek dla polskiego tekstu (diakrytyki, liczby)
 TRUNCATION_MARKER = "\n[...]\n"
 
 
@@ -47,7 +47,7 @@ def _num_ctx() -> int:
 
 
 def _num_predict() -> int:
-    return int(os.getenv("LLM_NUM_PREDICT", "400"))
+    return int(os.getenv("LLM_NUM_PREDICT", "768"))
 
 
 def _keep_alive() -> str:
@@ -109,6 +109,10 @@ class LlmError(RuntimeError):
     """
 
 
+class LlmTruncatedError(LlmError):
+    """Odpowiedz uciete przez num_predict (done_reason=length)."""
+
+
 @dataclass
 class OllamaClient:
     base_url: str = DEFAULT_BASE_URL
@@ -128,11 +132,12 @@ class OllamaClient:
     # Generowanie
     # ----------------------------------------------------------------- #
 
-    def generate_json(self, prompt: str) -> dict:
+    def generate_json(self, prompt: str, options: dict | None = None) -> dict:
         """Wywolaj model z wymuszonym JSON-em i zwroc sparsowany slownik.
 
         `format: "json"` w Ollamie wymusza skladniowo poprawny JSON, ale NIE
         gwarantuje naszego schematu — walidacja kształtu nalezy do wolajacego.
+        `options` nadpisuje opcje domyslne (np. num_predict) dla tego wywolania.
         """
         payload = {
             "model": self.model,
@@ -149,6 +154,8 @@ class OllamaClient:
                 "num_predict": _num_predict(),
             },
         }
+        if options:
+            payload["options"].update(options)
         try:
             resp = self._http().post("/api/generate", json=payload)
             resp.raise_for_status()
@@ -156,9 +163,12 @@ class OllamaClient:
             raise LlmError(f"Ollama niedostepna pod {self.base_url}: {exc}") from exc
 
         try:
-            raw = resp.json()["response"]
+            body = resp.json()
+            raw = body["response"]
         except (KeyError, ValueError) as exc:
             raise LlmError(f"Nieoczekiwana odpowiedz Ollamy: {exc}") from exc
+        if isinstance(body, dict) and body.get("done_reason") == "length":
+            raise LlmTruncatedError("Odpowiedz uciete przez num_predict (done_reason=length)")
 
         try:
             parsed = json.loads(raw)
