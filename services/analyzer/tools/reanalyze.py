@@ -30,6 +30,10 @@ import argparse
 import os
 import sys
 from datetime import datetime, timezone
+from pathlib import Path
+
+# `python tools/<skrypt>.py` ma w sys.path tylko katalog tools/, a nie /app.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 DEFAULT_QUEUE = "q:gpu"
 DEFAULT_FUNC = "analyzer.worker.analyze_document"

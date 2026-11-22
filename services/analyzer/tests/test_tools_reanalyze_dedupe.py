@@ -137,3 +137,15 @@ def test_dedupe_praca_na_zachowanym_wierszu_nie_jest_kopiowana():
     rows = [_row("a", "D", 0), _row("b", "D", 5, assignee="ola", assigned_at=T0)]
     a = d.plan(rows, {})[0]
     assert a["keep"] == "b" and a["copy"] is None and a["copy_from"] == "b"
+
+
+def test_narzedzia_dodaja_katalog_aplikacji_do_sys_path():
+    """`python tools/x.py` w obrazie (/app/tools) musi widziec pakiet analyzer."""
+    import sys
+
+    root = str(TOOLS.parent)
+    for name in ("reanalyze", "dedupe_findings"):
+        while root in sys.path:
+            sys.path.remove(root)
+        _load(name)
+        assert root in sys.path
