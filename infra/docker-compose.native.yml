@@ -1,0 +1,17 @@
+# Nakladka: Ollama NATYWNA na hoscie (kontenery `ollama` i `ollama-pull` nie startuja). W infra/.env:
+#   COMPOSE_FILE=docker-compose.yml:docker-compose.native.yml
+#   OLLAMA_BASE_URL=http://host.docker.internal:11434
+# Modele pobierz na hoscie (ollama pull ...). Na Linuksie Ollama musi sluchac na OLLAMA_HOST=0.0.0.0.
+services:
+  ollama:
+    profiles: [ollama-container]
+  ollama-pull:
+    profiles: [ollama-container]
+  analyzer:
+    depends_on:
+      ollama:
+        condition: service_healthy
+        required: false
+      ollama-pull:
+        condition: service_completed_successfully
+        required: false
