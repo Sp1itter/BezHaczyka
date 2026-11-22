@@ -13,7 +13,7 @@ i doradztwo bez zezwolenia (Moduł 3). Działa on-premise, na otwartym oprogramo
 cd infra && cp .env.example .env && docker compose up -d --build
 ```
 
-Pierwszy start pobiera modele i buduje obrazy (10–15 min). Panel: http://127.0.0.1:37090/#/,
+Pierwszy start pobiera modele i buduje obrazy (10–15 min). Panel: http://127.0.0.1:7090/#/,
 API: http://localhost:8000/docs. Zbieranie na żądanie: `docker compose exec scheduler python -m scheduler --once`.
 Gotowe dane z 20-minutowego testu do wgrania: [demo/README.md](demo/README.md).
 
