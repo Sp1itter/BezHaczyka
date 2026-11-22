@@ -332,9 +332,9 @@ def decide(states: list[QueueState], config: ScalingConfig) -> list[ScalingDecis
         capped_by: str | None = None
         if raw > policy.max_workers:
             capped_by = "max_workers"
-        if s.name == GPU_QUEUE and raw > config.gpu_capacity:
-            # Pojemnosc Ollamy ma pierwszenstwo w opisie: to ona jest przyczyna biznesowa.
-            desired = min(desired, config.gpu_capacity)
+        if s.name == GPU_QUEUE and desired > config.gpu_capacity:
+            # Pojemnosc Ollamy (gdy to ona jest ciasniejsza niz max) ma pierwszenstwo w opisie.
+            desired = config.gpu_capacity
             capped_by = "ollama_parallel"
         if raw < policy.min_workers:
             reason = (
