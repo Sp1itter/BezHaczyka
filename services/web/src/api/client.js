@@ -40,7 +40,7 @@ export const api = {
   setStatus: (id, status, actor) => patch(id, { status, actor }),
   reviewLabels: () => http(`/review-labels`),
   stats: (params = {}) => http(`/stats?${toQuery(params)}`),
-  trend: (params = {}) => http(`/stats/trend?${toQuery({ ...params, bucket: "day" })}`),
+  trend: (params = {}) => http(`/stats/trend?${toQuery({ bucket: "auto", ...params })}`),
   calibration: () => http(`/calibration`),
   threshold: () => http(`/settings/threshold`),
   saveThreshold: (value, actor) => http(`/settings/threshold`, { method: "PUT", body: JSON.stringify({ value, actor }) }),

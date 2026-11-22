@@ -16,6 +16,7 @@ const ICON = {
   network: ["M7 7a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM17 13a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM7 23a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM9.5 8.5l5 2M9.5 17.5l5-2"],
   flask: ["M9 3h6M10 3v5l-5 9a2 2 0 0 0 1.8 3h10.4a2 2 0 0 0 1.8-3l-5-9V3M8 14h8"],
   server: ["M4 4h16v6H4zM4 14h16v6H4zM8 7h.01M8 17h.01"],
+  warning: ["M12 3 2 21h20L12 3Z", "M12 10v4M12 17h.01"],
 };
 
 export const NAV_GROUPS = [
@@ -33,6 +34,7 @@ export const NAV_GROUPS = [
     label: "Raporty",
     items: [
       { id: "module1", label: "Moduł 1: podmioty", href: "#/module1", icon: ICON.network },
+      { id: "module2", label: "Moduł 2: informacja o ryzyku", href: "#/module2", icon: ICON.warning },
       { id: "module3", label: "Moduł 3: doradztwo", href: "#/module3", icon: ICON.clipboard },
     ],
   },

@@ -7,7 +7,7 @@ export const STATUS = {
   confirmed: "Potwierdzone",
   dismissed: "Odrzucone",
 };
-export const SOURCE = { youtube: "YouTube", facebook: "Facebook", instagram: "Instagram", tiktok: "TikTok", www: "Strony WWW" };
+export const SOURCE = { youtube: "YouTube", facebook: "Facebook / Instagram", instagram: "Instagram", tiktok: "TikTok", www_live: "Strony WWW", www: "Strony WWW (demo)" };
 export const sourceLabel = (s) => SOURCE[s] || s || "—";
 
 // document.publisher w services/api to obiekt {handle, display_name, profile_url, ...}, w mocku tekst.

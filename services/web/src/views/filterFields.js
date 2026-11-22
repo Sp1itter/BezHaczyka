@@ -10,4 +10,4 @@ const from = { name: "from", label: "Od", type: "date" };
 const to = { name: "to", label: "Do", type: "date" };
 
 export const FILTER_FIELDS = [search, from, to, source, risk, module, status];
-export const ALERT_FIELDS = [search, module, status, source];
+export const ALERT_FIELDS = [search, from, to, module, status, source];

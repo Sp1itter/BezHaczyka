@@ -41,6 +41,9 @@ def test_stats_trend_by_day(seeded: TestClient) -> None:  # noqa: F811
     assert body["items"] == [{"date": "2026-11-21", "high": 1, "medium": 0, "low": 0, "total": 1}]
     assert seeded.get("/stats/trend", params={"risk_level": "low"}).json()["items"] == []
     assert seeded.get("/stats/trend", params={"bucket": "week"}).status_code == 422
+    hourly = seeded.get("/stats/trend", params={"bucket": "hour"}).json()
+    assert hourly["bucket"] == "hour" and all(len(i["date"]) == 13 for i in hourly["items"])
+    assert seeded.get("/stats/trend", params={"bucket": "auto"}).json()["bucket"] == "10min"  # jeden wynik: rozpietosc 0 h
 
 
 def test_document_screenshot_proxied_from_s3(store) -> None:  # noqa: F811
@@ -145,6 +148,7 @@ def test_report_module3_from_m3_findings(client: TestClient) -> None:  # noqa: F
     assert row["entity"] == "XYZ Dom Maklerski"
     assert row["registry_status"] == "brak zezwolenia KNF"
     assert row["evidence"] == "Oferuje indywidualne rekomendacje bez zezwolenia KNF."
+    assert row["confirmed"] is True
     csv = client.get("/reports/module3.csv")
     assert csv.status_code == 200 and csv.headers["content-type"].startswith("text/csv")
     assert "XYZ Dom Maklerski" in csv.text

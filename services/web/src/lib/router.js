@@ -36,7 +36,7 @@ export function useRoute() {
 export function matchRoute(path) {
   const m = path.match(/^\/findings\/([^/]+)$/);
   if (m) return { name: "finding", id: decodeURIComponent(m[1]) };
-  const name = { "/": "overview", "/alerts": "alerts", "/findings": "findings", "/module1": "module1",
+  const name = { "/": "overview", "/alerts": "alerts", "/findings": "findings", "/module1": "module1", "/module2": "module2",
     "/module3": "module3", "/calibration": "calibration", "/operator": "operator" }[path];
   return { name: name || "notfound" };
 }

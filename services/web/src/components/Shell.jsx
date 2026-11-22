@@ -9,9 +9,9 @@ const CLOSE_DELAY_MS = 150; // bez migotania przy szybkim przejsciu kursora prze
 
 function storedPinned() {
   try {
-    return window.localStorage.getItem(STORAGE_KEY) === "true";
+    return window.localStorage.getItem(STORAGE_KEY) !== "false"; // domyslnie menu z podpisami
   } catch {
-    return false; // brak localStorage nie blokuje nawigacji
+    return true; // brak localStorage nie blokuje nawigacji
   }
 }
 
@@ -145,16 +145,6 @@ export default function Shell({ active, counts, health, live, analyst, analysts,
       </aside>
 
       <section className="workspace">
-        {/* Znak wodny: logo BezHaczyka z docs/brand (gora) i napis UKNF (dol, bez godla - brak zgody na jego uzycie). */}
-        <div className="institutional-watermarks" aria-hidden="true">
-          <div className="uknf-watermark">
-            <img src="brand/bezhaczyka-mono.png" alt="" />
-            <div className="uknf-watermark__row">
-              <strong>UKNF</strong>
-              <span>Urząd Komisji Nadzoru Finansowego</span>
-            </div>
-          </div>
-        </div>
         <header className="command-bar">
           <div className="command-start">
             <button className="menu-button mobile-menu-button" type="button" data-menu-toggle aria-controls="sidebar"

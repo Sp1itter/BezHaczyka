@@ -19,7 +19,14 @@ export const COL = {
   modules: {
     label: "Moduły", type: "text", sortValue: (f) => (f.modules || []).join(","),
     render: (f) => (f.modules?.length
-      ? <div className="tag-list">{f.modules.map((m) => <span className="tag" key={m} title={MODULE[m]}>Moduł {m}</span>)}</div>
+      ? <div className="tag-list">{f.modules.map((m) => <span className="tag" key={m} title={MODULE[m]}>M{m}</span>)}</div>
+      : <span className="muted-value">—</span>),
+  },
+  violations: {
+    label: "Naruszenia", type: "number", sortValue: (f) => (f.violations || []).length,
+    render: (f) => (f.violations?.length
+      ? <div className="tag-list">{f.violations.slice(0, 4).map((v) => <span className="tag" key={v.rule_id} title={v.rule_name}>{v.rule_id}</span>)}
+          {f.violations.length > 4 && <span className="quiet">+{f.violations.length - 4}</span>}</div>
       : <span className="muted-value">—</span>),
   },
   risk: { label: "Poziom", type: "severity", sortValue: (f) => f.risk_level, render: (f) => <RiskBadge level={f.risk_level} /> },
