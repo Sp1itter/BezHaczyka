@@ -37,3 +37,4 @@ rq-scheduler==0.14         # MIT — CronJob/orchestrator dla Modulu 1
 #     most do wspolnej bazy przypadkow (tryb --db w tools/casedb_batch.py) ---
 # Ta sama wersja co services/casedb/requirements.txt.
 psycopg[binary]==3.3.9     # LGPL-3.0 (biblioteka dynamicznie linkowana, bez modyfikacji)
+docker==7.1.0             # Apache-2.0 — autoskaler (analyzer.autoscaler) klonuje kontenery przez docker-socket-proxy
