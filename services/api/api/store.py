@@ -57,6 +57,9 @@ class FindingFilter:
     min_score: float | None = None
     max_score: float | None = None
     q: str | None = None
+    date_from: str | None = None  # ISO 8601, wlacznie (created_at >= date_from)
+    date_to: str | None = None  # ISO 8601, wlacznie (created_at <= date_to)
+    reviewed: bool | None = None  # True: jest decyzja czlowieka lub status koncowy
     limit: int = 100
     offset: int = 0
 
@@ -292,7 +295,8 @@ class SqlStore:
         )
         return finding
 
-    def list_findings(self, flt: FindingFilter) -> tuple[list[dict[str, Any]], int]:
+    def _where(self, flt: FindingFilter) -> tuple[str, list[Any]]:
+        """Warunki WHERE wspolne dla listy, statystyk i trendu (wszystkie laczone AND)."""
         where, params = [], []
         if flt.risk_level:
             where.append(f"f.risk_level IN ({', '.join([self.ph] * len(flt.risk_level))})")
@@ -312,6 +316,15 @@ class SqlStore:
         if flt.max_score is not None:
             where.append(f"f.risk_score <= {self.ph}")
             params.append(flt.max_score)
+        if flt.date_from:
+            where.append(f"f.created_at >= {self._ts_param()}")
+            params.append(flt.date_from)
+        if flt.date_to:
+            where.append(f"f.created_at <= {self._ts_param()}")
+            params.append(flt.date_to)
+        if flt.reviewed is not None:
+            done = "(f.review_verdict IS NOT NULL OR f.status IN ('confirmed', 'dismissed'))"
+            where.append(done if flt.reviewed else f"NOT {done}")
         if flt.q:
             like = f"%{flt.q.lower()}%"
             where.append(
@@ -319,7 +332,14 @@ class SqlStore:
                 f" OR LOWER(COALESCE(d.url, '')) LIKE {self.ph})"
             )
             params += [like, like, like]
-        clause = (" WHERE " + " AND ".join(where)) if where else ""
+        return (" WHERE " + " AND ".join(where)) if where else "", params
+
+    def _ts_param(self) -> str:
+        """Parametr znacznika czasu. SQLite trzyma ISO jako tekst (porownanie leksykalne w UTC)."""
+        return self.ph
+
+    def list_findings(self, flt: FindingFilter) -> tuple[list[dict[str, Any]], int]:
+        clause, params = self._where(flt)
         base_from = " FROM findings f LEFT JOIN documents d ON d.id = f.document_id"
         total = self._execute(f"SELECT COUNT(*) AS n{base_from}{clause}", params)[0]["n"]
         rows = self._execute(
@@ -328,6 +348,12 @@ class SqlStore:
             params + [flt.limit, flt.offset],
         )
         return [self._hydrate(r) for r in rows], int(total)
+
+    def query_findings(self, flt: FindingFilter) -> list[dict[str, Any]]:
+        """Wszystkie findingi spelniajace filtr (bez stronicowania) - dla statystyk i trendu."""
+        clause, params = self._where(flt)
+        rows = self._execute(f"{self._finding_select()}{clause} ORDER BY f.created_at", params)
+        return [self._hydrate(r) for r in rows]
 
     def get_finding(self, finding_id: str) -> dict[str, Any] | None:
         if not self.valid_id(finding_id):
@@ -500,6 +526,9 @@ class SqliteStore(SqlStore):
 class PostgresStore(SqlStore):
     ph = "%s"
     dialect = "postgresql"
+
+    def _ts_param(self) -> str:
+        return "%s::timestamptz"
 
     def __init__(self, dsn: str) -> None:
         import psycopg  # import leniwy: SQLite nie potrzebuje sterownika
