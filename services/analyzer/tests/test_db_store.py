@@ -156,3 +156,25 @@ def test_close(fake_casedb):
     store.get_document(DOC["id"])
     store.close()
     assert fake_casedb["conn"].closed
+
+
+def test_post_finding_aktualizuje_istniejacy_zachowujac_status(fake_casedb):
+    """Reanaliza nie dubluje findingu: to samo id, status analityka zostaje."""
+    doc = AdDocument.model_validate(DOC)
+    finding = analyze(doc)
+    nowe_id = finding.id
+    fake_casedb["latest"] = {"id": "22222222-2222-4222-8222-222222222222", "status": "triage"}
+    DbStore().post_finding(finding, doc)
+    saved = [a for n, a, _ in fake_casedb["log"] if n == "save_finding"][-1][0]
+    assert saved["id"] == "22222222-2222-4222-8222-222222222222" != nowe_id
+    assert saved["status"] == "triage"
+    assert finding.id == saved["id"]  # worker uzywa finding.id do podsumowania
+
+
+def test_post_finding_bez_istniejacego_zostaje_nowe_id(fake_casedb):
+    doc = AdDocument.model_validate(DOC)
+    finding = analyze(doc)
+    nowe_id = finding.id
+    DbStore().post_finding(finding, doc)
+    saved = [a for n, a, _ in fake_casedb["log"] if n == "save_finding"][-1][0]
+    assert saved["id"] == nowe_id

@@ -68,7 +68,7 @@ class TestPozaZakresemTylkoBezOpakowania:
 class TestNiepewneIdaDoTriage:
     def test_nierozpoznany_material_nie_jest_kasowany(self):
         """`uncertain`, nie `out_of_scope` — nadzorca musi to zobaczyc."""
-        scope = classify_scope("Najlepsza okazja tego roku, nie przegap!")
+        scope = classify_scope("Najlepsza okazja tego roku, inwestuj z dzwignia, nie przegap!")
         assert scope.status is ScopeStatus.UNCERTAIN
         assert scope.reason is not None
 
@@ -148,3 +148,45 @@ class TestZwykleInstrumenty:
         scope = classify_scope("Obligacje korporacyjne z kuponem 8%")
         assert scope.status is ScopeStatus.IN_SCOPE
         assert scope.instrument_wrapper == "obligacje"
+
+
+class TestBrakSygnaluFinansowego:
+    """Zywe dane 22.11: gry, muzyka i Toy Story dostawaly pelna ocene regul."""
+
+    @pytest.mark.parametrize(
+        "tekst",
+        [
+            "Toy Story: Buzz Lightyear Laser Supercut. Najlepsze sceny z bajki Pixara.",
+            "How To Play Bossa Nova on Congas. Lekcja gry na kongach krok po kroku.",
+            "Lightyear Frontier - pierwsze wrazenia z gry. Farmimy mechem na obcej planecie.",
+            "Dead Space 3 - Walka z Bossem. Przejscie gry, poziom trudnosci normalny.",
+            "Teledysk: Letni hit 2026. Oficjalny klip, tekst piosenki w opisie.",
+            "Debata w Sejmie o ustawie budzetowej. Posel opowiada o zmianach w prawie.",
+        ],
+    )
+    def test_brak_sygnalu_jest_poza_zakresem(self, tekst):
+        scope = classify_scope(tekst)
+        assert scope.status is ScopeStatus.OUT_OF_SCOPE
+        assert scope.reason == "brak sygnalu finansowego"
+
+    @pytest.mark.parametrize(
+        "tekst",
+        [
+            "Jak zacząć inwestować na giełdzie? Trading 212 krok po kroku.",
+            "TLT na 9dni PUT Sell. Interactive Brokers TWS",
+            "Akcje Apple za 500 zł - ułamkowe zakupy na eToro",
+        ],
+    )
+    def test_finansowe_zostaja_w_zakresie(self, tekst):
+        assert classify_scope(tekst).status is not ScopeStatus.OUT_OF_SCOPE
+
+    def test_nazwa_brokera_wymaga_calego_slowa_i_kontekstu(self):
+        # sama nazwa bez kontekstu finansowego nie liczy sie
+        assert classify_scope("Bossa Nova na gitarze").status is ScopeStatus.OUT_OF_SCOPE
+        # z kontekstem (rachunek / platforma) liczy sie
+        assert classify_scope("Otworz rachunek w XTB na platformie").status is not ScopeStatus.OUT_OF_SCOPE
+        # fragment slowa to nie nazwa brokera
+        assert classify_scope("Boss fight, bossy i ich ataki").status is ScopeStatus.OUT_OF_SCOPE
+
+    def test_wzmianka_o_knf_to_sygnal(self):
+        assert classify_scope("Komunikat KNF dla odbiorcow").status is not ScopeStatus.OUT_OF_SCOPE

@@ -317,3 +317,48 @@ class TestEmbedDocumentText:
             )
         )
         assert embed_document_text("   ", client) is None
+
+
+class TestPozaZakresemBezOceny:
+    """Zywe dane 22.11: material bez sygnalu finansowego nie moze dostac HIGH."""
+
+    def _doc(self, **kw):
+        from datetime import datetime, timezone
+
+        from analyzer.contracts import AdDocument
+
+        base = dict(
+            id="00000000-0000-4000-8000-000000000001", source="youtube",
+            url="https://example.invalid/v", fetched_at=datetime(2026, 11, 22, tzinfo=timezone.utc),
+            title="Toy Story: Buzz Lightyear Laser Supercut",
+            text="Toy Story: Buzz Lightyear Laser Supercut. Najlepsze sceny z bajki.",
+        )
+        base.update(kw)
+        return AdDocument(**base)
+
+    def test_toy_story_low_zero_bez_regul_i_powod_w_routing(self):
+        from analyzer.contracts import RiskLevel, ScopeStatus
+        from analyzer.pipeline import EntityResolution
+        from analyzer.pipeline import AnalyzerConfig, analyze
+
+        called = []
+
+        def runner(doc):
+            called.append(1)
+            return []
+
+        f = analyze(self._doc(), EntityResolution(), AnalyzerConfig(module2_runners=[runner]))
+        assert not called
+        assert f.rule_results == []
+        assert f.risk_score == 0.0 and f.risk_level is RiskLevel.LOW
+        assert f.routing.scope_gate is ScopeStatus.OUT_OF_SCOPE
+        assert "brak sygnalu finansowego" in f.routing.reason
+
+    def test_wideo_bez_transkryptu_nie_jest_wykluczane(self):
+        from analyzer.contracts import MediaItem, ScopeStatus
+        from analyzer.pipeline import EntityResolution
+        from analyzer.pipeline import AnalyzerConfig, analyze
+
+        doc = self._doc(media=[MediaItem(kind="video", path="s3://m/v.mp4", duration_s=30.0)])
+        analyze(doc, EntityResolution(), AnalyzerConfig(transcriber=None))
+        assert doc.scope.status is ScopeStatus.UNCERTAIN
