@@ -211,11 +211,27 @@ BlobReader = Any  # Callable[[str], tuple[bytes, str]]; FileNotFoundError gdy br
 _FROM_ENV = object()
 
 
+def local_blob_reader(root: Path) -> BlobReader:
+    """Dev bez SeaweedFS: s3://<bucket>/<klucz> -> <root>/<bucket>/<klucz> (jak LocalBlobStore scrapera)."""
+    base = root.resolve()
+
+    def read(uri: str) -> tuple[bytes, str]:
+        bucket, _, key = uri.removeprefix("s3://").partition("/")
+        path = (base / bucket / key).resolve()
+        if base not in path.parents or not path.is_file():  # bez wyjscia poza katalog (../)
+            raise FileNotFoundError(uri)
+        ctype = "image/png" if path.suffix == ".png" else "image/jpeg" if path.suffix in (".jpg", ".jpeg") else "application/octet-stream"
+        return path.read_bytes(), ctype
+
+    return read
+
+
 def s3_reader_from_env() -> BlobReader | None:
     """Czytnik zrzutow z S3_ENDPOINT/S3_ACCESS_KEY/S3_SECRET_KEY; bez konfiguracji None (503)."""
     endpoint = os.getenv("S3_ENDPOINT")
     if not endpoint or not os.getenv("S3_ACCESS_KEY") or not os.getenv("S3_SECRET_KEY"):
-        return None
+        local = os.getenv("LOCAL_BLOB_DIR")
+        return local_blob_reader(Path(local)) if local else None
     import boto3  # import leniwy: testy i dev bez S3 nie wymagaja boto3
     from botocore.exceptions import ClientError
 
