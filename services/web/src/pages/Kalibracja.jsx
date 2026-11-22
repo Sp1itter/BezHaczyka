@@ -89,8 +89,8 @@ export default function Kalibracja() {
         <Group gap={48} mt="md">
           <Metric label="Precyzja" value={f2(s.precision)} hint="ile oflagowanych to naruszenia" />
           <Metric label="Pełność" value={f2(s.recall)} hint="ile naruszeń oflagowano" />
-          <Metric label="F1" value={f2(s.f1)} />
-          <Metric label="Oflagowane" value={`${m.tp + m.fp} z ${scored.length}`} />
+          <Metric label="F1" value={f2(s.f1)} hint="równowaga precyzji i pełności" />
+          <Metric label="Oflagowane" value={`${m.tp + m.fp} z ${scored.length}`} hint="materiały powyżej progu" />
         </Group>
       </Paper>
 

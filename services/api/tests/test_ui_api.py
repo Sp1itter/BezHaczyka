@@ -113,3 +113,56 @@ def test_ws_alert_respects_saved_threshold(client: TestClient) -> None:  # noqa:
         assert client.post("/findings", json=same).json()["alerted_clients"] == 1
         ws.receive_json()
         assert client.post("/findings", json=same).json()["alerted_clients"] == 0  # odswiezenie, nie nowy alert
+
+
+# --- etap C4: raport Modulu 3 i proxy panelu operatora ---------------------------------
+
+
+def _m3_finding() -> dict:
+    import copy
+
+    f = copy.deepcopy(load("finding.json"))
+    f["modules"] = [3]
+    f["entities"]["investment_firm"]["is_authorized"] = False
+    f["rule_results"].append({
+        "rule_id": "M3", "rule_name": "Doradztwo bez zezwolenia", "engine": "LLM", "verdict": "fail",
+        "confidence": 0.9, "severity": 5, "legal_basis": "art. 69 ust. 2 pkt 5 ustawy o obrocie",
+        "evidence": {"kind": "quote", "summary": "Oferuje indywidualne rekomendacje bez zezwolenia KNF.",
+                     "measured": None, "quote": "kup teraz, sygnał na jutro", "viewport": None,
+                     "screenshot_crop": None, "transcript_ts": None},
+    })
+    return f
+
+
+def test_report_module3_from_m3_findings(client: TestClient) -> None:  # noqa: F811
+    client.post("/documents", json=load("ad_document.json"))
+    client.post("/findings", json=load("finding.json"))  # bez M3 -> nie trafia do raportu
+    assert client.get("/reports/module3").json() == {"items": [], "total": 0}
+    client.post("/findings", json=_m3_finding())
+    body = client.get("/reports/module3").json()
+    assert body["total"] == 1
+    row = body["items"][0]
+    assert row["entity"] == "XYZ Dom Maklerski"
+    assert row["registry_status"] == "brak zezwolenia KNF"
+    assert row["evidence"] == "Oferuje indywidualne rekomendacje bez zezwolenia KNF."
+    csv = client.get("/reports/module3.csv")
+    assert csv.status_code == 200 and csv.headers["content-type"].startswith("text/csv")
+    assert "XYZ Dom Maklerski" in csv.text
+
+
+def test_ops_scaling_contract_mock(store, monkeypatch) -> None:  # noqa: F811
+    monkeypatch.setenv("AUTOSCALER_URL", "atrapa")
+    c = TestClient(create_app(store=store, gold_path=GOLD, blob_reader=None))
+    s = c.get("/ops/scaling").json()
+    assert s["source"] == "atrapa" and s["queues"][0]["name"] == "q:gpu" and s["ollama_parallel"] == 4
+    ok = c.put("/ops/scaling", json={"queues": [{"name": "q:gpu", "max": 3, "cpus": 1.5, "memory_mb": 2048}]})
+    assert ok.status_code == 200 and ok.json()["queues"][0]["max"] == 3
+    bad = c.put("/ops/scaling", json={"queues": [{"name": "q:gpu", "max": 9, "cpus": 1.5, "memory_mb": 2048}]})
+    assert bad.status_code == 422 and "OLLAMA_NUM_PARALLEL" in bad.json()["detail"]
+
+
+def test_ops_scaling_unreachable_autoscaler(store, monkeypatch) -> None:  # noqa: F811
+    monkeypatch.setenv("AUTOSCALER_URL", "http://127.0.0.1:9")
+    c = TestClient(create_app(store=store, gold_path=GOLD, blob_reader=None))
+    r = c.get("/ops/scaling")
+    assert r.status_code == 503 and "Autoskaler" in r.json()["detail"]
