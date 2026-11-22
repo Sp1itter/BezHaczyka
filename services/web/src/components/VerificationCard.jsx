@@ -14,8 +14,11 @@ import { num } from "../lib/ui.js";
  */
 export default function VerificationCard({ finding: f, actionHref, onAction, onReview, pager, compact, twin = -1 }) {
   const [busy, setBusy] = useState(false);
-  const failed = (f.rule_results || []).filter((r) => r.verdict === "fail")
-    .sort((a, b) => (b.severity ?? 0) - (a.severity ?? 0));
+  // Pelny wynik ma rule_results; lekka lista (?fields=list) tylko violations — bez tego karta
+  // wysokiego ryzyka pokazywala przez chwile "brak naruszen".
+  const failed = f.rule_results
+    ? f.rule_results.filter((r) => r.verdict === "fail").sort((a, b) => (b.severity ?? 0) - (a.severity ?? 0))
+    : (f.violations || []);
   const doc = f.document || {};
   const decide = async (label, text) => {
     if (!window.confirm(`${text}: „${doc.title || "materiał"}”?`)) return;

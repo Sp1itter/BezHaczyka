@@ -143,17 +143,6 @@ export default function FindingPage({ id, labels, analyst, onReview, onAssign, o
       <div className="report-layout">
         <div className="report-main">
           <section className="panel report-section">
-            <h2>Podsumowanie</h2>
-            <p className="executive-summary">{f.summary || (failed.length
-              ? `Wykryto naruszenia: ${failed.map((r) => r.rule_name).join(", ")}. Szczegóły poniżej.`
-              : "Nie wykryto naruszeń reguł.")}</p>
-            <div className="context-grid">
-              <div><span>Publikujący</span><strong>{publisherName(doc) || "Brak wskazania"}</strong></div>
-              <div><span>Firma w reklamie</span><strong>{firm?.name_in_ad || "Brak wskazania"}</strong></div>
-            </div>
-          </section>
-
-          <section className="panel report-section">
             <h2>Naruszenia ({failed.length})</h2>
             {failed.length ? (
               <div className="evidence-list">
@@ -171,6 +160,17 @@ export default function FindingPage({ id, labels, analyst, onReview, onAssign, o
                 })}
               </div>
             ) : <p className="muted-copy">Nie wykryto naruszeń reguł w tym materiale.</p>}
+          </section>
+
+          <section className="panel report-section">
+            <h2>Podsumowanie</h2>
+            <p className="executive-summary">{f.summary || (failed.length
+              ? `Wykryto naruszenia: ${failed.map((r) => r.rule_name).join(", ")}. Szczegóły poniżej.`
+              : "Nie wykryto naruszeń reguł.")}</p>
+            <div className="context-grid">
+              <div><span>Publikujący</span><strong>{publisherName(doc) || "Brak wskazania"}</strong></div>
+              <div><span>Firma w reklamie</span><strong>{firm?.name_in_ad || "Brak wskazania"}</strong></div>
+            </div>
           </section>
 
           <section className="panel report-section">
