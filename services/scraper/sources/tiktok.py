@@ -173,6 +173,7 @@ class LiveTikTokSource:
         results_per_query: int = 25,
         video_max_mb: int = 30,
         language: str = "pl",
+        suffixes: tuple[str, ...] = ("", "porady", "polecam", "2026"),
     ) -> None:
         if search is None:
             from sources.www_live import ddgs_search
@@ -185,14 +186,20 @@ class LiveTikTokSource:
         self.download_video = download_video or (lambda url: _download_video(url, video_max_mb * 1024 * 1024))
         self.results_per_query = results_per_query
         self.language = language
+        self.suffixes = suffixes or ("",)
         self.last_meta: dict[str, Any] = {}
 
     def discover(self, query: str) -> list[str]:
-        q = query if "tiktok.com" in query else f"site:tiktok.com {query}"
-        try:
-            found = self.search(q, self.results_per_query)
-        except Exception as exc:  # noqa: BLE001
-            raise SourceError(f"wyszukiwarka TikTok: {query!r}: {exc}") from exc
+        base = query if "tiktok.com" in query else f"site:tiktok.com {query}"
+        found: list[str] = []
+        errors = []
+        for suffix in self.suffixes:  # warianty: ~10 wynikow wyszukiwarki na zapytanie
+            try:
+                found += self.search(f"{base} {suffix}".strip(), self.results_per_query)
+            except Exception as exc:  # noqa: BLE001
+                errors.append(exc)
+        if errors and not found:
+            raise SourceError(f"wyszukiwarka TikTok: {query!r}: {errors[0]}") from errors[0]
         urls: dict[str, None] = {}
         for url in found:
             m = re.match(r"^https://(?:www\.)?tiktok\.com/@([\w.\-]+)/video/(\d+)", url)

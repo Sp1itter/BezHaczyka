@@ -71,6 +71,7 @@ def _live(**kw):
     kw.setdefault("extract", lambda url: INFO)
     kw.setdefault("download_text", lambda url: VTT)
     kw.setdefault("download_video", lambda url: b"mp4")
+    kw.setdefault("suffixes", ("",))
     return LiveTikTokSource(store=MemStore(), **kw)
 
 
@@ -104,3 +105,10 @@ def test_live_off_topic_video_is_not_qualified_and_not_downloaded():
     src = _live(extract=lambda url: info, download_video=lambda url: pytest.fail("pobrano wideo spoza tematu"))
     doc = src.fetch(video_url("tomaszfinanse", "7685824606007086369"))
     assert doc.media == [] and src.last_meta["qualified"] is False
+
+
+def test_live_discover_uses_query_variants():
+    asked = []
+    src = _live(search=lambda q, n: asked.append(q) or [], suffixes=("", "porady"))
+    src.discover("ETF")
+    assert asked == ["site:tiktok.com ETF", "site:tiktok.com ETF porady"]
