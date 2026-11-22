@@ -167,10 +167,13 @@ def analyze(
         scope.status = config.scope_override
     # Wideo/audio bez transkryptu (awaria STT): brak sygnalu w samym tytule nie
     # dowodzi braku sygnalu w narracji, wiec nie wykluczamy - zostaje do oceny.
+    # Tylko przy bardzo krotkim tekscie (sam tytul): reklama z pelnym tekstem kreacji
+    # bez zadnego sygnalu finansowego (np. "Zarabiaj na Vinted") jest poza zakresem.
     if (
         scope.status is ScopeStatus.OUT_OF_SCOPE
         and scope.reason == NO_SIGNAL_REASON
         and doc.transcript is None
+        and len(doc.analyzable_text.strip()) < 120
         and any(m.kind in AUDIO_KINDS for m in doc.media)
     ):
         scope.status = ScopeStatus.UNCERTAIN
