@@ -65,7 +65,6 @@ ALLOWED_HOSTS = {
     "analyzer",
     "scraper",
     "dashboard",
-    "dashboard-mock",
     "autoscaler",
     "docker-socket-proxy",
     # atrapy w testach i przykladach
@@ -110,7 +109,7 @@ SOURCE_SUFFIXES = {".py", ".ts", ".tsx", ".js", ".jsx", ".yml", ".yaml", ".json"
 # Dockerfile moze odwolac sie do zewnetrznego obrazu lub adresu, a .env.example
 # to najlatwiejsze miejsce na przypadkowe wklejenie prawdziwego sekretu.
 SOURCE_NAMES = {"Dockerfile", ".env.example", ".dockerignore", "Makefile"}
-SKIP_DIRS = {".venv", "node_modules", "graphify-out", "DocsTaskINWESTWATCH"}
+SKIP_DIRS = {".venv", "node_modules", "graphify-out"}
 
 # Lockfile menedzerow paczek zapisuje adres rejestru, z ktorego pobrano kazda
 # paczke (`resolved`, `funding`). To pochodzenie zaleznosci przy budowie, a nie

@@ -1,6 +1,6 @@
 """Kontrakty danych InvestWatch — ZAMROZONE. KOPIA serwisu scraper.
 
-Zrodlo prawdy: docs/superpowers/specs/2026-11-21-investwatch-design.md par. 6.
+Zrodlo prawdy: przyklady w fixtures/contract-examples/.
 Plik jest DOSLOWNA kopia services/analyzer/analyzer/contracts.py (bez
 services/common/ — patrz par. 5). Przed rozjechaniem sie kopii chroni
 tests/test_contracts.py, ktory waliduje te modele przeciw
