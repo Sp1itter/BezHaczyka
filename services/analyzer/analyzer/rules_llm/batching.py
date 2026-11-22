@@ -20,7 +20,7 @@ from analyzer.contracts import (
     RuleResult,
     Verdict,
 )
-from analyzer.llm import LlmError, OllamaClient, load_prompt
+from analyzer.llm import LlmError, LlmTruncatedError, OllamaClient, _num_predict, fit_material, load_prompt
 from analyzer.rules_llm.guards import apply_guards
 
 # rule_id -> (nazwa, severity, podstawa prawna)
@@ -135,6 +135,25 @@ def _build_result(
     )
 
 
+TRUNCATION_NOTE = " [Uwaga: material przyciety do okna modelu (poczatek i koniec).]"
+
+
+ABSENCE_TRUNCATED_REASON = (
+    "material przyciety - brak ostrzezenia nie jest dowodem (fragment mogl zostac pominiety)"
+)
+
+
+def _mark_truncated(r: RuleResult, fail_means_absence: Collection[str] = ()) -> RuleResult:
+    """Wynik z przycietego materialu: nizsza pewnosc; FAIL typu "brak" -> n/a."""
+    if r.verdict is Verdict.NOT_APPLICABLE:
+        return r
+    if r.verdict is Verdict.FAIL and r.rule_id in fail_means_absence:
+        ev = r.evidence.model_copy(update={"summary": ABSENCE_TRUNCATED_REASON})
+        return r.model_copy(update={"verdict": Verdict.NOT_APPLICABLE, "evidence": ev})
+    ev = r.evidence.model_copy(update={"summary": (r.evidence.summary or "") + TRUNCATION_NOTE})
+    return r.model_copy(update={"evidence": ev, "confidence": round(r.confidence * 0.7, 3)})
+
+
 def evaluate_batch(
     doc: AdDocument,
     client: OllamaClient | None,
@@ -175,10 +194,23 @@ def evaluate_batch(
             or "Material nie spelnia warunku wstepnego tych regul.",
         )
 
-    prompt = load_prompt(prompt_file).replace("{material}", material)
+    template = load_prompt(prompt_file)
+    # Material przycinamy do okna kontekstu (poczatek + koniec), inaczej Ollama
+    # obcina poczatek PROMPTU, czyli instrukcje. Cytaty weryfikujemy nadal
+    # wzgledem pelnego `material`.
+    fitted, truncated = fit_material(
+        material, prompt_chars=len(template.replace("{material}", ""))
+    )
+    prompt = template.replace("{material}", fitted)
 
     try:
-        data = client.generate_json(prompt)
+        try:
+            data = client.generate_json(prompt)
+        except LlmTruncatedError:
+            # JSON ucienty przez num_predict: jedno ponowienie z podwojonym limitem.
+            data = client.generate_json(
+                prompt, options={"num_predict": _num_predict() * 2}
+            )
     except LlmError as exc:
         return _all_not_applicable(
             rule_meta, f"Model niedostepny lub bledna odpowiedz: {exc}"
@@ -210,4 +242,7 @@ def evaluate_batch(
                 _build_result(rule_id, entry, material, rule_meta, fail_means_absence)
             )
     # Straznicy: obiektywne elementy rozstrzygamy w kodzie po odpowiedzi modelu.
-    return apply_guards(results, material, rule_meta)
+    results = apply_guards(results, material, rule_meta)
+    if truncated:
+        results = [_mark_truncated(r, fail_means_absence) for r in results]
+    return results

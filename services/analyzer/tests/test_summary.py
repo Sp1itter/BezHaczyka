@@ -198,7 +198,8 @@ def test_module_number_no_longer_a_claim():
     assert _reason("Reguła 3 naruszona, dokument skierowano do modułu 1.") is None
 
 
-def test_retry_after_rejection_accepted():
+def test_retry_after_rejection_accepted(monkeypatch):
+    monkeypatch.setenv("SUMMARY_LLM_RETRIES", "1")
     good = {"summary": "Reguła 3 naruszona: brak ostrzeżenia."}
     client = FakeClient(reply=[{"summary": "Za mało konkretów."}, good])
     text, engine, reason = explain_summary(_finding(FAILS), None, client=client)
@@ -208,7 +209,15 @@ def test_retry_after_rejection_accepted():
     assert "Poprzednia" not in client.prompts[0]
 
 
-def test_retry_also_rejected_gives_template_and_max_two_calls():
+def test_domyslnie_jedna_proba_potem_szablon():
+    client = FakeClient(reply=[{"summary": "Za mało konkretów."}, {"summary": "Reguła 3 naruszona."}])
+    _, engine, reason = explain_summary(_finding(FAILS), None, client=client)
+    assert engine == "template" and client.calls == 1
+    assert reason == "brak_numeru_reguly"
+
+
+def test_retry_also_rejected_gives_template_and_max_two_calls(monkeypatch):
+    monkeypatch.setenv("SUMMARY_LLM_RETRIES", "1")
     client = FakeClient(reply=[{"summary": "Pierwsza zła."}, {"summary": "Druga zła. A. B. C."}])
     _, engine, reason = explain_summary(_finding(FAILS), None, client=client)
     assert engine == "template" and client.calls == 2
