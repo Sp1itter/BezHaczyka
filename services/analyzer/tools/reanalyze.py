@@ -10,7 +10,8 @@ cases, wiec ponowna analiza wysyla je puste; analyzer policzy 4-8 z fallbacku
 render_probe albo zostawi wypelniacze not_applicable.
 
 `--apply` NIE jest idempotentne: kazde wywolanie kolejkuje zadania od nowa
-(przypadki w statusie processing/queued sa pomijane). job_timeout=900 s.
+(przypadki w statusie processing/queued/skipped sa pomijane; --include-skipped
+wlacza skipped). job_timeout=900 s.
 Kolejka/funkcja z SCRAPER_OUTPUT_QUEUE / SCRAPER_OUTPUT_FUNC (jak scraper).
 
 Domyslnie DRY-RUN (tylko wypisuje, ile i co by zakolejkowal). `--apply` kolejkuje.
@@ -29,6 +30,10 @@ import argparse
 import os
 import sys
 from datetime import datetime, timezone
+from pathlib import Path
+
+# `python tools/<skrypt>.py` ma w sys.path tylko katalog tools/, a nie /app.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 DEFAULT_QUEUE = "q:gpu"
 DEFAULT_FUNC = "analyzer.worker.analyze_document"
@@ -37,6 +42,7 @@ FUNC_NAME = os.getenv("SCRAPER_OUTPUT_FUNC") or DEFAULT_FUNC
 SOURCES = ("facebook", "youtube", "www")
 JOB_TIMEOUT_S = 900
 SKIP_STATUSES = ("processing", "queued")
+SKIPPED_STATUS = "skipped"  # scraper uznal material za niekwalifikujacy sie
 
 
 def build_payload(row: dict) -> dict:
@@ -50,7 +56,8 @@ def build_payload(row: dict) -> dict:
     }
 
 
-def select_cases(conn, source: str | None, since: str | None, limit: int | None) -> list[dict]:
+def select_cases(conn, source: str | None, since: str | None, limit: int | None,
+                 include_skipped: bool = False) -> list[dict]:
     where, params = [], []
     if source:
         where.append("source = %s")
@@ -59,7 +66,8 @@ def select_cases(conn, source: str | None, since: str | None, limit: int | None)
         where.append("fetched_at >= %s")
         params.append(since)
     where.append("status <> ALL(%s)")  # nie dubluj przypadkow w toku
-    params.append(list(SKIP_STATUSES))
+    skip = list(SKIP_STATUSES) if include_skipped else [*SKIP_STATUSES, SKIPPED_STATUS]
+    params.append(skip)
     sql = "SELECT case_id, source, status, entity_resolution FROM cases"
     if where:
         sql += " WHERE " + " AND ".join(where)
@@ -77,13 +85,15 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--source", choices=SOURCES)
     ap.add_argument("--since", help="ISO data, np. 2026-11-20 (fetched_at >=)")
     ap.add_argument("--limit", type=int)
+    ap.add_argument("--include-skipped", action="store_true",
+                    help="uwzglednij tez przypadki ze statusem skipped (domyslnie pomijane)")
     ap.add_argument("--apply", action="store_true", help="faktycznie zakolejkuj (domyslnie dry-run)")
     args = ap.parse_args(argv)
 
     from analyzer.casedb_bridge import connect
 
     with connect() as conn:
-        rows = select_cases(conn, args.source, args.since, args.limit)
+        rows = select_cases(conn, args.source, args.since, args.limit, args.include_skipped)
 
     print(f"Przypadkow do ponownej analizy: {len(rows)}")
     if not args.apply:
