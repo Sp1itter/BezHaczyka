@@ -154,7 +154,7 @@ def test_analysis_job_has_timeout_and_retry(monkeypatch):
     jobs._enqueue_analysis(object(), _doc(), "cid", {})
     (name, args, kwargs), = FakeQueue.enqueued
     assert name == "q:gpu" and args[0]["document_id"] == "cid"
-    assert kwargs["job_timeout"] == jobs.ANALYSIS_TIMEOUT_S == 600
+    assert kwargs["job_timeout"] == jobs.ANALYSIS_TIMEOUT_S == 900
     assert kwargs["retry"].max == 2
 
 

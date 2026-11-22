@@ -51,7 +51,7 @@ DEFAULT_OUTPUT_QUEUE = "q:gpu"
 DEFAULT_OUTPUT_FUNC = "analyzer.worker.analyze_document"
 SOURCES = ("facebook", "youtube", "www", "tiktok", "www_live")
 FETCH_TIMEOUT_S = 600
-ANALYSIS_TIMEOUT_S = 600
+ANALYSIS_TIMEOUT_S = int(os.getenv("ANALYSIS_JOB_TIMEOUT_S", "900"))  # do 5 wywolan LLM na dokument
 ANALYSIS_RETRIES = 2
 # Znacznik "URL juz czeka w kolejce" (zamiast seen.add w discover): wygasa sam, gdyby worker padl.
 PENDING_TTL_S = 2 * FETCH_TIMEOUT_S
