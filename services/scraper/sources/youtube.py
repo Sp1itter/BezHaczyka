@@ -23,7 +23,9 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlsplit
 
-from contracts import AdDocument, Publisher, Transcript, TranscriptSegment
+import time
+
+from contracts import AdDocument, MediaItem, Publisher, Transcript, TranscriptSegment
 from net import Rotator
 
 from sources.base import SourceBlocked, SourceError, SourceGone
@@ -305,6 +307,36 @@ def video_id(url: str) -> str | None:
     return candidate if VIDEO_ID.fullmatch(candidate) else None
 
 
+# Napisy: endpoint timedtext YouTube blokuje IP (429 "Sorry...") niezaleznie od biblioteki.
+# Po 429 przestajemy probowac na CAPTIONS_COOLDOWN_S (stan procesu: SimpleWorker zyje dlugo)
+# i od razu idziemy w fallback: audio m4a w S3, ktore analyzer transkrybuje faster-whisperem.
+CAPTIONS_COOLDOWN_S = 900
+_captions_blocked_until = 0.0
+AUDIO_FORMAT = "bestaudio[ext=m4a]/bestaudio[acodec^=mp4a]/worstaudio"
+
+
+def caption_url(info: dict, language: str) -> str | None:
+    """URL napisow json3: najpierw reczne, potem automatyczne (`pl`, `pl-orig`)."""
+    for group in ("subtitles", "automatic_captions"):
+        tracks = info.get(group) or {}
+        for lang in (language, f"{language}-orig"):
+            for t in tracks.get(lang) or []:
+                if t.get("ext") == "json3" and t.get("url"):
+                    return t["url"]
+    return None
+
+
+def captions_from_json3(data: dict) -> list[dict]:
+    """json3 YouTube -> segmenty {text, start, duration} (puste linie pomijane)."""
+    out = []
+    for ev in data.get("events") or []:
+        text = re.sub(r"\s+", " ", "".join(seg.get("utf8", "") for seg in ev.get("segs") or [])).strip()
+        if not text:
+            continue
+        out.append({"text": text, "start": ev.get("tStartMs", 0) / 1000, "duration": ev.get("dDurationMs", 0) / 1000})
+    return out
+
+
 class YouTubeSource:
     name = "youtube"
 
@@ -321,6 +353,8 @@ class YouTubeSource:
         exclude: dict | None = None,
         rotator: Rotator | None = None,
         limiter: Any = None,
+        store: Any = None,
+        audio_max_s: int = 1200,
     ) -> None:
         if not any(e["type"] != "keyword" for e in dictionary):
             raise ValueError("Podaj konkretne firmy, agentow lub domeny; same hasla nie wystarcza")
@@ -339,6 +373,9 @@ class YouTubeSource:
         self.exclude = exclude
         self.rotator = rotator or Rotator.from_env()
         self.limiter = limiter
+        self.store = store  # audio m4a dla Whispera (fallback, gdy brak napisow)
+        self.audio_max_s = audio_max_s
+        self._info: dict[str, dict] = {}
 
     # ------------------------------------------------------------- siec --
 
@@ -380,34 +417,55 @@ class YouTubeSource:
         if self.max_comments:
             options["getcomments"] = True
             options["extractor_args"]["youtube"].update(max_comments=[str(self.max_comments)], comment_sort=["top"])
-        return self._extract(WATCH + vid, options)
+        info = self._extract(WATCH + vid, options)
+        if info:
+            self._info[vid] = info
+        return info
 
     def _transcript(self, vid: str) -> list[dict]:
-        from requests import Session
-        from youtube_transcript_api import YouTubeTranscriptApi
-        from youtube_transcript_api.proxies import GenericProxyConfig
+        """Napisy z metadanych yt-dlp (json3), bez youtube-transcript-api. 429 -> przerwa."""
+        global _captions_blocked_until
+        import json
 
-        class TimedSession(Session):
-            def request(self, method, url, **kwargs):
-                kwargs.setdefault("timeout", 12)
-                return super().request(method, url, **kwargs)
+        if time.monotonic() < _captions_blocked_until:
+            return []
+        url = caption_url(self._info.get(vid) or {}, self.language)
+        if not url:
+            return []
+        import yt_dlp
+        from yt_dlp.networking.exceptions import HTTPError
 
         self._wait()
-        proxy = self.rotator.proxy()
-        with TimedSession() as session:
-            session.headers.update(self.rotator.headers())
-            api = YouTubeTranscriptApi(
-                http_client=session,
-                proxy_config=GenericProxyConfig(http_url=proxy, https_url=proxy) if proxy else None,
-            )
-            tracks = sorted((t for t in api.list(vid) if t.language_code == self.language), key=lambda t: t.is_generated)
-            if not tracks:
-                return []
-            return [
-                {"text": s.text, "start": s.start, "duration": s.duration}
-                for s in tracks[0].fetch()
-                if math.isfinite(s.start) and math.isfinite(s.duration) and s.start >= 0 and s.duration >= 0
-            ]
+        try:
+            with yt_dlp.YoutubeDL(self._ydl_options()) as client:
+                body = client.urlopen(url).read()
+        except HTTPError as exc:
+            if exc.status == 429:
+                _captions_blocked_until = time.monotonic() + CAPTIONS_COOLDOWN_S
+                log.warning("napisy YouTube: 429, przerwa %d s (fallback audio dla Whispera)", CAPTIONS_COOLDOWN_S)
+            raise
+        return [s for s in captions_from_json3(json.loads(body))
+                if math.isfinite(s["start"]) and s["start"] >= 0 and s["duration"] >= 0]
+
+    def _audio(self, vid: str) -> bytes | None:
+        """Sciezka audio m4a (do Whispera w analyzerze); None przy bledzie/limicie rozmiaru."""
+        import tempfile
+
+        import yt_dlp
+
+        self._wait()
+        with tempfile.TemporaryDirectory() as tmp:
+            options = self._ydl_options() | {"skip_download": False, "format": AUDIO_FORMAT,
+                                             "outtmpl": f"{tmp}/%(id)s.%(ext)s", "max_filesize": 60 * 1024 * 1024,
+                                             "extractor_args": {}, "getcomments": False}
+            try:
+                with yt_dlp.YoutubeDL(options) as client:
+                    client.extract_info(WATCH + vid, download=True)
+            except Exception as exc:  # noqa: BLE001 — brak audio nie blokuje oceny tekstu
+                log.info("audio niedostepne (%s): %s", type(exc).__name__, vid)
+                return None
+            files = sorted(Path(tmp).glob(f"{vid}.*"))
+            return files[0].read_bytes() if files else None
 
     # -------------------------------------------------------- interfejs --
 
@@ -445,6 +503,17 @@ class YouTubeSource:
                 clip["end"] = min(clip["end"], info["duration"])
             clip["url"] = f"{canonical}&t={math.floor(clip['start'])}s"
 
+        media: list[MediaItem] = []
+        transcript_source = "captions" if captions else "none"
+        too_long = (info.get("duration") or 0) > self.audio_max_s
+        if qualified and not captions and self.store is not None and not too_long:
+            audio = self._audio(vid)
+            if audio:
+                doc_id = str(uuid.uuid5(uuid.NAMESPACE_URL, canonical))
+                path = self.store.put("media", f"{doc_id}.m4a", audio, "audio/mp4")
+                media = [MediaItem(kind="audio", path=path, duration_s=info.get("duration"))]
+                transcript_source = "audio-for-whisper"
+
         transcript = None
         if captions:
             transcript = Transcript(
@@ -463,11 +532,12 @@ class YouTubeSource:
             title=title or None,
             text="\n\n".join(p for p in parts if p),
             transcript=transcript,
-            media=[],
+            media=media,
         )
         targets = sorted({e["target"] for e in found} | {t for c in clips for t in c["targets"]})
         meta = {"qualified": qualified, "evidence": found, "clips": clips, "targets": targets,
-                "channel_id": info.get("channel_id"), "published_at": _published_at(info)}
+                "channel_id": info.get("channel_id"), "published_at": _published_at(info),
+                "transcript_source": transcript_source}
         if qualified and not clips:
             meta["timestamp_note"] = NO_CLIPS_NOTE
         return doc, meta

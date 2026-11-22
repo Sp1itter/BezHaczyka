@@ -9,10 +9,12 @@ rq==2.9.1               # BSD-2-Clause — kolejki q:ingest / q:render (rq-sched
 redis==8.1.0            # MIT          — klient Valkey (BSD-3); to klient, nie serwer Redis
 yt-dlp==2026.10.26      # Unlicense    — wideo: tylko fallback, gdy brak bezposredniego mp4
 httpx==0.28.1           # BSD-3-Clause — zrodlo www (WebPageSource)
-youtube-transcript-api==1.2.5  # MIT    — napisy YouTube (YouTubeSource)
 langdetect==1.0.9       # Apache-2.0   — filtr jezyka (YouTubeSource)
 requests==2.34.2        # Apache-2.0   — sesja z naglowkami/proxy dla napisow
 rapidfuzz==3.14.6       # MIT          — resolver podmiotow (fuzzy match nazw z rejestru KNF)
 rq-scheduler==0.14      # MIT          — harmonogram Modulu 1 (scheduler.py, scheduler_main.py), jak w analyzerze
 PyYAML==6.0.2           # MIT          — schedule.yaml
 # casedb (wspolna warstwa danych, psycopg) instalowany osobno: pip install ../casedb
+ddgs==9.16.1            # MIT          — www_live: wyszukiwanie (DuckDuckGo i in.) bez platnego API
+curl_cffi==0.17.0       # MIT          — www_live: pobieranie z odciskiem TLS przegladarki
+trafilatura==2.3.1      # Apache-2.0   — www_live: tresc glowna strony, tytul, nazwa serwisu

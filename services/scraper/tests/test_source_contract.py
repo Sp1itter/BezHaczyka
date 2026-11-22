@@ -52,10 +52,33 @@ def _www(monkeypatch, request):
 
 
 def _tiktok(monkeypatch, request):
+    monkeypatch.setenv("TIKTOK_MODE", "replay")
     return jobs.build_source("tiktok"), "inwestycje"
 
 
-ADAPTERS = {"facebook": _facebook, "youtube": _youtube, "www": _www, "tiktok": _tiktok}
+def _www_live(monkeypatch, request):
+    class Resp:
+        status_code, url = 200, f"{WWW_BASE}/index.html"
+
+        def __init__(self, text):
+            self.text, self.content = text, text.encode()
+
+    class Session:
+        def get(self, url, **kw):
+            page = WWW_DIR / (url.removeprefix(WWW_BASE).lstrip("/") or "index.html")
+            if not page.is_file():
+                r = Resp("")
+                r.status_code = 404
+                return r
+            return Resp(page.read_text(encoding="utf-8"))
+
+    src = jobs.build_source("www_live", registry=REGISTRY)
+    src._session, src.render = Session(), False
+    src.search = lambda q, n: [f"{WWW_BASE}/index.html"]
+    return src, "doradztwo inwestycyjne"
+
+
+ADAPTERS = {"facebook": _facebook, "youtube": _youtube, "www": _www, "tiktok": _tiktok, "www_live": _www_live}
 
 
 @pytest.fixture(autouse=True)

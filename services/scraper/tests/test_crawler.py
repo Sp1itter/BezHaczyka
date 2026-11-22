@@ -102,6 +102,9 @@ class FakeRedis:
         s.update(members)
         return added
 
+    def sismember(self, key, member):
+        return self._alive(key) and member in self.data[key]
+
 
 # --------------------------------------------------------------------------- #
 # Rotacja User-Agent i proxy
