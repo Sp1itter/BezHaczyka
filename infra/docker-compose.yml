@@ -181,7 +181,7 @@ services:
       dockerfile: scraper/Dockerfile
     image: investwatch-scraper:local
     cpus: ${SCRAPER_CPUS:-2}
-    mem_limit: ${SCRAPER_MEM:-2g}
+    mem_limit: ${SCRAPER_MEM:-3g}
     depends_on: &scraper-deps
       postgres:
         condition: service_healthy
@@ -324,6 +324,9 @@ services:
       OLLAMA_KEEP_ALIVE: ${OLLAMA_KEEP_ALIVE:--1}
       OLLAMA_CONTEXT_LENGTH: ${OLLAMA_CONTEXT_LENGTH:-4096}
       OLLAMA_MAX_LOADED_MODELS: ${OLLAMA_MAX_LOADED_MODELS:-2}
+    ports:
+      # Opcjonalnie tylko localhost; 11435, zeby nie kolidowac z natywna Ollama (11434).
+      - "127.0.0.1:${OLLAMA_PORT:-11435}:11434"
     volumes:
       - ollamadata:/root/.ollama
     cpus: ${OLLAMA_CPUS:-8}
@@ -345,8 +348,9 @@ services:
     networks: [investwatch]
 
   # --- ollama-pull: jednorazowe pobranie modeli (idempotentne, konczy z kodem 0) -
-  # Lista w OLLAMA_MODELS_PULL (rozdzielona spacjami). Juz pobrane modele sa pomijane
-  # przez ollama (sprawdzenie manifestu), wiec ponowny `up` jest szybki.
+  # Lista w OLLAMA_MODELS_PULL (rozdzielona spacjami). Model juz obecny (`ollama show`) jest
+  # pomijany, a nieudany pull (np. offline) tylko ostrzega - kontener zawsze konczy exit 0,
+  # zeby analyzer nie byl blokowany przy modelach z cache.
   ollama-pull:
     image: ollama/ollama:0.40.17
     depends_on:
@@ -359,12 +363,16 @@ services:
       - /bin/sh
       - -c
       - |
-        set -e
         for m in $${OLLAMA_MODELS_PULL}; do
-          echo "pull: $${m}"
-          ollama pull "$${m}"
+          if ollama show "$${m}" >/dev/null 2>&1; then
+            echo "jest: $${m}"
+          else
+            echo "pull: $${m}"
+            ollama pull "$${m}" || echo "WARN: pull $${m} nieudany"
+          fi
         done
-        echo "modele gotowe"
+        echo "koniec (zawsze exit 0)"
+        exit 0
     restart: "no"
     networks: [investwatch]
 
