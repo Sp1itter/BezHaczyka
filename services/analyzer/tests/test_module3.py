@@ -131,7 +131,7 @@ def test_nieznany_werdykt_to_not_applicable():
 
 
 def test_fleksja_sygnalow():
-    for txt in ("Rekomendujemy to", "Nasza rekomendacja brzmi", "Brak rekomendacji? Jest."):
+    for txt in ("Rekomendujemy to", "Nasza rekomendacja brzmi", "Rekomendacje tygodnia. Jest."):
         assert advisory_signals(txt), txt
     assert advisory_signals("Nasze sygnały kupna rosną")
 

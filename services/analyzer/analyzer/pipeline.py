@@ -127,6 +127,10 @@ class AnalyzerConfig:
     # None = nie transkrybujemy (transcript zostaje None, reguly degraduja sie
     # do not_applicable, nic sie nie wywraca).
     transcriber: Callable[[AdDocument], Transcript | None] | None = None
+    # Klient LLM dla Modulu 3 (shadow advisory) — ten sam, ktory obsluguje wsady
+    # Modulu 2. None = Modul 3 nie jest wolany (testy bez Ollamy); produkcyjny
+    # build_config/default_config zawsze go ustawia.
+    module3_client: object | None = None
 
 
 def analyze(
@@ -178,7 +182,11 @@ def analyze(
 
     # --- ④ ewaluacja regul --------------------------------------------- #
     results: list[RuleResult] = []
-    if 2 in decision.modules:
+    # Modul 2 (art. 44) to ocena bazowa KAZDEGO materialu w zakresie, niezaleznie
+    # od trasy R1-R4: trasa rozstrzyga o przypisaniu do Modulu 1/3, nie o tym,
+    # czy ostrzezenie o ryzyku ma byc czytelne. Poza zakresem nie oceniamy.
+    in_scope = scope.status is not ScopeStatus.OUT_OF_SCOPE
+    if in_scope:
         # Reguly DET (4, 5, 6, 7, 8) liczy SCRAPER z geometrii renderu i oddaje
         # je gotowe w zadaniu kolejki — analyzer nie ma RenderProbe w swojej
         # domenie i nie powtarza tych pomiarow. Doklejamy je do wynikow regul
@@ -190,7 +198,11 @@ def analyze(
         fallback = det_fallback_results(doc, det_results)
         results.extend(fallback)
         results.extend(missing_det_placeholders(doc, [*(det_results or []), *fallback]))
-        results.extend(_run_module2(doc, config))
+        # Modul 3 biegnie w tej samej puli watkow co runnery Modulu 2.
+        extra: list[RuleRunner] = []
+        if 3 in decision.modules and config.module3_client is not None:
+            extra.append(_module3_runner(entities, config.module3_client))
+        results.extend(_run_module2(doc, config, extra))
 
     # --- straz niekompletnego materialu -------------------------------- #
     if is_partial(doc):
@@ -199,10 +211,14 @@ def analyze(
     # --- ⑤ scoring ------------------------------------------------------ #
     score = risk_score(results)
 
+    primary_module = decision.primary_module
+    if any(r.rule_id == "M3" and r.verdict is Verdict.FAIL for r in results):
+        primary_module = 3
+
     return Finding(
         id=str(uuid.uuid4()),
         document_id=doc.id,
-        primary_module=decision.primary_module,
+        primary_module=primary_module,
         modules=decision.modules,
         routing=decision.routing,
         risk_score=score,
@@ -227,14 +243,32 @@ def _run_one(runner: RuleRunner, doc: AdDocument) -> list[RuleResult]:
         return [_crashed_rule_result(runner, exc)]
 
 
-def _run_module2(doc: AdDocument, config: AnalyzerConfig) -> list[RuleResult]:
+def _module3_runner(entities: EntityResolution, client: object) -> RuleRunner:
+    """Runner Modulu 3 w ksztalcie RuleRunner (doc -> [RuleResult])."""
+    from analyzer.module3 import assess_shadow_advisory
+
+    def run_module3(doc: AdDocument) -> list[RuleResult]:
+        return [
+            assess_shadow_advisory(
+                doc,
+                publisher_is_authorized=entities.publisher_is_authorized,
+                client=client,  # type: ignore[arg-type]
+            )
+        ]
+
+    return run_module3
+
+
+def _run_module2(
+    doc: AdDocument, config: AnalyzerConfig, extra: Sequence[RuleRunner] = ()
+) -> list[RuleResult]:
     """Uruchom runnery Modulu 2 rownolegle; wyniki w kolejnosci runnerow.
 
     Wspolbieznosc: env LLM_BATCH_CONCURRENCY (domyslnie 4; 1 = sekwencyjnie).
     Kolejnosc wyniku jest identyczna jak w wersji sekwencyjnej, bo zbieramy
     po indeksie runnera, nie po czasie zakonczenia.
     """
-    runners = list(config.module2_runners)
+    runners = [*config.module2_runners, *extra]
     try:
         conc = int(os.getenv("LLM_BATCH_CONCURRENCY", "4"))
     except ValueError:
