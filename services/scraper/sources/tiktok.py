@@ -173,7 +173,7 @@ class LiveTikTokSource:
         results_per_query: int = 25,
         video_max_mb: int = 30,
         language: str = "pl",
-        suffixes: tuple[str, ...] = ("", "porady", "polecam", "2026"),
+        suffixes: tuple[str, ...] = ("", "porady"),
     ) -> None:
         if search is None:
             from sources.www_live import ddgs_search

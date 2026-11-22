@@ -53,7 +53,7 @@ _CANDIDATE_RE = re.compile(
 )
 MIN_SIGNALS = 3
 # Warianty frazy: ddgs zwraca ~10 wynikow na zapytanie, warianty daja nowe domeny (oferty, cenniki, miasta).
-DEFAULT_SUFFIXES = ("", "oferta", "cennik", "opinie", "Warszawa", "Kraków")
+DEFAULT_SUFFIXES = ("", "oferta", "opinie", "Warszawa")
 
 
 def host_of(url: str) -> str:
@@ -82,10 +82,33 @@ def is_candidate(text: str) -> bool:
     return len({m.group(0).lower()[:6] for m in _CANDIDATE_RE.finditer(text or "")}) >= MIN_SIGNALS
 
 
+_LIMITER: Any = None
+
+
+def _search_limiter() -> Any:
+    """Wspolny (Valkey) odstep miedzy zapytaniami do wyszukiwarek: www_live i TikTok razem.
+
+    Bez niego ~150 zapytan/h z wariantami fraz konczylo sie timeoutami DuckDuckGo
+    i odmowa polaczenia innych silnikow (22.11, 02:10).
+    """
+    global _LIMITER
+    if _LIMITER is None:
+        from state import RateLimiter
+
+        redis = None
+        if os.getenv("VALKEY_URL"):
+            from redis import Redis
+
+            redis = Redis.from_url(os.environ["VALKEY_URL"])
+        _LIMITER = RateLimiter(float(os.getenv("SEARCH_MIN_INTERVAL_S", "4")), redis=redis, key="search:ratelimit")
+    return _LIMITER
+
+
 def ddgs_search(query: str, max_results: int) -> list[str]:
     from ddgs import DDGS
     from ddgs.exceptions import DDGSException
 
+    _search_limiter().acquire()
     try:
         results = DDGS(timeout=TIMEOUT_S).text(query, region="pl-pl", safesearch="off", max_results=max_results)
     except DDGSException as exc:
