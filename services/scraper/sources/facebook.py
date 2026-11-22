@@ -206,6 +206,17 @@ def collect_ads_from_dom(page: Any, sink: dict[str, dict], timeout_s: float, pol
         page.wait_for_timeout(poll_ms)
 
 
+_HEAVY_RESOURCES = frozenset({"media", "font", "image"})
+
+
+def _abort_heavy(route: Any) -> None:
+    """Route dla discover: przerywa media/czcionki/obrazy, reszta idzie normalnie."""
+    if route.request.resource_type in _HEAVY_RESOURCES:
+        route.abort()
+    else:
+        route.continue_()
+
+
 # --------------------------------------------------------------------------- #
 # Konfiguracja
 # --------------------------------------------------------------------------- #
@@ -349,6 +360,8 @@ class FacebookAdsSource:
         with self._browser() as browser:
             ctx = self._new_context(browser, "desktop")
             try:
+                # discover czyta tylko JSON: wideo, czcionki i obrazy to zbedne MB i sekundy
+                ctx.route("**/*", _abort_heavy)
                 page = ctx.new_page()
                 NavigationGuard(AD_LIBRARY_URL).install(page)
                 page.on("response", lambda r: self._collect_graphql(r, collected))
@@ -547,6 +560,12 @@ class FacebookAdsSource:
         if self.config.rotator.has_proxies:
             # Playwright wymaga proxy na poziomie launch, by moc je ustawic per kontekst
             launch["proxy"] = {"server": "http://per-context"}  # compliance:allow (placeholder Playwrighta, nie adres)
+        from render import browser_pool
+
+        if browser_pool.enabled():  # worker: jedna przegladarka na proces, nowy kontekst na reklame
+            with browser_pool.shared_browser(launch) as browser:
+                yield browser
+            return
         with sync_playwright() as pw:
             browser = pw.chromium.launch(**launch)
             try:

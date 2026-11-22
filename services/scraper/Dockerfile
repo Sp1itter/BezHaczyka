@@ -43,7 +43,8 @@ COPY scraper/render/ ./render/
 # Bez tej linii kazdy nowy/zmieniony przypadek konczyl sie ModuleNotFoundError i nie trafial do q:gpu.
 COPY scraper/rules_det/ ./rules_det/
 # reresolve: ponowne rozwiazanie przypadkow po zmianie resolvera/rejestru (python tools/reresolve.py).
-COPY scraper/tools/reresolve.py scraper/tools/bench_render.py scraper/tools/requalify.py ./tools/
+COPY scraper/tools/reresolve.py scraper/tools/bench_render.py scraper/tools/requalify.py \
+     scraper/tools/seen_cleanup.py scraper/tools/measure_ingest.py ./tools/
 
 # Uzytkownik nie-root (pwuser z obrazu Playwrighta); katalog roboczy na dane lokalne trybu bez S3.
 RUN mkdir -p /opt/iw/services/scraper/data && chown -R pwuser:pwuser /opt/iw/services/scraper/data

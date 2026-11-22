@@ -16,3 +16,6 @@ rapidfuzz==3.14.6       # MIT          — resolver podmiotow (fuzzy match nazw 
 rq-scheduler==0.14      # MIT          — harmonogram Modulu 1 (scheduler.py, scheduler_main.py), jak w analyzerze
 PyYAML==6.0.2           # MIT          — schedule.yaml
 # casedb (wspolna warstwa danych, psycopg) instalowany osobno: pip install ../casedb
+ddgs==9.16.1            # MIT          — www_live: wyszukiwanie (DuckDuckGo i in.) bez platnego API
+curl_cffi==0.17.0       # MIT          — www_live: pobieranie z odciskiem TLS przegladarki
+trafilatura==2.3.1      # Apache-2.0   — www_live: tresc glowna strony, tytul, nazwa serwisu

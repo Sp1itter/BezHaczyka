@@ -34,8 +34,9 @@ class FakeQueue:
 
 def test_default_schedule_loads():
     specs = {s.name: s for s in load_schedule(env={})}
-    assert set(specs) == {"fb-inwestycje", "yt-finfluencerzy", "www-demo", "recheck", "tiktok-demo"}
+    assert set(specs) == {"fb-inwestycje", "yt-finfluencerzy", "www-demo", "www-live", "recheck", "tiktok-demo"}
     assert not specs["tiktok-demo"].enabled  # szkielet, domyslnie wylaczony
+    assert not specs["www-demo"].enabled and specs["www-live"].enabled  # fikcyjny korpus tylko offline
     assert specs["fb-inwestycje"].queries[0] == "XTB" and specs["fb-inwestycje"].interval_minutes == 60
     assert specs["yt-finfluencerzy"].registry_limit == 24
     assert specs["www-demo"].seeds == ["http://nginx/www/index.html"]
@@ -43,9 +44,9 @@ def test_default_schedule_loads():
 
 def test_env_overrides():
     specs = {s.name: s for s in load_schedule(env={"SCHEDULE_DISABLE": "fb-inwestycje, recheck",
-                                                    "SCHEDULE_INTERVAL_WWW_DEMO": "5"})}
+                                                    "SCHEDULE_INTERVAL_WWW_LIVE": "5"})}
     assert not specs["fb-inwestycje"].enabled and not specs["recheck"].enabled
-    assert specs["www-demo"].enabled and specs["www-demo"].interval_minutes == 5
+    assert specs["www-live"].enabled and specs["www-live"].interval_minutes == 5
 
 
 @pytest.mark.parametrize("body", [
@@ -73,7 +74,7 @@ def test_expand(monkeypatch):
     assert ids.count("sched-recheck") == 1 and len(ids) == len(set(ids))
     for i in ids:
         validate_job_id(i)  # RQ dopuszcza tylko litery, cyfry, '_' i '-'
-    assert sum(t.job == "fb-inwestycje" for t in tasks) == 3
+    assert sum(t.job == "fb-inwestycje" for t in tasks) == 16
     assert sum(t.job == "yt-finfluencerzy" for t in tasks) == 2
     assert [t.args for t in tasks if t.id == "sched-recheck"] == [[20, 60]]
     assert [t.args for t in _tasks(monkeypatch, once=True) if t.id == "sched-recheck"] == [[20, 0]]
@@ -88,15 +89,17 @@ def test_register_is_idempotent_and_drops_stale(monkeypatch):
     first = dict(fake.jobs)
     register(fake, tasks)
     assert fake.jobs.keys() == first.keys() == {t.id for t in tasks} | {"obce-zadanie"}
-    job = fake.jobs["sched-www-demo-1"]
-    assert job["interval"] == 1800 and job["queue_name"] == "q:ingest" and job["args"] == ["www", "http://nginx/www/index.html"]
+    job = fake.jobs["sched-www-live-1"]
+    assert job["interval"] == 3600 and job["queue_name"] == "q:ingest" and job["args"] == ["www_live", "doradztwo inwestycyjne"]
 
 
 def test_run_once(monkeypatch):
     sink: list = []
     tasks = _tasks(monkeypatch, once=True)
     assert run_once(lambda name: FakeQueue(name, sink), tasks) == len(tasks)
-    assert {q for q, _, _ in sink} == {"q:ingest"}
+    # discover YouTube idzie do kolejki YT: dzieli limiter z pobraniami YT i nie blokuje q:ingest
+    assert {q for q, _, _ in sink} == {"q:ingest", "q:render:yt"}
+    assert {t.queue for t in tasks if t.job == "yt-finfluencerzy"} == {"q:render:yt"}
     assert {f for _, f, _ in sink} == {"discover_job", "recheck_job"}
     assert len({kw["job_id"] for _, _, kw in sink}) == len(sink)
 
@@ -107,7 +110,7 @@ def test_registry_failure_does_not_block_others(monkeypatch):
 
     monkeypatch.setattr(scheduler, "_registry_queries", boom)
     tasks = expand(load_schedule(env={}))
-    assert not any(t.job == "yt-finfluencerzy" for t in tasks) and any(t.job == "www-demo" for t in tasks)
+    assert not any(t.job == "yt-finfluencerzy" for t in tasks) and any(t.job == "www-live" for t in tasks)
 
 
 def test_registry_queries_respect_knf_ids(monkeypatch):
