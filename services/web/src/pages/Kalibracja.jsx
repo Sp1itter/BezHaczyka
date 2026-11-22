@@ -85,7 +85,10 @@ export default function Kalibracja() {
           {best && <Button size="xs" variant="subtle" onClick={() => setThresholdState(best.threshold)}>Najlepsze F1: próg {best.threshold} (F1 {f2(best.f1)})</Button>}
         </Group>
         <Slider min={0} max={100} step={1} value={t} onChange={setThresholdState} label={(v) => `próg ${v}`}
-          marks={[{ value: 0, label: "0" }, { value: 50, label: "50" }, { value: 100, label: "100" }]} mb="lg" />
+          marks={[{ value: 0, label: "0" }, { value: 50, label: "50" }, { value: 70, label: "70" }, { value: 100, label: "100" }]} mb="lg" />
+        <Text size="xs" c="dimmed" mt="xl">
+          Każdy wynik o poziomie „wysokie” ma co najmniej 70 punktów, więc próg poniżej 70 nie usuwa wysokich wyników, tylko zmienia liczbę oflagowanych niskich i średnich.
+        </Text>
         <Group gap={48} mt="md">
           <Metric label="Precyzja" value={f2(s.precision)} hint="ile oflagowanych to naruszenia" />
           <Metric label="Pełność" value={f2(s.recall)} hint="ile naruszeń oflagowano" />
